@@ -1,0 +1,31 @@
+# Built artifacts
+bin/
+gen/
+out/
+build/
+.gradle/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# User-specific files
+local.properties
+.DS_Store
+
+# Android Studio
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Gradle
+.gradle/
+build/
+
+# Kotlin
+.kotlin/
+
+# Firebase config (keep local)
+app/google-services.json

@@ -1,0 +1,26 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Dependencies
+**/node_modules/
+
+# Logs / coverage
+*.log
+coverage/
+
+# Backend secrets
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Android / Gradle generated files
+frontend/.gradle/
+frontend/build/
+frontend/app/build/
+frontend/gradle/gradle-daemon-jvm.properties
+
+# Firebase config (keep local; do not commit)
+frontend/app/google-services.json
