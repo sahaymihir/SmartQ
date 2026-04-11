@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 
 import com.example.smartqueue.R;
+import com.example.smartqueue.models.request.JoinQueueRequest;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.models.response.MessageResponse;
 import com.example.smartqueue.models.response.TokenResponse;
@@ -23,6 +24,7 @@ import com.example.smartqueue.network.ApiService;
 import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.Calendar;
 
@@ -38,6 +40,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     private CardView cardCalled;
     private RadioGroup rgDoctor;
     private MaterialButton btnJoinQueue;
+    private TextInputEditText etSymptoms;
     private TextView tvTokenNumber, tvDoctorName, tvPosition, tvETA, tvQueueStatus;
     private TextView tvCheckinTitle, tvCheckinSubtitle, tvSnoozeCount;
     private CardView cardCheckin, cardSnooze;
@@ -80,6 +83,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         cardCalled       = findViewById(R.id.cardCalled);
         rgDoctor         = findViewById(R.id.rgDoctor);
         btnJoinQueue     = findViewById(R.id.btnJoinQueue);
+        etSymptoms       = findViewById(R.id.etSymptoms);
         tvTokenNumber    = findViewById(R.id.tvTokenNumber);
         tvDoctorName     = findViewById(R.id.tvDoctorName);
         tvPosition       = findViewById(R.id.tvPosition);
@@ -109,10 +113,13 @@ public class PatientHomeActivity extends AppCompatActivity {
         // ── Join Queue ────────────────────────────────────
         btnJoinQueue.setOnClickListener(v -> {
             String doctorId = getSelectedDoctorId();
+            String symptoms = etSymptoms.getText() != null ?
+                    etSymptoms.getText().toString().trim() : "";
             btnJoinQueue.setEnabled(false);
             btnJoinQueue.setText("Joining...");
 
-            apiService.joinQueue(doctorId).enqueue(new Callback<TokenResponse>() {
+            JoinQueueRequest body = new JoinQueueRequest(symptoms);
+            apiService.joinQueue(doctorId, body).enqueue(new Callback<TokenResponse>() {
                 @Override
                 public void onResponse(Call<TokenResponse> call, Response<TokenResponse> response) {
                     if (response.code() == 401) {

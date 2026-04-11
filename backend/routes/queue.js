@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 const { protect } = require('../middleware/authMiddleware');
 const { Token, Queue } = require('../models/Queue');
+
+// ─── ML Triage Microservice URL ───────────────────────────────
+const TRIAGE_API_URL = process.env.TRIAGE_API_URL || 'http://localhost:8000';
 
 // ─── Helper: get or create today's queue for a doctor ─────
 const getTodayQueue = async (doctorId) => {
@@ -33,6 +37,7 @@ const getPriorityLabel = (priorityScore) => {
 router.post('/join', protect, async (req, res) => {
   try {
     const { doctorId } = req.query;
+    const { symptoms } = req.body;   // NEW: patient symptom text
     const patient = req.user;
 
     if (!doctorId) {
@@ -61,6 +66,31 @@ router.post('/join', protect, async (req, res) => {
       return res.status(400).json({ success: false, message: 'This queue is not active today' });
     }
 
+    // ─── AI Triage: call Python microservice ─────────────────
+    let priorityScore = patient.priorityScore; // fallback: age-based
+    let priorityLabel = getPriorityLabel(priorityScore);
+    let aiConfidence = 0;
+
+    if (symptoms && symptoms.trim().length >= 3) {
+      try {
+        const triageResponse = await axios.post(
+          `${TRIAGE_API_URL}/predict-triage`,
+          { symptoms: symptoms.trim(), age: patient.age },
+          { timeout: 5000 }
+        );
+
+        if (triageResponse.data && triageResponse.data.priority_score) {
+          priorityScore = triageResponse.data.priority_score;
+          priorityLabel = triageResponse.data.priority_label;
+          aiConfidence  = triageResponse.data.confidence;
+          console.log(`🧠 AI Triage: "${symptoms}" → ${priorityLabel} (${aiConfidence}% confidence)`);
+        }
+      } catch (aiErr) {
+        // AI service is optional — fall back to age-based priority
+        console.warn('⚠️  AI triage service unavailable, using age-based priority:', aiErr.message);
+      }
+    }
+
     // Count current waiting patients to determine position
     const waitingCount = await Token.countDocuments({
       doctor: doctorId,
@@ -71,9 +101,8 @@ router.post('/join', protect, async (req, res) => {
     const position = waitingCount + 1;
     const tokenNumber = queue.totalTokensIssued + 1;
     const etaMinutes = computeETA(position, queue.avgConsultationMinutes);
-    const priorityLabel = getPriorityLabel(patient.priorityScore);
 
-    // Create token
+    // Create token with AI-generated priority
     const token = await Token.create({
       patient: patient._id,
       doctor: doctorId,
@@ -81,7 +110,9 @@ router.post('/join', protect, async (req, res) => {
       position,
       etaMinutes,
       priority: priorityLabel,
-      priorityScore: patient.priorityScore
+      priorityScore: priorityScore,
+      symptoms: symptoms || '',
+      aiConfidence: aiConfidence
     });
 
     // Update queue stats
@@ -89,8 +120,7 @@ router.post('/join', protect, async (req, res) => {
     await queue.save();
 
     // ─── Priority reorder: if high priority, bump up ────────
-    // High priority patients are inserted before normal ones
-    if (patient.priorityScore >= 10) {
+    if (priorityScore >= 10) {
       await reorderQueueForPriority(doctorId, token._id, today);
     }
 
@@ -103,6 +133,8 @@ router.post('/join', protect, async (req, res) => {
       tokenNumber: updatedToken.tokenNumber,
       position: updatedToken.position,
       etaMinutes: updatedToken.etaMinutes,
+      priority: updatedToken.priority,
+      aiConfidence: updatedToken.aiConfidence,
       message: `Token #${tokenNumber} issued. You are #${updatedToken.position} in queue.`
     });
 

@@ -3,6 +3,7 @@ package com.example.smartqueue.network;
 import com.example.smartqueue.models.request.LoginRequest;
 import com.example.smartqueue.models.request.RegisterRequest;
 import com.example.smartqueue.models.request.PrescriptionRequest;
+import com.example.smartqueue.models.request.JoinQueueRequest;
 import com.example.smartqueue.models.response.AuthResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.models.response.TokenResponse;
@@ -20,7 +21,7 @@ public interface ApiService {
     Call<AuthResponse> login(@Body LoginRequest body);
 
     @POST("queue/join")
-    Call<TokenResponse> joinQueue(@Query("doctorId") String doctorId);
+    Call<TokenResponse> joinQueue(@Query("doctorId") String doctorId, @Body JoinQueueRequest body);
 
     @GET("queue/status")
     Call<QueueResponse> getQueueStatus();

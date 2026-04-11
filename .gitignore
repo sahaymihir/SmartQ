@@ -24,3 +24,12 @@ frontend/gradle/gradle-daemon-jvm.properties
 
 # Firebase config (keep local; do not commit)
 frontend/app/google-services.json
+
+ml_service/.venv
+ml_service/venv
+.venv/
+venv/
+__pycache__/
+*.pyc
+ml_service/data/
+.codex

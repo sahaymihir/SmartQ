@@ -50,6 +50,16 @@ const tokenSchema = new mongoose.Schema({
   checkedInAt: {
     type: Date
   },
+  // Patient's chief complaint (for AI triage)
+  symptoms: {
+    type: String,
+    default: ''
+  },
+  // AI model confidence percentage
+  aiConfidence: {
+    type: Number,
+    default: 0
+  },
   // Snooze tracking
   snoozeCount: {
     type: Number,

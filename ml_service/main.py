@@ -1,0 +1,460 @@
+from __future__ import annotations
+
+import logging
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+import joblib
+import numpy as np
+import pandas as pd
+from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel, ConfigDict, Field
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("smartq-ml-service")
+
+CONFIDENCE_THRESHOLD = 0.60
+MODEL_VERSION = "v3"
+SERVICE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SERVICE_DIR.parent
+
+RECOMMENDATION_MAP: dict[int, str] = {
+    1: "Immediate — resuscitation required",
+    2: "Emergency — seen within 15 minutes",
+    3: "Urgent — seen within 30 minutes",
+    4: "Less urgent — seen within 60 minutes",
+    5: "Non-urgent — seen within 120 minutes",
+}
+
+# v3 training-set defaults for sparse requests. Numeric values are medians.
+NUMERIC_DEFAULTS: dict[str, float] = {
+    "news2_score": 2.0,
+    "gcs_total": 15.0,
+    "pain_score": 5.0,
+    "spo2": 97.0,
+    "temperature_c": 37.5,
+    "respiratory_rate": 17.3,
+    "spo2_resp_interaction": 1671.42,
+    "mean_arterial_pressure": 91.9,
+    "shock_index": 0.7240272613983953,
+    "num_prior_ed_visits_12m": 1.0,
+    "heart_rate": 89.6,
+    "diastolic_bp": 75.3,
+    "multi_risk_flag": 0.0,
+    "systolic_bp": 123.1,
+    "pulse_pressure": 47.2,
+    "hypoxia_flag": 0.0,
+    "height_cm": 171.1,
+    "weight_kg": 76.0,
+    "bmi": 26.0,
+    "age": 48.0,
+    "arrival_hour": 11.0,
+    "num_comorbidities": 5.0,
+    "num_active_medications": 4.0,
+    "arrival_month": 7.0,
+    "high_fever_flag": 0.0,
+    "tachycardia_flag": 0.0,
+    "num_prior_admissions_12m": 0.0,
+}
+
+# Defaults stay semantically neutral where possible, while remaining valid encoder classes.
+CATEGORICAL_DEFAULTS: dict[str, str] = {
+    "mental_status_triage": "alert",
+    "chief_complaint_system": "other",
+    "pain_location": "unknown",
+    "arrival_day": "Monday",
+    "transport_origin": "home",
+    "language": "English",
+    "site_id": "SITE-TUR-01",
+    "arrival_mode": "walk-in",
+    "arrival_season": "summer",
+    "insurance_type": "public",
+    "shift": "morning",
+    "age_group": "middle_aged",
+    "sex": "F",
+}
+
+CATEGORY_ALIASES: dict[str, dict[str, str]] = {
+    "sex": {
+        "female": "F",
+        "f": "F",
+        "male": "M",
+        "m": "M",
+        "other": "Other",
+        "nonbinary": "Other",
+        "non-binary": "Other",
+    },
+    "arrival_mode": {
+        "walkin": "walk-in",
+        "walk": "walk-in",
+        "broughtbyfamily": "brought_by_family",
+        "family": "brought_by_family",
+    },
+}
+
+
+@dataclass
+class ModelArtifacts:
+    model: Any
+    scaler: Any
+    feature_columns: list[str]
+    numeric_columns: list[str]
+    categorical_columns: list[str]
+    feature_label_encoders: dict[str, Any]
+    target_encoder: Any
+    numeric_defaults: dict[str, float]
+    categorical_defaults: dict[str, str]
+    category_lookup: dict[str, dict[str, str]]
+    model_class_labels: list[int]
+
+
+class PredictionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    news2_score: float | None = Field(default=None, ge=0)
+    gcs_total: int | None = Field(default=None, ge=0, le=15)
+    pain_score: float | None = Field(default=None, ge=0, le=10)
+    spo2: float | None = Field(default=None, ge=0, le=100)
+    temperature_c: float | None = Field(default=None, ge=0)
+    respiratory_rate: float | None = Field(default=None, ge=0)
+    spo2_resp_interaction: float | None = Field(default=None, ge=0)
+    mean_arterial_pressure: float | None = Field(default=None, ge=0)
+    shock_index: float | None = Field(default=None, ge=0)
+    num_prior_ed_visits_12m: int | None = Field(default=None, ge=0)
+    heart_rate: float | None = Field(default=None, ge=0)
+    mental_status_triage: str | None = None
+    diastolic_bp: float | None = Field(default=None, ge=0)
+    multi_risk_flag: int | None = Field(default=None, ge=0, le=1)
+    systolic_bp: float | None = Field(default=None, ge=0)
+    pulse_pressure: float | None = Field(default=None)
+    hypoxia_flag: int | None = Field(default=None, ge=0, le=1)
+    height_cm: float | None = Field(default=None, ge=0)
+    weight_kg: float | None = Field(default=None, ge=0)
+    bmi: float | None = Field(default=None, ge=0)
+    age: int | None = Field(default=None, ge=0, le=130)
+    arrival_hour: int | None = Field(default=None, ge=0, le=23)
+    chief_complaint_system: str | None = None
+    num_comorbidities: int | None = Field(default=None, ge=0)
+    num_active_medications: int | None = Field(default=None, ge=0)
+    arrival_month: int | None = Field(default=None, ge=1, le=12)
+    pain_location: str | None = None
+    arrival_day: str | None = None
+    transport_origin: str | None = None
+    high_fever_flag: int | None = Field(default=None, ge=0, le=1)
+    language: str | None = None
+    site_id: str | None = None
+    arrival_mode: str | None = None
+    arrival_season: str | None = None
+    tachycardia_flag: int | None = Field(default=None, ge=0, le=1)
+    insurance_type: str | None = None
+    shift: str | None = None
+    num_prior_admissions_12m: int | None = Field(default=None, ge=0)
+    age_group: str | None = None
+    sex: str | None = None
+
+
+class PredictionResponse(BaseModel):
+    priority_class: int = Field(ge=1, le=5)
+    confidence: float = Field(ge=0, le=1)
+    low_confidence: bool
+    recommendation: str
+    all_class_probs: dict[str, float]
+
+
+class HealthResponse(BaseModel):
+    status: str
+    model_version: str
+
+
+def canonicalize_category_token(value: str) -> str:
+    return "".join(ch for ch in value.strip().casefold() if ch.isalnum())
+
+
+def resolve_artifact_path(filename: str) -> Path:
+    candidates = [
+        PROJECT_ROOT / filename,
+        PROJECT_ROOT / "ml_service" / "models" / filename,
+        SERVICE_DIR / "models" / filename,
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    raise FileNotFoundError(f"Could not locate required artifact: {filename}")
+
+
+def coerce_float(value: Any, default: float) -> float:
+    if value is None:
+        return float(default)
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid numeric value: {value}") from exc
+
+
+def derive_age_group(age: float) -> str:
+    if age <= 15:
+        return "pediatric"
+    if age <= 39:
+        return "young_adult"
+    if age <= 64:
+        return "middle_aged"
+    return "elderly"
+
+
+def derive_shift(arrival_hour: float) -> str:
+    hour = int(round(arrival_hour)) % 24
+    if 0 <= hour <= 5:
+        return "night"
+    if 6 <= hour <= 13:
+        return "morning"
+    if 14 <= hour <= 19:
+        return "afternoon"
+    return "evening"
+
+
+def derive_arrival_season(arrival_month: float) -> str:
+    month = int(round(arrival_month))
+    if month in {12, 1, 2}:
+        return "winter"
+    if month in {3, 4, 5}:
+        return "spring"
+    if month in {6, 7, 8}:
+        return "summer"
+    return "autumn"
+
+
+def build_category_lookup(feature_label_encoders: dict[str, Any]) -> dict[str, dict[str, str]]:
+    lookup: dict[str, dict[str, str]] = {}
+    for field_name, encoder in feature_label_encoders.items():
+        field_lookup = {
+            canonicalize_category_token(str(category)): str(category)
+            for category in encoder.classes_
+        }
+        for alias, canonical in CATEGORY_ALIASES.get(field_name, {}).items():
+            field_lookup[canonicalize_category_token(alias)] = canonical
+        lookup[field_name] = field_lookup
+    return lookup
+
+
+def load_artifacts() -> ModelArtifacts:
+    model_path = resolve_artifact_path("triage_model_v3.pkl")
+    scaler_path = resolve_artifact_path("scaler_v3.pkl")
+    feature_path = resolve_artifact_path("feature_cols_v3.pkl")
+
+    bundle = joblib.load(model_path)
+    scaler = joblib.load(scaler_path)
+    feature_columns = list(joblib.load(feature_path))
+
+    required_bundle_keys = {
+        "model",
+        "selected_features",
+        "numeric_columns",
+        "categorical_columns",
+        "feature_label_encoders",
+        "target_encoder",
+    }
+    missing_keys = required_bundle_keys - set(bundle)
+    if missing_keys:
+        raise RuntimeError(f"Model bundle is missing keys: {sorted(missing_keys)}")
+
+    selected_features = list(bundle["selected_features"])
+    if feature_columns != selected_features:
+        raise RuntimeError("feature_cols_v3.pkl does not match the model bundle feature order")
+
+    numeric_columns = list(bundle["numeric_columns"])
+    categorical_columns = list(bundle["categorical_columns"])
+    if scaler.n_features_in_ != len(numeric_columns):
+        raise RuntimeError(
+            "Scaler feature count does not match numeric feature count "
+            f"({scaler.n_features_in_} != {len(numeric_columns)})"
+        )
+
+    target_encoder = bundle["target_encoder"]
+    model = bundle["model"]
+    encoded_classes = np.asarray(model.classes_, dtype=int)
+    model_class_labels = [int(label) for label in target_encoder.inverse_transform(encoded_classes)]
+
+    artifacts = ModelArtifacts(
+        model=model,
+        scaler=scaler,
+        feature_columns=feature_columns,
+        numeric_columns=numeric_columns,
+        categorical_columns=categorical_columns,
+        feature_label_encoders=bundle["feature_label_encoders"],
+        target_encoder=target_encoder,
+        numeric_defaults=dict(NUMERIC_DEFAULTS),
+        categorical_defaults=dict(CATEGORICAL_DEFAULTS),
+        category_lookup=build_category_lookup(bundle["feature_label_encoders"]),
+        model_class_labels=model_class_labels,
+    )
+
+    logger.info(
+        "Loaded SmartQ triage artifacts from %s with %d features",
+        model_path,
+        len(feature_columns),
+    )
+    return artifacts
+
+
+def normalize_categorical_value(field_name: str, raw_value: Any, artifacts: ModelArtifacts) -> str:
+    encoder = artifacts.feature_label_encoders[field_name]
+    fallback = artifacts.categorical_defaults.get(field_name, str(encoder.classes_[0]))
+
+    if raw_value is None:
+        candidate = fallback
+    else:
+        candidate = str(raw_value).strip()
+        if not candidate:
+            candidate = fallback
+
+    if candidate in encoder.classes_:
+        return candidate
+
+    canonical = canonicalize_category_token(candidate)
+    lookup = artifacts.category_lookup[field_name]
+    matched = lookup.get(canonical)
+    if matched is not None and matched in encoder.classes_:
+        return matched
+
+    return fallback if fallback in encoder.classes_ else str(encoder.classes_[0])
+
+
+def apply_engineered_features(row: dict[str, Any], artifacts: ModelArtifacts) -> None:
+    age = coerce_float(row.get("age"), artifacts.numeric_defaults["age"])
+    arrival_hour = coerce_float(row.get("arrival_hour"), artifacts.numeric_defaults["arrival_hour"])
+    arrival_month = coerce_float(row.get("arrival_month"), artifacts.numeric_defaults["arrival_month"])
+    heart_rate = coerce_float(row.get("heart_rate"), artifacts.numeric_defaults["heart_rate"])
+    systolic_bp = coerce_float(row.get("systolic_bp"), artifacts.numeric_defaults["systolic_bp"])
+    diastolic_bp = coerce_float(row.get("diastolic_bp"), artifacts.numeric_defaults["diastolic_bp"])
+    spo2 = coerce_float(row.get("spo2"), artifacts.numeric_defaults["spo2"])
+    respiratory_rate = coerce_float(
+        row.get("respiratory_rate"),
+        artifacts.numeric_defaults["respiratory_rate"],
+    )
+    temperature_c = coerce_float(
+        row.get("temperature_c"),
+        artifacts.numeric_defaults["temperature_c"],
+    )
+    pain_score = coerce_float(row.get("pain_score"), artifacts.numeric_defaults["pain_score"])
+    weight_kg = coerce_float(row.get("weight_kg"), artifacts.numeric_defaults["weight_kg"])
+    height_cm = coerce_float(row.get("height_cm"), artifacts.numeric_defaults["height_cm"])
+
+    row["age_group"] = derive_age_group(age)
+    row["shift"] = derive_shift(arrival_hour)
+    row["arrival_season"] = derive_arrival_season(arrival_month)
+    row["mean_arterial_pressure"] = (systolic_bp + (2 * diastolic_bp)) / 3
+    row["pulse_pressure"] = systolic_bp - diastolic_bp
+    row["shock_index"] = (
+        heart_rate / systolic_bp if systolic_bp > 0 else artifacts.numeric_defaults["shock_index"]
+    )
+    row["spo2_resp_interaction"] = spo2 * respiratory_rate
+    row["hypoxia_flag"] = 1.0 if spo2 < 94 else 0.0
+    row["high_fever_flag"] = 1.0 if temperature_c > 38.5 else 0.0
+    row["tachycardia_flag"] = 1.0 if heart_rate > 100 else 0.0
+
+    if height_cm > 0:
+        row["bmi"] = weight_kg / ((height_cm / 100) ** 2)
+
+    risk_count = 0
+    if row["hypoxia_flag"] == 1.0:
+        risk_count += 1
+    if row["shock_index"] > 1.0:
+        risk_count += 1
+    if pain_score >= 8:
+        risk_count += 1
+    row["multi_risk_flag"] = 1.0 if risk_count >= 2 else 0.0
+
+
+def build_feature_frame(payload: PredictionRequest, artifacts: ModelArtifacts) -> pd.DataFrame:
+    row: dict[str, Any] = {}
+    payload_data = payload.model_dump(exclude_none=True)
+
+    for feature in artifacts.feature_columns:
+        if feature in payload_data:
+            row[feature] = payload_data[feature]
+        elif feature in artifacts.numeric_columns:
+            row[feature] = artifacts.numeric_defaults.get(feature, 0.0)
+        else:
+            row[feature] = artifacts.categorical_defaults.get(feature)
+
+    apply_engineered_features(row, artifacts)
+
+    ordered_row: dict[str, Any] = {}
+    for feature in artifacts.feature_columns:
+        if feature in artifacts.numeric_columns:
+            default = artifacts.numeric_defaults.get(feature, 0.0)
+            ordered_row[feature] = coerce_float(row.get(feature), default)
+        else:
+            ordered_row[feature] = normalize_categorical_value(feature, row.get(feature), artifacts)
+
+    frame = pd.DataFrame([ordered_row], columns=artifacts.feature_columns)
+
+    for column in artifacts.categorical_columns:
+        encoder = artifacts.feature_label_encoders[column]
+        frame[column] = encoder.transform(frame[column].astype(str))
+
+    frame[artifacts.numeric_columns] = frame[artifacts.numeric_columns].astype(float)
+    frame[artifacts.numeric_columns] = artifacts.scaler.transform(frame[artifacts.numeric_columns])
+    return frame
+
+
+def run_inference(frame: pd.DataFrame, artifacts: ModelArtifacts) -> PredictionResponse:
+    encoded_prediction = int(artifacts.model.predict(frame)[0])
+    class_probabilities = artifacts.model.predict_proba(frame)[0]
+    priority_class = int(artifacts.target_encoder.inverse_transform([encoded_prediction])[0])
+    confidence = float(np.max(class_probabilities))
+    all_class_probs = {
+        str(class_label): round(float(probability), 4)
+        for class_label, probability in zip(artifacts.model_class_labels, class_probabilities)
+    }
+
+    return PredictionResponse(
+        priority_class=priority_class,
+        confidence=round(confidence, 4),
+        low_confidence=confidence < CONFIDENCE_THRESHOLD,
+        recommendation=RECOMMENDATION_MAP[priority_class],
+        all_class_probs=all_class_probs,
+    )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.artifacts = load_artifacts()
+    yield
+
+
+app = FastAPI(
+    title="SmartQ Triage ML Service",
+    version=MODEL_VERSION,
+    lifespan=lifespan,
+)
+
+
+def get_artifacts(request: Request) -> ModelArtifacts:
+    artifacts = getattr(request.app.state, "artifacts", None)
+    if artifacts is None:
+        raise HTTPException(status_code=503, detail="Model artifacts are not loaded")
+    return artifacts
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health() -> HealthResponse:
+    return HealthResponse(status="ok", model_version=MODEL_VERSION)
+
+
+@app.post("/predict", response_model=PredictionResponse)
+async def predict(payload: PredictionRequest, request: Request) -> PredictionResponse:
+    artifacts = get_artifacts(request)
+    try:
+        frame = build_feature_frame(payload, artifacts)
+        return run_inference(frame, artifacts)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Prediction failed")
+        raise HTTPException(status_code=500, detail="Prediction failed") from exc
