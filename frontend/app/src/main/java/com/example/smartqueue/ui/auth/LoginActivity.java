@@ -144,26 +144,43 @@ public class LoginActivity extends AppCompatActivity {
         View loginLogo = findViewById(R.id.loginLogo);
         View loginHeader = findViewById(R.id.loginHeader);
         View loginForm = findViewById(R.id.loginForm);
+        View btnLogin = findViewById(R.id.btnLogin);
 
-        Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_enter);
-        Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in);
+        android.view.animation.OvershootInterpolator overshoot =
+                new android.view.animation.OvershootInterpolator(0.8f);
 
         Handler handler = new Handler(Looper.getMainLooper());
 
+        // 0ms — Logo drops in with overshoot
         handler.postDelayed(() -> {
-            loginLogo.setAlpha(1f);
-            loginLogo.startAnimation(fadeIn);
+            loginLogo.setTranslationY(-30);
+            loginLogo.animate().alpha(1f).translationY(0)
+                    .setDuration(500).setInterpolator(overshoot).start();
         }, 0);
 
+        // 200ms — Header slides up
         handler.postDelayed(() -> {
-            loginHeader.setAlpha(1f);
-            loginHeader.startAnimation(slideUp);
-        }, 150);
+            loginHeader.setTranslationY(40);
+            loginHeader.animate().alpha(1f).translationY(0)
+                    .setDuration(500).setInterpolator(overshoot).start();
+        }, 200);
 
+        // 400ms — Form card scales in
         handler.postDelayed(() -> {
-            loginForm.setAlpha(1f);
-            loginForm.startAnimation(slideUp);
-        }, 300);
+            loginForm.setScaleX(0.9f);
+            loginForm.setScaleY(0.9f);
+            loginForm.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                    .setDuration(500).setInterpolator(overshoot).start();
+        }, 400);
+
+        // 600ms — CTA button slides up with bounce
+        handler.postDelayed(() -> {
+            btnLogin.setTranslationY(30);
+            btnLogin.animate().translationY(0)
+                    .setDuration(400)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(1.5f))
+                    .start();
+        }, 600);
     }
 
     private void attemptLogin() {

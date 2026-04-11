@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Premium elevated card with gradient border -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Gradient border glow -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="135"
+                android:startColor="#3389CEFF"
+                android:centerColor="#1A6C63FF"
+                android:endColor="#3389CEFF"/>
+            <corners android:radius="20dp"/>
+        </shape>
+    </item>
+    <!-- Inner card (inset by 1dp = border width) -->
+    <item android:left="1dp" android:top="1dp" android:right="1dp" android:bottom="1dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#141E33"/>
+            <corners android:radius="19dp"/>
+        </shape>
+    </item>
+</layer-list>

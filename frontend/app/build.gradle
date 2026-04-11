@@ -39,6 +39,9 @@ dependencies {
     // Biometric Auth
     implementation 'androidx.biometric:biometric:1.1.0'
 
+    // Lottie — Premium Animations
+    implementation 'com.airbnb.android:lottie:6.4.0'
+
     // Networking — Retrofit + OkHttp
     implementation libs.retrofit
     implementation libs.converter.gson

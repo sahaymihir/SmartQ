@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Neon glow ring for token circles -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Outer glow -->
+    <item>
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="60dp"
+                android:startColor="#4089CEFF"
+                android:endColor="#00000000"/>
+        </shape>
+    </item>
+    <!-- Inner ring -->
+    <item android:left="8dp" android:top="8dp" android:right="8dp" android:bottom="8dp">
+        <shape android:shape="oval">
+            <stroke android:width="2dp" android:color="#89CEFF"/>
+            <solid android:color="#1A89CEFF"/>
+        </shape>
+    </item>
+</layer-list>

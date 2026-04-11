@@ -5,26 +5,36 @@
     android:layout_height="match_parent"
     android:background="@color/surface">
 
-    <!-- ═══ Ambient Glow Orbs ═══ -->
+    <!-- ═══ Ambient Glow Orbs — Floating Atmosphere ═══ -->
     <View
         android:id="@+id/glowTop"
-        android:layout_width="300dp"
-        android:layout_height="300dp"
+        android:layout_width="350dp"
+        android:layout_height="350dp"
         android:layout_gravity="start"
-        android:layout_marginStart="-80dp"
-        android:layout_marginTop="-60dp"
+        android:layout_marginStart="-100dp"
+        android:layout_marginTop="-80dp"
         android:background="@drawable/bg_ambient_glow"
-        android:alpha="0.6"/>
+        android:alpha="0.5"/>
 
     <View
         android:id="@+id/glowBottom"
-        android:layout_width="250dp"
-        android:layout_height="250dp"
+        android:layout_width="280dp"
+        android:layout_height="280dp"
         android:layout_gravity="end|bottom"
-        android:layout_marginEnd="-60dp"
-        android:layout_marginBottom="-40dp"
+        android:layout_marginEnd="-70dp"
+        android:layout_marginBottom="-50dp"
         android:background="@drawable/bg_ambient_glow"
-        android:alpha="0.4"/>
+        android:alpha="0.3"/>
+
+    <!-- Extra floating orb -->
+    <View
+        android:layout_width="180dp"
+        android:layout_height="180dp"
+        android:layout_gravity="center"
+        android:layout_marginTop="200dp"
+        android:layout_marginStart="120dp"
+        android:background="@drawable/bg_ambient_glow"
+        android:alpha="0.15"/>
 
     <!-- ═══ Main Content ═══ -->
     <LinearLayout
@@ -34,13 +44,27 @@
         android:gravity="center"
         android:padding="32dp">
 
-        <!-- Spacer: Push content slightly above center -->
+        <!-- Top spacer -->
         <View
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_weight="1"/>
+            android:layout_weight="0.8"/>
 
-        <!-- Logo Icon -->
+        <!-- ═══ Lottie Medical Pulse Animation ═══ -->
+        <com.airbnb.lottie.LottieAnimationView
+            android:id="@+id/lottieHero"
+            android:layout_width="160dp"
+            android:layout_height="160dp"
+            android:layout_gravity="center"
+            app:lottie_rawRes="@raw/lottie_medical_pulse"
+            app:lottie_autoPlay="true"
+            app:lottie_loop="true"
+            app:lottie_speed="0.8"
+            android:alpha="0"/>
+
+        <View android:layout_width="0dp" android:layout_height="24dp"/>
+
+        <!-- Logo + Name -->
         <LinearLayout
             android:id="@+id/logoContainer"
             android:layout_width="wrap_content"
@@ -50,19 +74,18 @@
             android:alpha="0">
 
             <androidx.cardview.widget.CardView
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                app:cardCornerRadius="14dp"
-                app:cardElevation="0dp"
-                app:cardBackgroundColor="@color/primary_container"
-                app:strokeColor="@color/outline_variant"
-                app:strokeWidth="1dp">
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="8dp"
+                app:cardBackgroundColor="@color/primary">
 
                 <ImageView
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
                     android:layout_gravity="center"
                     android:src="@drawable/ic_clinical_notes"
+                    app:tint="@color/surface"
                     android:contentDescription="SmartQ"/>
             </androidx.cardview.widget.CardView>
 
@@ -70,55 +93,51 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/app_name"
-                android:textSize="28sp"
+                android:textSize="32sp"
                 android:textStyle="bold"
-                android:textColor="@color/primary"
+                android:textColor="@color/on_surface"
                 android:fontFamily="sans-serif-black"
                 android:letterSpacing="-0.03"
                 android:layout_marginStart="12dp"/>
         </LinearLayout>
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="32dp"/>
+        <View android:layout_width="0dp" android:layout_height="20dp"/>
 
-        <!-- Clinical Badge -->
+        <!-- Clinical Badge with pulse -->
         <LinearLayout
             android:id="@+id/badgeContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:background="@drawable/bg_status_pill"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp"
+            android:background="@drawable/bg_frosted_card"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
             android:alpha="0">
 
             <View
                 android:id="@+id/pulseDot"
-                android:layout_width="6dp"
-                android:layout_height="6dp"
-                android:background="@color/primary"
-                android:layout_marginEnd="8dp"/>
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/circle_primary"
+                android:layout_marginEnd="10dp"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/splash_badge"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:textStyle="bold"
-                android:textColor="@color/primary_light"
+                android:textColor="@color/primary"
                 android:textAllCaps="true"
                 android:letterSpacing="0.15"/>
         </LinearLayout>
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="24dp"/>
+        <View android:layout_width="0dp" android:layout_height="28dp"/>
 
-        <!-- Editorial Headline -->
+        <!-- Editorial Headline — Big & Bold -->
         <LinearLayout
             android:id="@+id/headlineContainer"
             android:layout_width="match_parent"
@@ -131,7 +150,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/splash_headline_1"
-                android:textSize="42sp"
+                android:textSize="38sp"
                 android:textStyle="bold"
                 android:textColor="@color/on_surface"
                 android:fontFamily="sans-serif-black"
@@ -142,7 +161,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/splash_headline_2"
-                android:textSize="42sp"
+                android:textSize="38sp"
                 android:textStyle="bold|italic"
                 android:textColor="@color/primary"
                 android:fontFamily="sans-serif-black"
@@ -153,7 +172,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/splash_headline_3"
-                android:textSize="42sp"
+                android:textSize="38sp"
                 android:textStyle="bold"
                 android:textColor="@color/on_surface"
                 android:fontFamily="sans-serif-black"
@@ -161,9 +180,7 @@
                 android:lineSpacingMultiplier="0.9"/>
         </LinearLayout>
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="16dp"/>
+        <View android:layout_width="0dp" android:layout_height="16dp"/>
 
         <!-- Subtitle -->
         <TextView
@@ -171,28 +188,35 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/splash_subtitle"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textColor="@color/on_surface_variant"
             android:gravity="center"
-            android:lineSpacingMultiplier="1.5"
-            android:paddingStart="24dp"
-            android:paddingEnd="24dp"
+            android:lineSpacingMultiplier="1.6"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
             android:alpha="0"/>
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="48dp"/>
+        <View android:layout_width="0dp" android:layout_height="40dp"/>
 
-        <!-- Loading Indicator -->
+        <!-- Lottie Loading Dots -->
+        <com.airbnb.lottie.LottieAnimationView
+            android:id="@+id/lottieLoading"
+            android:layout_width="60dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            app:lottie_rawRes="@raw/lottie_loading"
+            app:lottie_autoPlay="true"
+            app:lottie_loop="true"
+            android:alpha="0"/>
+
+        <!-- Hidden progress bar kept for compatibility -->
         <ProgressBar
             android:id="@+id/progressBar"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:indeterminateTint="@color/primary"
-            android:alpha="0"
-            style="?android:attr/progressBarStyleSmall"/>
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone"/>
 
-        <!-- Spacer -->
+        <!-- Bottom spacer -->
         <View
             android:layout_width="0dp"
             android:layout_height="0dp"
@@ -207,43 +231,49 @@
             android:gravity="center"
             android:alpha="0">
 
-            <!-- Status -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_frosted_card"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp">
 
                 <View
                     android:layout_width="6dp"
                     android:layout_height="6dp"
-                    android:background="@color/status_active"/>
+                    android:background="@drawable/circle_primary"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/operational"
                     android:textSize="10sp"
-                    android:textColor="@color/on_surface"
-                    android:layout_marginStart="6dp"/>
+                    android:textColor="@color/status_active"
+                    android:layout_marginStart="6dp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"/>
             </LinearLayout>
 
-            <View
-                android:layout_width="24dp"
-                android:layout_height="1dp"
-                android:background="@color/outline_variant"
-                android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="  ·  "
+                android:textSize="12sp"
+                android:textColor="@color/outline"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/app_version"
                 android:textSize="10sp"
-                android:textStyle="bold"
                 android:textColor="@color/outline"
                 android:textAllCaps="true"
                 android:letterSpacing="0.1"/>
         </LinearLayout>
     </LinearLayout>
+
 </FrameLayout>
