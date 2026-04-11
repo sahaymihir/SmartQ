@@ -5,6 +5,7 @@ import com.example.smartqueue.models.request.RegisterRequest;
 import com.example.smartqueue.models.request.PrescriptionRequest;
 import com.example.smartqueue.models.request.JoinQueueRequest;
 import com.example.smartqueue.models.response.AuthResponse;
+import com.example.smartqueue.models.response.DoctorListResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.models.response.TokenResponse;
 import com.example.smartqueue.models.response.MessageResponse;
@@ -20,6 +21,9 @@ public interface ApiService {
     @POST("auth/login")
     Call<AuthResponse> login(@Body LoginRequest body);
 
+    @GET("auth/doctors")
+    Call<DoctorListResponse> getDoctors();
+
     @POST("queue/join")
     Call<TokenResponse> joinQueue(@Query("doctorId") String doctorId, @Body JoinQueueRequest body);
 
@@ -31,6 +35,9 @@ public interface ApiService {
 
     @POST("queue/checkin")
     Call<MessageResponse> checkIn();
+
+    @POST("queue/leave")
+    Call<MessageResponse> leaveQueue();
 
     // ── DOCTOR / ADMIN ENDPOINTS ──────────────────────
 

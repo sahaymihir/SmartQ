@@ -125,6 +125,32 @@
                 android:textColor="@color/text_secondary"
                 android:visibility="gone"/>
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:id="@+id/tvSelectedDoctor"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Loading doctor queue..."
+                    android:textSize="13sp"
+                    android:textColor="@color/on_surface_variant"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSwitchDoctor"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Switch"
+                    android:textAllCaps="false"
+                    android:textSize="12sp"/>
+            </LinearLayout>
+
             <!-- ═══ SYSTEM STATUS ═══ -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"

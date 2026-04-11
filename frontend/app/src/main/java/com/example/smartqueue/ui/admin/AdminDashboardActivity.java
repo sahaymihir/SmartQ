@@ -16,6 +16,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.smartqueue.R;
+import com.example.smartqueue.models.response.DoctorListResponse;
 import com.example.smartqueue.models.response.MessageResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.network.ApiClient;
@@ -24,6 +25,7 @@ import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import retrofit2.Call;
@@ -33,16 +35,18 @@ import retrofit2.Response;
 public class AdminDashboardActivity extends AppCompatActivity {
 
     private TextView tvAdminName, tvCurrentlyServing, tvPausedBadge;
-    private TextView tvStatWaiting, tvStatDone, tvStatAvg, tvQueueLabel;
-    private MaterialButton btnCallNext, btnPause, btnLogout;
+    private TextView tvStatWaiting, tvStatDone, tvStatAvg, tvQueueLabel, tvSelectedDoctor;
+    private MaterialButton btnCallNext, btnPause, btnLogout, btnSwitchDoctor;
     private LinearLayout layoutQueueList;
 
     private SessionManager sessionManager;
     private ApiService apiService;
     private boolean isPaused = false;
     private int consultationsDone = 0;
-
+    private final List<DoctorListResponse.Doctor> doctorOptions = new ArrayList<>();
+    private int currentDoctorIndex = 0;
     private String doctorId;
+    private String selectedDoctorName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,12 +55,27 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
         sessionManager = new SessionManager(this);
         apiService = ApiClient.getInstance().create(ApiService.class);
-        doctorId = sessionManager.getUserId();
+        doctorId = null;
 
         bindViews();
         setupClickListeners();
         animateEntrance();
-        loadQueue();
+
+        if ("doctor".equals(sessionManager.getRole())) {
+            doctorId = sessionManager.getUserId();
+            selectedDoctorName = sessionManager.getName();
+            updateDoctorContextUI();
+            btnSwitchDoctor.setVisibility(View.GONE);
+            btnCallNext.setEnabled(true);
+            btnPause.setEnabled(true);
+            loadQueue();
+        } else {
+            btnSwitchDoctor.setVisibility(View.VISIBLE);
+            btnCallNext.setEnabled(false);
+            btnPause.setEnabled(false);
+            btnSwitchDoctor.setEnabled(false);
+            loadDoctors();
+        }
     }
 
     private void bindViews() {
@@ -67,12 +86,15 @@ public class AdminDashboardActivity extends AppCompatActivity {
         tvStatDone         = findViewById(R.id.tvStatDone);
         tvStatAvg          = findViewById(R.id.tvStatAvg);
         tvQueueLabel       = findViewById(R.id.tvQueueLabel);
+        tvSelectedDoctor   = findViewById(R.id.tvSelectedDoctor);
         layoutQueueList    = findViewById(R.id.layoutQueueList);
         btnCallNext        = findViewById(R.id.btnCallNext);
         btnPause           = findViewById(R.id.btnPause);
+        btnSwitchDoctor    = findViewById(R.id.btnSwitchDoctor);
         btnLogout          = findViewById(R.id.btnLogout);
 
         tvAdminName.setText(sessionManager.getName());
+        tvAdminName.setVisibility(View.VISIBLE);
     }
 
     private void animateEntrance() {
@@ -94,6 +116,11 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
         // ── Call Next ─────────────────────────────────────
         btnCallNext.setOnClickListener(v -> {
+            if (!hasDoctorContext()) {
+                Toast.makeText(this, "No doctor queue selected yet.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(80)
                     .withEndAction(() -> {
                         v.animate().scaleX(1f).scaleY(1f).setDuration(80).start();
@@ -123,6 +150,11 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
         // ── Pause / Resume ────────────────────────────────
         btnPause.setOnClickListener(v -> {
+            if (!hasDoctorContext()) {
+                Toast.makeText(this, "No doctor queue selected yet.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             apiService.togglePause(doctorId, !isPaused).enqueue(new Callback<MessageResponse>() {
                 @Override
                 public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
@@ -141,6 +173,17 @@ public class AdminDashboardActivity extends AppCompatActivity {
             });
         });
 
+        btnSwitchDoctor.setOnClickListener(v -> {
+            if (doctorOptions.isEmpty()) {
+                Toast.makeText(this, "No doctors available.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            currentDoctorIndex = (currentDoctorIndex + 1) % doctorOptions.size();
+            applyDoctorSelection(doctorOptions.get(currentDoctorIndex));
+            loadQueue();
+        });
+
         // ── Logout ────────────────────────────────────────
         btnLogout.setOnClickListener(v ->
                 new AlertDialog.Builder(this)
@@ -157,7 +200,79 @@ public class AdminDashboardActivity extends AppCompatActivity {
         );
     }
 
+    private boolean hasDoctorContext() {
+        return doctorId != null && !doctorId.isEmpty();
+    }
+
+    private void loadDoctors() {
+        apiService.getDoctors().enqueue(new Callback<DoctorListResponse>() {
+            @Override
+            public void onResponse(Call<DoctorListResponse> call, Response<DoctorListResponse> response) {
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    doctorOptions.clear();
+                    if (response.body().getDoctors() != null) {
+                        doctorOptions.addAll(response.body().getDoctors());
+                    }
+
+                    if (doctorOptions.isEmpty()) {
+                        doctorId = null;
+                        selectedDoctorName = null;
+                        updateDoctorContextUI();
+                        btnCallNext.setEnabled(false);
+                        btnPause.setEnabled(false);
+                        btnSwitchDoctor.setEnabled(false);
+                        Toast.makeText(AdminDashboardActivity.this,
+                                "No doctor accounts found.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    btnCallNext.setEnabled(true);
+                    btnPause.setEnabled(true);
+                    btnSwitchDoctor.setEnabled(doctorOptions.size() > 1);
+                    applyDoctorSelection(doctorOptions.get(0));
+                    loadQueue();
+                } else {
+                    Toast.makeText(AdminDashboardActivity.this,
+                            "Could not load doctor list", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<DoctorListResponse> call, Throwable t) {
+                Toast.makeText(AdminDashboardActivity.this,
+                        "Failed to load doctors", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void applyDoctorSelection(DoctorListResponse.Doctor doctor) {
+        if (doctor == null) {
+            doctorId = null;
+            selectedDoctorName = null;
+        } else {
+            doctorId = doctor.getId();
+            selectedDoctorName = doctor.getName();
+        }
+        updateDoctorContextUI();
+    }
+
+    private void updateDoctorContextUI() {
+        if (selectedDoctorName == null || selectedDoctorName.isEmpty()) {
+            tvSelectedDoctor.setText("No doctor queue selected");
+            return;
+        }
+        if ("doctor".equals(sessionManager.getRole())) {
+            tvSelectedDoctor.setText("Managing your queue");
+        } else {
+            tvSelectedDoctor.setText("Viewing queue for " + selectedDoctorName);
+        }
+    }
+
     private void loadQueue() {
+        if (!hasDoctorContext()) {
+            return;
+        }
+
         apiService.getAdminQueue(doctorId).enqueue(new Callback<QueueResponse>() {
             @Override
             public void onResponse(Call<QueueResponse> call, Response<QueueResponse> response) {
@@ -168,6 +283,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
                     tvStatWaiting.setText(String.valueOf(queue != null ? queue.size() : 0));
                     tvStatAvg.setText(body.getAvgConsultationMinutes() + "m");
                     tvQueueLabel.setText((queue != null ? queue.size() : 0) + " waiting");
+                    updateCurrentlyServing(queue);
 
                     if (queue != null) renderQueueList(queue);
                 }
@@ -178,6 +294,22 @@ public class AdminDashboardActivity extends AppCompatActivity {
                         "Could not load queue", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void updateCurrentlyServing(List<QueueResponse.QueueEntry> queue) {
+        if (queue == null || queue.isEmpty()) {
+            tvCurrentlyServing.setText("No patient called yet");
+            return;
+        }
+
+        for (QueueResponse.QueueEntry entry : queue) {
+            if ("called".equals(entry.getStatus())) {
+                tvCurrentlyServing.setText("Token #" + entry.getTokenNumber() + " — " + entry.getPatientName());
+                return;
+            }
+        }
+
+        tvCurrentlyServing.setText("No patient called yet");
     }
 
     private void renderQueueList(List<QueueResponse.QueueEntry> queue) {

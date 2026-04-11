@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { protect } = require('../middleware/authMiddleware');
 
 // ─── Helper: generate JWT ──────────────────────────────────
 const generateToken = (userId) => {
@@ -130,10 +131,32 @@ router.post('/login', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// GET /api/auth/doctors — List doctors for queue selection
+// ─────────────────────────────────────────────────────────────
+router.get('/doctors', protect, async (req, res) => {
+  try {
+    const doctors = await User.find({ role: 'doctor' })
+      .select('_id name email')
+      .sort({ name: 1 })
+      .lean();
+
+    res.json({
+      success: true,
+      doctors: doctors.map((doctor) => ({
+        id: doctor._id,
+        name: doctor.name,
+        email: doctor.email,
+      })),
+    });
+  } catch (err) {
+    console.error('Doctor list error:', err);
+    res.status(500).json({ success: false, message: 'Server error while loading doctors' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // GET /api/auth/me — Get current user (protected)
 // ─────────────────────────────────────────────────────────────
-const { protect } = require('../middleware/authMiddleware');
-
 router.get('/me', protect, async (req, res) => {
   res.json({
     success: true,

@@ -15,9 +15,11 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 
 import com.example.smartqueue.R;
 import com.example.smartqueue.models.request.JoinQueueRequest;
+import com.example.smartqueue.models.response.DoctorListResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.models.response.MessageResponse;
 import com.example.smartqueue.models.response.TokenResponse;
@@ -26,9 +28,12 @@ import com.example.smartqueue.network.ApiService;
 import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.radiobutton.MaterialRadioButton;
 import com.google.android.material.textfield.TextInputEditText;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -55,13 +60,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     private Handler pollHandler = new Handler(Looper.getMainLooper());
     private Runnable pollRunnable;
     private boolean isInQueue = false;
-
-    // Doctor IDs — replace with real MongoDB _id values after creating admin accounts
-    private static final String[] DOCTOR_IDS = {
-            "69d74ea332ca11b9fd32772f",  // Dr. Nisha Shetty
-            "69d4dd2e3a9c3c82e6baa59f",  // Dr. Pawan Kumar
-            "69d4df3fff45ca443418bd31"   // Dr. Meena Rao
-    };
+    private final List<DoctorListResponse.Doctor> availableDoctors = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,6 +74,8 @@ public class PatientHomeActivity extends AppCompatActivity {
         setupGreeting();
         setupClickListeners();
         animateEntrance();
+        btnJoinQueue.setEnabled(false);
+        loadDoctors();
         checkExistingToken(); // check if patient already has an active token
     }
 
@@ -138,6 +139,11 @@ public class PatientHomeActivity extends AppCompatActivity {
                     .withEndAction(() -> v.animate().scaleX(1f).scaleY(1f).setDuration(80).start()).start();
 
             String doctorId = getSelectedDoctorId();
+            if (doctorId == null) {
+                Toast.makeText(PatientHomeActivity.this,
+                        "No doctor is available right now.", Toast.LENGTH_SHORT).show();
+                return;
+            }
             String symptoms = etSymptoms.getText() != null ?
                     etSymptoms.getText().toString().trim() : "";
             btnJoinQueue.setEnabled(false);
@@ -241,11 +247,34 @@ public class PatientHomeActivity extends AppCompatActivity {
                         .setTitle("Leave Queue?")
                         .setMessage("Cancel your token?")
                         .setPositiveButton("Leave", (dialog, which) -> {
-                            stopPolling();
-                            isInQueue = false;
-                            showNotInQueueState();
-                            btnJoinQueue.setEnabled(true);
-                            btnJoinQueue.setText("Join Queue");
+                            apiService.leaveQueue().enqueue(new Callback<MessageResponse>() {
+                                @Override
+                                public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
+                                    if (response.code() == 401) {
+                                        handleUnauthorized();
+                                        return;
+                                    }
+
+                                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                                        stopPolling();
+                                        isInQueue = false;
+                                        showNotInQueueState();
+                                        btnJoinQueue.setEnabled(!availableDoctors.isEmpty());
+                                        btnJoinQueue.setText("Join Queue");
+                                        Toast.makeText(PatientHomeActivity.this,
+                                                response.body().getMessage(), Toast.LENGTH_SHORT).show();
+                                    } else {
+                                        Toast.makeText(PatientHomeActivity.this,
+                                                "Could not leave queue right now.", Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+
+                                @Override
+                                public void onFailure(Call<MessageResponse> call, Throwable t) {
+                                    Toast.makeText(PatientHomeActivity.this,
+                                            "Network error while leaving queue", Toast.LENGTH_SHORT).show();
+                                }
+                            });
                         })
                         .setNegativeButton("Stay", null)
                         .show()
@@ -256,7 +285,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             stopPolling();
             isInQueue = false;
             showNotInQueueState();
-            btnJoinQueue.setEnabled(true);
+            btnJoinQueue.setEnabled(!availableDoctors.isEmpty());
             btnJoinQueue.setText("Join Queue");
         });
     }
@@ -300,6 +329,65 @@ public class PatientHomeActivity extends AppCompatActivity {
             }
         };
         pollHandler.postDelayed(pollRunnable, 10000);
+    }
+
+    private void loadDoctors() {
+        apiService.getDoctors().enqueue(new Callback<DoctorListResponse>() {
+            @Override
+            public void onResponse(Call<DoctorListResponse> call, Response<DoctorListResponse> response) {
+                if (response.code() == 401) {
+                    handleUnauthorized();
+                    return;
+                }
+
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    List<DoctorListResponse.Doctor> doctors = response.body().getDoctors();
+                    availableDoctors.clear();
+                    if (doctors != null) {
+                        availableDoctors.addAll(doctors);
+                    }
+                    renderDoctorOptions();
+                } else {
+                    btnJoinQueue.setEnabled(false);
+                    Toast.makeText(PatientHomeActivity.this,
+                            "Could not load available doctors.", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<DoctorListResponse> call, Throwable t) {
+                btnJoinQueue.setEnabled(false);
+                Toast.makeText(PatientHomeActivity.this,
+                        "Failed to load doctors", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void renderDoctorOptions() {
+        rgDoctor.removeAllViews();
+
+        if (availableDoctors.isEmpty()) {
+            btnJoinQueue.setEnabled(false);
+            Toast.makeText(this, "No doctors are available yet.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        for (int index = 0; index < availableDoctors.size(); index++) {
+            DoctorListResponse.Doctor doctor = availableDoctors.get(index);
+            MaterialRadioButton radioButton = new MaterialRadioButton(this);
+            radioButton.setId(View.generateViewId());
+            radioButton.setTag(doctor.getId());
+            radioButton.setText(doctor.getName());
+            radioButton.setTextColor(ContextCompat.getColor(this, R.color.on_surface));
+            radioButton.setButtonTintList(ContextCompat.getColorStateList(this, R.color.primary));
+            radioButton.setPadding(8, 8, 8, 8);
+            if (index == 0) {
+                radioButton.setChecked(true);
+            }
+            rgDoctor.addView(radioButton);
+        }
+
+        btnJoinQueue.setEnabled(true);
     }
 
     private void stopPolling() {
@@ -407,16 +495,19 @@ public class PatientHomeActivity extends AppCompatActivity {
 
     private String getSelectedDoctorId() {
         int selectedId = rgDoctor.getCheckedRadioButtonId();
-        if (selectedId == R.id.rbDoctor2) return DOCTOR_IDS[1];
-        if (selectedId == R.id.rbDoctor3) return DOCTOR_IDS[2];
-        return DOCTOR_IDS[0];
+        View selectedView = rgDoctor.findViewById(selectedId);
+        if (selectedView == null) return null;
+        Object tag = selectedView.getTag();
+        return tag instanceof String ? (String) tag : null;
     }
 
     private String getSelectedDoctorName() {
         int selectedId = rgDoctor.getCheckedRadioButtonId();
-        if (selectedId == R.id.rbDoctor2) return "Dr. Pawan Kumar";
-        if (selectedId == R.id.rbDoctor3) return "Dr. Meena Rao";
-        return "Dr. Nisha Shetty";
+        View selectedView = rgDoctor.findViewById(selectedId);
+        if (selectedView instanceof MaterialRadioButton) {
+            return ((MaterialRadioButton) selectedView).getText().toString();
+        }
+        return "Selected doctor";
     }
 
     private String formatStatus(String status) {

@@ -49,7 +49,6 @@ public class DoctorHomeActivity extends AppCompatActivity {
     private ApiService apiService;
 
     private String currentTokenId = null;
-    private String currentPatientId = "mock_patient_id";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -138,11 +137,18 @@ public class DoctorHomeActivity extends AppCompatActivity {
                     switchAvailability.setChecked(!response.body().isPaused());
 
                     if (queue != null && !queue.isEmpty()) {
-                        QueueResponse.QueueEntry first = queue.get(0);
-                        if ("called".equals(first.getStatus())) {
-                            tvCurrentPatientName.setText(first.getPatientName());
-                            tvCurrentPatientToken.setText("Token #" + first.getTokenNumber());
-                            currentTokenId = first.getTokenId();
+                        QueueResponse.QueueEntry calledPatient = null;
+                        for (QueueResponse.QueueEntry entry : queue) {
+                            if ("called".equals(entry.getStatus())) {
+                                calledPatient = entry;
+                                break;
+                            }
+                        }
+
+                        if (calledPatient != null) {
+                            tvCurrentPatientName.setText(calledPatient.getPatientName());
+                            tvCurrentPatientToken.setText("Token #" + calledPatient.getTokenNumber());
+                            currentTokenId = calledPatient.getTokenId();
                             btnPrescribe.setVisibility(View.VISIBLE);
                         } else {
                             resetCurrentPatientUI();
@@ -227,7 +233,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
     private void savePrescription(String diagnosis, String medicines, String notes) {
         if (currentTokenId == null) return;
 
-        PrescriptionRequest request = new PrescriptionRequest(currentTokenId, currentPatientId, diagnosis, medicines, notes);
+        PrescriptionRequest request = new PrescriptionRequest(currentTokenId, diagnosis, medicines, notes);
         apiService.savePrescription(request).enqueue(new Callback<MessageResponse>() {
             @Override
             public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {

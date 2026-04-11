@@ -7,6 +7,7 @@ const {
   ACTIVE_TOKEN_STATUSES,
   buildDayQuery,
   computeETA,
+  diffMinutes,
   getTodayDateString,
   getTodayQueue,
   promoteTokenByPriority,
@@ -82,15 +83,17 @@ router.post('/join', protect, async (req, res) => {
     const today = getTodayDateString();
     const existingToken = await Token.findOne({
       patient: patient._id,
-      doctor: doctorId,
       status: { $in: ACTIVE_TOKEN_STATUSES },
       createdAt: buildDayQuery(today),
-    });
+    }).populate('doctor', 'name');
 
     if (existingToken) {
+      const sameDoctor = existingToken.doctor?._id?.toString() === doctorId;
       return res.status(409).json({
         success: false,
-        message: 'You already have an active token in this queue'
+        message: sameDoctor
+          ? 'You already have an active token in this queue'
+          : `You already have an active token${existingToken.doctor?.name ? ` with ${existingToken.doctor.name}` : ''}`
       });
     }
 
@@ -307,6 +310,56 @@ router.post('/checkin', protect, async (req, res) => {
 
   } catch (err) {
     console.error('Check-in error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/queue/leave
+// Patient cancels their active token for today
+// ─────────────────────────────────────────────────────────────
+router.post('/leave', protect, async (req, res) => {
+  try {
+    const today = getTodayDateString();
+
+    const token = await Token.findOne({
+      patient: req.user._id,
+      status: { $in: ACTIVE_TOKEN_STATUSES },
+      createdAt: buildDayQuery(today),
+    });
+
+    if (!token) {
+      return res.status(404).json({ success: false, message: 'No active token found' });
+    }
+
+    const wasCalled = token.status === 'called';
+    const now = new Date();
+    token.status = 'cancelled';
+    token.completedAt = now;
+
+    if (!Number.isFinite(token.actualWaitMinutes)) {
+      token.actualWaitMinutes = diffMinutes(
+        token.joinedAt || token.createdAt,
+        token.calledAt || now
+      );
+    }
+
+    await token.save();
+
+    const queue = await getTodayQueue(token.doctor, today);
+    if (wasCalled && queue.currentToken === token.tokenNumber) {
+      queue.currentToken = 0;
+      await queue.save();
+    }
+
+    await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, today);
+
+    res.json({
+      success: true,
+      message: `Token #${token.tokenNumber} cancelled successfully`,
+    });
+  } catch (err) {
+    console.error('Leave queue error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

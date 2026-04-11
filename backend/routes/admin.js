@@ -42,6 +42,7 @@ const buildTokenMatch = (dateString, doctorId) => ({
 
 const serializeQueueToken = (token) => ({
   tokenId: token._id,
+  patientId: token.patient?._id || token.patient,
   tokenNumber: token.tokenNumber,
   patientName: token.patient?.name,
   patientAge: token.patient?.age,
@@ -70,7 +71,14 @@ const serializeQueueToken = (token) => ({
   calledAt: token.calledAt,
   consultationStartedAt: token.consultationStartedAt,
   completedAt: token.completedAt,
+  prescription: token.prescription || null,
 });
+
+const STATUS_RANK = {
+  called: 0,
+  arrived: 1,
+  waiting: 2,
+};
 
 const loadAnalyticsTokens = async (dateString, doctorId) => {
   return Token.find(buildTokenMatch(dateString, doctorId))
@@ -145,6 +153,18 @@ router.get('/queue', async (req, res) => {
     })
       .populate('patient', 'name age phone')
       .sort({ position: 1 });
+
+    tokens.sort((left, right) => {
+      const leftRank = STATUS_RANK[left.status] ?? 99;
+      const rightRank = STATUS_RANK[right.status] ?? 99;
+      if (leftRank !== rightRank) {
+        return leftRank - rightRank;
+      }
+      if (left.position !== right.position) {
+        return left.position - right.position;
+      }
+      return left.tokenNumber - right.tokenNumber;
+    });
 
     const queue = await Queue.findOne({ doctor: doctorId, date: dateString });
 
@@ -327,6 +347,46 @@ router.post('/pause', async (req, res) => {
     });
   } catch (err) {
     console.error('Pause error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.post('/prescription', async (req, res) => {
+  try {
+    const { tokenId, diagnosis, medicines, notes } = req.body || {};
+
+    if (!tokenId) {
+      return res.status(400).json({ success: false, message: 'tokenId is required' });
+    }
+
+    const token = await Token.findById(tokenId).populate('patient', 'name');
+    if (!token) {
+      return res.status(404).json({ success: false, message: 'Token not found' });
+    }
+
+    if (req.user.role === 'doctor' && token.doctor.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only prescribe for patients in your own queue',
+      });
+    }
+
+    token.prescription = {
+      diagnosis: diagnosis || '',
+      medicines: medicines || '',
+      notes: notes || '',
+      prescribedAt: new Date(),
+      prescribedBy: req.user._id,
+    };
+
+    await token.save();
+
+    res.json({
+      success: true,
+      message: `Prescription saved for ${token.patient?.name || 'patient'}`,
+    });
+  } catch (err) {
+    console.error('Prescription save error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

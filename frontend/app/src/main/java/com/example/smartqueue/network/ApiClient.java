@@ -33,11 +33,14 @@ public class ApiClient {
                         Request original = chain.request();
                         Request.Builder builder = original.newBuilder()
                                 .header("Content-Type", "application/json");
-                        
-                        // Only add Authorization header if we have a token 
-                        // AND it's not an authentication request (login/register)
+
+                        // Only login and register are anonymous auth routes.
+                        // Other /auth/* routes such as /auth/doctors still require the JWT.
                         String path = original.url().encodedPath();
-                        if (authToken != null && !path.contains("/auth/")) {
+                        boolean isAnonymousAuthRoute =
+                                path.endsWith("/auth/login") || path.endsWith("/auth/register");
+
+                        if (authToken != null && !isAnonymousAuthRoute) {
                             builder.header("Authorization", "Bearer " + authToken);
                         }
 

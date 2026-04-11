@@ -143,6 +143,29 @@ const tokenSchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  prescription: {
+    diagnosis: {
+      type: String,
+      default: ''
+    },
+    medicines: {
+      type: String,
+      default: ''
+    },
+    notes: {
+      type: String,
+      default: ''
+    },
+    prescribedAt: {
+      type: Date,
+      default: null
+    },
+    prescribedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    }
+  },
   // Snooze tracking
   snoozeCount: {
     type: Number,
