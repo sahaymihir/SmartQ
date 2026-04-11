@@ -1,13 +1,41 @@
-# SmartQ ML Inference Service
+# SmartQ ML Service
 
-FastAPI microservice for SmartQ triage priority prediction using the saved v3 KTAS model artifacts.
+FastAPI inference service for SmartQ triage priority prediction using the saved v3 KTAS/XGBoost bundle.
 
-## Endpoints
+## What This Folder Contains
+
+- `main.py`
+  The live FastAPI inference service used by the Node backend.
+- `auto_ml_pipeline_v3.py`
+  The retained v3 training pipeline that produced the current saved bundle.
+- `evaluate_saved_model.py`
+  Offline evaluation script that regenerates metrics, figures, and a markdown report from the saved v3 model.
+- `models/triage_model_v3.pkl`
+  Saved model bundle with selected features, encoders, scaler metadata, and headline metrics.
+- `models/feature_cols_v3.pkl`
+  Ordered list of the 40 selected model features.
+- `models/scaler_v3.pkl`
+  StandardScaler fitted on the numeric subset of the training split.
+- `data/`
+  The local tabular triage dataset package retained for reproducibility and future retraining.
+- `reports/`
+  Generated model evaluation outputs, including graphs and a markdown summary.
+
+## What Was Removed
+
+The folder has been cleaned to remove obsolete prototype assets that no longer support the current service:
+
+- legacy NLP-style service code
+- legacy v1/v2 training scripts
+- old non-v3 model artifacts
+- the old synthetic prototype dataset files
+
+## Runtime Endpoints
 
 - `POST /predict`
 - `GET /health`
 
-## Local Setup
+## Local Runtime Setup
 
 ```bash
 cd ml_service
@@ -17,10 +45,10 @@ pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-The service looks for `triage_model_v3.pkl`, `feature_cols_v3.pkl`, and `scaler_v3.pkl` in either:
+The service resolves the v3 artifacts from:
 
-- the project root
 - `ml_service/models/`
+- the project root, if a deployment layout places them there
 
 ## Example Request
 
@@ -44,7 +72,7 @@ curl -X POST http://localhost:8000/predict \
   }'
 ```
 
-Example response shape:
+Example response:
 
 ```json
 {
@@ -77,6 +105,24 @@ Expected response:
 }
 ```
 
+## Offline Evaluation
+
+Use the dev requirements when you want the graphs and markdown report:
+
+```bash
+cd ml_service
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+python evaluate_saved_model.py
+```
+
+This produces:
+
+- `reports/latest_model_evaluation.md`
+- `reports/latest_model_metrics.json`
+- `reports/figures/*.png`
+
 ## Docker
 
 Build from the repository root so Docker can copy the service files and model artifacts:
@@ -86,8 +132,15 @@ docker build -f ml_service/Dockerfile -t smartq-ml-service .
 docker run --rm -p 8000:8000 smartq-ml-service
 ```
 
-## Integration Notes
+## Backend Integration
 
 - Missing numeric features are filled with v3 training-set medians.
-- Derived features such as `shock_index`, `hypoxia_flag`, `multi_risk_flag`, `mean_arterial_pressure`, `pulse_pressure`, `spo2_resp_interaction`, `age_group`, `shift`, and `arrival_season` are computed inside the service.
-- The Node.js backend can treat `priority_class` values `1` or `2` as the SmartQ override case and assign queue score `10`; otherwise it can fall back to the age-based score logic.
+- Runtime engineered features include `shock_index`, `hypoxia_flag`, `multi_risk_flag`, `mean_arterial_pressure`, `pulse_pressure`, `spo2_resp_interaction`, `age_group`, `shift`, and `arrival_season`.
+- Engineered features are always recomputed inside the service so the live inference path matches the saved v3 training bundle.
+- If a client sends engineered values such as `shock_index` or `multi_risk_flag`, the service treats them as advisory and overwrites them with server-side calculations.
+- The Node backend uses the ML result as visit-level triage metadata, not as a permanent user-level attribute.
+- SmartQ can treat `priority_class` values `1` or `2` as the top-priority override case.
+
+## Deployment Note
+
+Before production deployment, review the generated report in `reports/latest_model_evaluation.md`. It includes a consistency check between the saved training pipeline and the current inference service so you can catch feature drift before hosting the service publicly.

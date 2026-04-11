@@ -338,7 +338,6 @@ def apply_engineered_features(row: dict[str, Any], artifacts: ModelArtifacts) ->
         row.get("temperature_c"),
         artifacts.numeric_defaults["temperature_c"],
     )
-    pain_score = coerce_float(row.get("pain_score"), artifacts.numeric_defaults["pain_score"])
     weight_kg = coerce_float(row.get("weight_kg"), artifacts.numeric_defaults["weight_kg"])
     height_cm = coerce_float(row.get("height_cm"), artifacts.numeric_defaults["height_cm"])
 
@@ -354,18 +353,19 @@ def apply_engineered_features(row: dict[str, Any], artifacts: ModelArtifacts) ->
     row["hypoxia_flag"] = 1.0 if spo2 < 94 else 0.0
     row["high_fever_flag"] = 1.0 if temperature_c > 38.5 else 0.0
     row["tachycardia_flag"] = 1.0 if heart_rate > 100 else 0.0
+    low_bp_flag = 1.0 if systolic_bp < 90 else 0.0
+    elderly_flag = 1.0 if age > 65 else 0.0
 
     if height_cm > 0:
         row["bmi"] = weight_kg / ((height_cm / 100) ** 2)
 
-    risk_count = 0
-    if row["hypoxia_flag"] == 1.0:
-        risk_count += 1
-    if row["shock_index"] > 1.0:
-        risk_count += 1
-    if pain_score >= 8:
-        risk_count += 1
-    row["multi_risk_flag"] = 1.0 if risk_count >= 2 else 0.0
+    row["multi_risk_flag"] = (
+        row["high_fever_flag"]
+        + low_bp_flag
+        + row["tachycardia_flag"]
+        + row["hypoxia_flag"]
+        + elderly_flag
+    )
 
 
 def build_feature_frame(payload: PredictionRequest, artifacts: ModelArtifacts) -> pd.DataFrame:
