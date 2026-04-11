@@ -133,10 +133,10 @@ router.post('/login', async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 // GET /api/auth/doctors — List doctors for queue selection
 // ─────────────────────────────────────────────────────────────
-router.get('/doctors', protect, async (req, res) => {
+router.get('/doctors', async (req, res) => {
   try {
     const doctors = await User.find({ role: 'doctor' })
-      .select('_id name email')
+      .select('_id name')
       .sort({ name: 1 })
       .lean();
 
@@ -145,7 +145,6 @@ router.get('/doctors', protect, async (req, res) => {
       doctors: doctors.map((doctor) => ({
         id: doctor._id,
         name: doctor.name,
-        email: doctor.email,
       })),
     });
   } catch (err) {
