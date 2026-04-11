@@ -1,95 +1,117 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Save as res/layout/item_patient_queue.xml -->
-<androidx.cardview.widget.CardView
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:cardCornerRadius="12dp"
+    app:cardCornerRadius="14dp"
     app:cardElevation="0dp"
-    app:cardBackgroundColor="@color/white"
-    app:strokeColor="@color/divider"
+    app:cardBackgroundColor="@color/surface_container_low"
+    app:strokeColor="@color/outline_variant"
     app:strokeWidth="1dp"
-    android:layout_marginBottom="10dp">
+    android:layout_marginBottom="8dp"
+    android:foreground="@drawable/ripple_dark">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:padding="14dp">
+        android:padding="16dp"
+        android:gravity="center_vertical">
 
-        <!-- Position badge -->
-        <TextView
-            android:id="@+id/tvItemPosition"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:text="1"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:textColor="@color/white"
-            android:gravity="center"
-            android:background="@drawable/circle_primary"/>
+        <!-- Position Number (circle badge) -->
+        <FrameLayout
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="12dp">
 
-        <!-- Patient info -->
+            <View
+                android:id="@+id/tvItemPosition_bg"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/circle_primary"/>
+
+            <TextView
+                android:id="@+id/tvItemPosition"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="1"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/on_primary"
+                android:gravity="center"
+                android:fontFamily="sans-serif-medium"/>
+        </FrameLayout>
+
+        <!-- Content -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="12dp">
-
-            <TextView
-                android:id="@+id/tvItemName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Patient Name"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"/>
+            android:orientation="vertical">
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="3dp">
+                android:gravity="center_vertical">
 
-                <!-- Priority badge -->
+                <TextView
+                    android:id="@+id/tvItemName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Patient Name"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/on_surface"
+                    android:fontFamily="sans-serif-medium"/>
+
                 <TextView
                     android:id="@+id/tvItemPriority"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Normal"
                     android:textSize="10sp"
-                    android:textColor="@color/white"
-                    android:paddingStart="6dp"
-                    android:paddingEnd="6dp"
-                    android:paddingTop="2dp"
-                    android:paddingBottom="2dp"
+                    android:textStyle="bold"
+                    android:textColor="@color/primary_container"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
                     android:background="@drawable/badge_normal"
-                    android:layout_marginEnd="6dp"/>
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="4dp">
 
                 <TextView
                     android:id="@+id/tvItemEta"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="~8 min"
+                    android:layout_weight="1"
+                    android:text="~10 min"
                     android:textSize="12sp"
                     android:textColor="@color/text_secondary"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnItemNoShow"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:text="No-show"
+                    android:textColor="@color/error"
+                    android:textSize="11sp"
+                    android:textAllCaps="false"
+                    android:padding="0dp"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"/>
             </LinearLayout>
         </LinearLayout>
-
-        <!-- No-show button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnItemNoShow"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="No-show"
-            android:textColor="@color/error"
-            android:textSize="12sp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"/>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

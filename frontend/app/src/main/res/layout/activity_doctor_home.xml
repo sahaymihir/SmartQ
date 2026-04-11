@@ -1,191 +1,361 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="@color/surface">
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/white">
+    <!-- Ambient Glow -->
+    <View
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_gravity="start"
+        android:layout_marginStart="-100dp"
+        android:layout_marginTop="-60dp"
+        android:background="@drawable/bg_ambient_glow"
+        android:alpha="0.3"/>
 
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:title="Doctor Dashboard" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:gravity="center_vertical">
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/tvDoctorName"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Dr. Nisha Shetty"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary"/>
-
-                <TextView
-                    android:id="@+id/tvSpecialty"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="General OPD"
-                    android:textSize="12sp"
-                    android:textColor="@color/text_secondary"/>
-            </LinearLayout>
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/switchAvailability"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Available"
-                android:checked="true"
-                app:useMaterialThemeColors="true"/>
-        </LinearLayout>
-    </com.google.android.material.appbar.AppBarLayout>
-
-    <androidx.core.widget.NestedScrollView
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        android:fillViewport="true"
+        android:clipToPadding="false">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="20dp">
 
-            <!-- Current Patient Card -->
-            <androidx.cardview.widget.CardView
-                android:id="@+id/cardCurrentPatient"
+            <!-- ═══ TOP BAR ═══ -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
-                app:cardBackgroundColor="@color/primary_light">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="16dp"
+                android:paddingBottom="8dp">
 
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_clinical_notes"
+                        android:contentDescription="SmartQ"/>
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="CURRENT PATIENT"
-                        android:textSize="12sp"
+                        android:text="@string/app_name"
+                        android:textSize="18sp"
                         android:textStyle="bold"
                         android:textColor="@color/primary"
-                        android:letterSpacing="0.1"/>
+                        android:fontFamily="sans-serif-black"
+                        android:letterSpacing="-0.03"
+                        android:layout_marginStart="8dp"/>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnLogout"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Logout"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:textAllCaps="false"/>
+            </LinearLayout>
+
+            <!-- ═══ GREETING ═══ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Morning Rounds,"
+                    android:textSize="36sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/on_surface"
+                    android:fontFamily="sans-serif-black"
+                    android:letterSpacing="-0.03"
+                    android:lineSpacingMultiplier="0.9"/>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
 
                     <TextView
-                        android:id="@+id/tvCurrentPatientName"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="No patient called"
-                        android:textSize="22sp"
+                        android:text="Dr. "
+                        android:textSize="36sp"
                         android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:layout_marginTop="8dp"/>
+                        android:textColor="@color/primary"
+                        android:fontFamily="sans-serif-black"
+                        android:letterSpacing="-0.03"/>
 
                     <TextView
-                        android:id="@+id/tvCurrentPatientToken"
+                        android:id="@+id/tvDoctorName"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Token #--"
-                        android:textColor="@color/text_secondary"
-                        android:layout_marginTop="4dp"/>
+                        android:text="Aris."
+                        android:textSize="36sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/primary"
+                        android:fontFamily="sans-serif-black"
+                        android:letterSpacing="-0.03"/>
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Your queue is optimized for urgency."
+                    android:textSize="14sp"
+                    android:textColor="@color/on_surface_variant"
+                    android:layout_marginTop="8dp"
+                    android:lineSpacingMultiplier="1.4"/>
+            </LinearLayout>
+
+            <!-- ═══ STATS ROW ═══ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="20dp">
+
+                <!-- Availability Switch Card -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="@color/surface_container_low"
+                    app:strokeColor="@color/outline_variant"
+                    app:strokeWidth="1dp"
+                    android:layout_marginEnd="8dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginTop="16dp">
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnPrescribe"
-                            style="@style/Widget.MaterialComponents.Button.TextButton"
-                            android:layout_width="0dp"
+                        <TextView
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Prescription"
-                            android:visibility="gone"
-                            app:icon="@android:drawable/ic_menu_edit"/>
+                            android:text="STATUS"
+                            android:textSize="9sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_secondary"
+                            android:letterSpacing="0.15"/>
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnHistory"
-                            style="@style/Widget.MaterialComponents.Button.TextButton"
-                            android:layout_width="0dp"
+                        <com.google.android.material.switchmaterial.SwitchMaterial
+                            android:id="@+id/switchAvailability"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="History"
-                            android:visibility="gone"
-                            app:icon="@android:drawable/ic_menu_recent_history"/>
+                            android:text="Available"
+                            android:textSize="13sp"
+                            android:textColor="@color/on_surface"
+                            android:checked="true"
+                            android:layout_marginTop="4dp"
+                            app:thumbTint="@color/primary"
+                            app:trackTint="@color/surface_container_highest"/>
                     </LinearLayout>
-                </LinearLayout>
-            </androidx.cardview.widget.CardView>
+                </androidx.cardview.widget.CardView>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnCallNext"
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:text="Call Next Patient"
-                android:textSize="16sp"
-                app:cornerRadius="12dp"
-                android:layout_marginBottom="24dp"
-                app:icon="@android:drawable/ic_menu_add"/>
+                <!-- Wait Time Card -->
+                <androidx.cardview.widget.CardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:cardCornerRadius="14dp"
+                    app:cardElevation="0dp"
+                    app:cardBackgroundColor="@color/surface_container_low"
+                    app:strokeColor="@color/outline_variant"
+                    app:strokeWidth="1dp"
+                    android:layout_marginStart="8dp">
 
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="QUEUE SIZE"
+                            android:textSize="9sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_secondary"
+                            android:letterSpacing="0.15"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Loading..."
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/primary"
+                            android:layout_marginTop="4dp"/>
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+            </LinearLayout>
+
+            <!-- ═══ CURRENT PATIENT ═══ -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="QUEUE LIST"
-                android:textSize="12sp"
+                android:text="ACTIVE CONSULTATION"
+                android:textSize="10sp"
                 android:textStyle="bold"
-                android:textColor="@color/text_secondary"
-                android:letterSpacing="0.1"
-                android:layout_marginBottom="12dp"/>
+                android:textColor="@color/primary"
+                android:letterSpacing="0.15"
+                android:layout_marginBottom="10dp"/>
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/primary_container"
+                app:strokeColor="#1A89CEFF"
+                app:strokeWidth="1dp"
+                android:layout_marginBottom="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="20dp"
+                    android:gravity="center_vertical">
+
+                    <!-- Avatar placeholder -->
+                    <FrameLayout
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginEnd="16dp">
+
+                        <View
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:background="@drawable/bg_token_circle"/>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:text="👤"
+                            android:gravity="center"
+                            android:textSize="20sp"/>
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvCurrentPatientName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="No patient called"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/on_surface"/>
+
+                        <TextView
+                            android:id="@+id/tvCurrentPatientToken"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Token #--"
+                            android:textSize="12sp"
+                            android:textColor="@color/on_surface_variant"/>
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnPrescribe"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_cta_gradient"
+                        android:text="Prescribe"
+                        android:textColor="@color/primary_container"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="false"
+                        app:backgroundTint="@null"
+                        app:cornerRadius="10dp"
+                        android:visibility="gone"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- ═══ CALL NEXT ═══ -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCallNext"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:background="@drawable/bg_cta_gradient"
+                android:text="Call Next Patient →"
+                android:textColor="@color/primary_container"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                app:backgroundTint="@null"
+                app:cornerRadius="12dp"
+                android:layout_marginBottom="20dp"/>
+
+            <!-- ═══ LIVE QUEUE ═══ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Live Queue"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/on_surface"
+                    android:fontFamily="sans-serif-medium"/>
+
+                <ProgressBar
+                    android:id="@+id/progressBar"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:indeterminateTint="@color/primary"
+                    android:visibility="gone"
+                    style="?android:attr/progressBarStyleSmall"/>
+            </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvQueue"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                tools:listitem="@layout/item_queue_patient"
-                android:nestedScrollingEnabled="false"/>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnLogout"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Logout"
-                android:layout_marginTop="32dp"
-                app:strokeColor="@color/error"
-                android:textColor="@color/error"/>
+                android:nestedScrollingEnabled="false"
+                android:clipToPadding="false"/>
 
         </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
-
-    <ProgressBar
-        android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:visibility="gone"/>
-
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+    </ScrollView>
+</FrameLayout>

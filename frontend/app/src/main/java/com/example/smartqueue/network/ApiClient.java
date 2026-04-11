@@ -9,9 +9,8 @@ import java.util.concurrent.TimeUnit;
 
 public class ApiClient {
 
-    // 10.0.2.2 = Android Emulator's way of reaching your PC's localhost
-    // If testing on a real device, change this to your PC's LAN IP e.g. http://192.168.1.x:5000/api/
-    private static final String BASE_URL = "http://10.0.2.2:5000/api/";
+    // Production backend hosted on Render
+    private static final String BASE_URL = "https://smartq-backend-mihir.onrender.com/api/";
 
     private static Retrofit retrofit = null;
     private static String authToken  = null;

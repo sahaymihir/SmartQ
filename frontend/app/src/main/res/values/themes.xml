@@ -1,60 +1,141 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.SmartQ" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- SmartQ Dark Clinical Theme                          -->
+    <!-- ═══════════════════════════════════════════════════ -->
+
+    <style name="Theme.SmartQ" parent="Theme.MaterialComponents.NoActionBar">
+        <!-- Primary -->
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryDark">@color/primary_dark</item>
-        <item name="colorAccent">@color/accent</item>
-        <item name="android:windowBackground">@color/background</item>
-        <item name="android:statusBarColor">@color/white</item>
-        <item name="android:windowLightStatusBar">true</item>
+        <item name="colorAccent">@color/primary</item>
+
+        <!-- Surface / Background -->
+        <item name="android:windowBackground">@color/surface</item>
+        <item name="android:colorBackground">@color/surface</item>
+
+        <!-- Status Bar -->
+        <item name="android:statusBarColor">@color/surface</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Navigation Bar -->
+        <item name="android:navigationBarColor">@color/surface_container_lowest</item>
+
+        <!-- Activity Transitions -->
+        <item name="android:windowActivityTransitions">true</item>
+        <item name="android:windowContentTransitions">true</item>
+
+        <!-- Text Colors -->
+        <item name="android:textColorPrimary">@color/on_surface</item>
+        <item name="android:textColorSecondary">@color/on_surface_variant</item>
+        <item name="android:textColorHint">@color/text_hint</item>
     </style>
 
+    <!-- Splash Theme — Deep gradient effect -->
     <style name="Theme.SmartQ.Splash" parent="Theme.SmartQ">
-        <item name="android:windowBackground">@color/primary</item>
-        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:windowBackground">@color/surface</item>
+        <item name="android:statusBarColor">@color/surface</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
 
-    <!-- Card Style -->
+    <!-- ── Card Styles ─────────────────────────────────── -->
+
+    <!-- Dark Glass Card -->
     <style name="SmartQ.Card" parent="Widget.MaterialComponents.CardView">
         <item name="cardCornerRadius">16dp</item>
         <item name="cardElevation">0dp</item>
-        <item name="cardBackgroundColor">@color/white</item>
-        <item name="strokeColor">@color/divider</item>
+        <item name="cardBackgroundColor">@color/surface_container_low</item>
+        <item name="strokeColor">@color/outline_variant</item>
         <item name="strokeWidth">1dp</item>
     </style>
 
-    <!-- Primary Button -->
+    <!-- Elevated Glass Card -->
+    <style name="SmartQ.Card.Glass" parent="SmartQ.Card">
+        <item name="cardBackgroundColor">@color/glass_bg</item>
+        <item name="cardElevation">8dp</item>
+    </style>
+
+    <!-- Primary-tinted Card -->
+    <style name="SmartQ.Card.Primary" parent="SmartQ.Card">
+        <item name="cardBackgroundColor">@color/primary_container</item>
+        <item name="strokeColor">@color/primary_dark</item>
+    </style>
+
+    <!-- ── Button Styles ───────────────────────────────── -->
+
+    <!-- Primary CTA — Gradient will be applied via drawable background -->
     <style name="SmartQ.Button" parent="Widget.MaterialComponents.Button">
-        <item name="android:textColor">@color/white</item>
+        <item name="android:textColor">@color/on_primary</item>
         <item name="backgroundTint">@color/primary</item>
         <item name="cornerRadius">12dp</item>
-        <item name="android:textSize">16sp</item>
+        <item name="android:textSize">15sp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
-        <item name="android:paddingTop">14dp</item>
-        <item name="android:paddingBottom">14dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:paddingTop">16dp</item>
+        <item name="android:paddingBottom">16dp</item>
+        <item name="android:letterSpacing">0.02</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <!-- Gradient CTA Button -->
+    <style name="SmartQ.Button.Gradient" parent="Widget.MaterialComponents.Button">
+        <item name="android:background">@drawable/bg_cta_gradient</item>
+        <item name="android:textColor">@color/primary_container</item>
+        <item name="backgroundTint">@null</item>
+        <item name="cornerRadius">12dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:paddingTop">16dp</item>
+        <item name="android:paddingBottom">16dp</item>
+        <item name="android:letterSpacing">0.02</item>
+        <item name="android:stateListAnimator">@null</item>
     </style>
 
     <!-- Outlined Button -->
     <style name="SmartQ.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
         <item name="android:textColor">@color/primary</item>
-        <item name="strokeColor">@color/primary</item>
+        <item name="strokeColor">@color/outline_variant</item>
         <item name="cornerRadius">12dp</item>
-        <item name="android:textSize">16sp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textAllCaps">false</item>
         <item name="android:paddingTop">14dp</item>
         <item name="android:paddingBottom">14dp</item>
     </style>
 
-    <!-- Text Input -->
+    <!-- Text Button -->
+    <style name="SmartQ.Button.Text" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <!-- ── Text Input ──────────────────────────────────── -->
+
+    <!-- Clinical Precision Input — Bottom line style -->
     <style name="SmartQ.TextInput" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">0dp</item>
+        <item name="boxCornerRadiusTopEnd">0dp</item>
+        <item name="boxCornerRadiusBottomStart">0dp</item>
+        <item name="boxCornerRadiusBottomEnd">0dp</item>
+        <item name="boxStrokeColor">@color/primary</item>
+        <item name="hintTextColor">@color/primary</item>
+        <item name="android:textColorHint">@color/text_secondary</item>
+        <item name="boxBackgroundColor">@color/transparent</item>
+        <item name="boxStrokeWidth">2dp</item>
+    </style>
+
+    <!-- Outlined Box Input — For form fields -->
+    <style name="SmartQ.TextInput.Outlined" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
         <item name="boxCornerRadiusTopStart">12dp</item>
         <item name="boxCornerRadiusTopEnd">12dp</item>
         <item name="boxCornerRadiusBottomStart">12dp</item>
         <item name="boxCornerRadiusBottomEnd">12dp</item>
-        <item name="boxStrokeColor">@color/primary</item>
-        <item name="hintTextColor">@color/text_secondary</item>
-        <item name="boxBackgroundColor">@color/input_bg</item>
+        <item name="boxStrokeColor">@color/outline_variant</item>
+        <item name="hintTextColor">@color/primary</item>
+        <item name="android:textColorHint">@color/text_secondary</item>
+        <item name="boxBackgroundColor">@color/surface_container_low</item>
     </style>
 
 </resources>

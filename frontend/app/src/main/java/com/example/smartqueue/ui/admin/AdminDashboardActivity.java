@@ -2,8 +2,12 @@ package com.example.smartqueue.ui.admin;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -38,8 +42,6 @@ public class AdminDashboardActivity extends AppCompatActivity {
     private boolean isPaused = false;
     private int consultationsDone = 0;
 
-    // The admin's own doctor ID — set after login
-    // This is the MongoDB _id of the logged-in admin user
     private String doctorId;
 
     @Override
@@ -49,10 +51,11 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
         sessionManager = new SessionManager(this);
         apiService = ApiClient.getInstance().create(ApiService.class);
-        doctorId = sessionManager.getUserId(); // admin's own _id is their doctorId
+        doctorId = sessionManager.getUserId();
 
         bindViews();
         setupClickListeners();
+        animateEntrance();
         loadQueue();
     }
 
@@ -72,10 +75,30 @@ public class AdminDashboardActivity extends AppCompatActivity {
         tvAdminName.setText(sessionManager.getName());
     }
 
+    private void animateEntrance() {
+        Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_enter);
+        Animation scaleUp = AnimationUtils.loadAnimation(this, R.anim.scale_up);
+
+        Handler handler = new Handler(Looper.getMainLooper());
+
+        // Stagger stat cards entrance
+        handler.postDelayed(() -> {
+            if (tvStatWaiting.getParent() != null) {
+                View statsRow = (View) ((View) tvStatWaiting.getParent()).getParent().getParent();
+                statsRow.startAnimation(scaleUp);
+            }
+        }, 200);
+    }
+
     private void setupClickListeners() {
 
         // ── Call Next ─────────────────────────────────────
         btnCallNext.setOnClickListener(v -> {
+            v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(80)
+                    .withEndAction(() -> {
+                        v.animate().scaleX(1f).scaleY(1f).setDuration(80).start();
+                    }).start();
+
             btnCallNext.setEnabled(false);
             apiService.callNextPatient(doctorId).enqueue(new Callback<MessageResponse>() {
                 @Override
@@ -126,6 +149,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
                         .setPositiveButton("Logout", (d, w) -> {
                             sessionManager.clearSession();
                             startActivity(new Intent(this, LoginActivity.class));
+                            overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
                             finish();
                         })
                         .setNegativeButton("Cancel", null)
@@ -171,7 +195,9 @@ public class AdminDashboardActivity extends AppCompatActivity {
         }
 
         LayoutInflater inflater = LayoutInflater.from(this);
+        Animation scaleUp = AnimationUtils.loadAnimation(this, R.anim.scale_up);
 
+        int index = 0;
         for (QueueResponse.QueueEntry entry : queue) {
             View row = inflater.inflate(R.layout.item_patient_queue, layoutQueueList, false);
 
@@ -189,9 +215,9 @@ public class AdminDashboardActivity extends AppCompatActivity {
             String priority = entry.getPriority();
             tvPriority.setText(capitalize(priority));
             switch (priority) {
-                case "high":   tvPriority.setBackgroundResource(R.drawable.badge_high); tvPos.setBackgroundResource(R.drawable.circle_priority_high); break;
-                case "medium": tvPriority.setBackgroundResource(R.drawable.badge_medium); tvPos.setBackgroundResource(R.drawable.circle_primary); break;
-                default:       tvPriority.setBackgroundResource(R.drawable.badge_normal); tvPos.setBackgroundResource(R.drawable.circle_primary); break;
+                case "high":   tvPriority.setBackgroundResource(R.drawable.badge_high); row.findViewById(R.id.tvItemPosition_bg).setBackgroundResource(R.drawable.circle_priority_high); break;
+                case "medium": tvPriority.setBackgroundResource(R.drawable.badge_medium); row.findViewById(R.id.tvItemPosition_bg).setBackgroundResource(R.drawable.circle_primary); break;
+                default:       tvPriority.setBackgroundResource(R.drawable.badge_normal); row.findViewById(R.id.tvItemPosition_bg).setBackgroundResource(R.drawable.circle_primary); break;
             }
 
             final String tokenId = entry.getTokenId();
@@ -218,7 +244,14 @@ public class AdminDashboardActivity extends AppCompatActivity {
                             .show()
             );
 
+            // Staggered entrance animation for each queue item
+            int delay = index * 80;
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                row.startAnimation(scaleUp);
+            }, delay);
+
             layoutQueueList.addView(row);
+            index++;
         }
     }
 

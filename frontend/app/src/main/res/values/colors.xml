@@ -1,28 +1,87 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Primary Brand Colors -->
-    <color name="primary">#1A6FE8</color>
-    <color name="primary_dark">#1254B8</color>
-    <color name="primary_light">#EBF2FF</color>
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- SmartQ Dark Clinical Design System                  -->
+    <!-- Derived from Stitch Design Templates                -->
+    <!-- ═══════════════════════════════════════════════════ -->
 
-    <!-- Accent -->
-    <color name="accent">#00C48C</color>
-    <color name="accent_light">#E6FAF5</color>
+    <!-- Primary Brand -->
+    <color name="primary">#89CEFF</color>
+    <color name="primary_dark">#0089C3</color>
+    <color name="primary_light">#C9E6FF</color>
+    <color name="primary_container">#001A29</color>
+    <color name="on_primary">#00344D</color>
+    <color name="on_primary_container">#0089C3</color>
+
+    <!-- Secondary -->
+    <color name="secondary">#B7C8E1</color>
+    <color name="secondary_container">#3A4A5F</color>
+    <color name="on_secondary">#213145</color>
+
+    <!-- Tertiary / Accent -->
+    <color name="accent">#FFB3AD</color>
+    <color name="accent_light">#FFDAD7</color>
+    <color name="tertiary">#FFB3AD</color>
+    <color name="tertiary_container">#390003</color>
+    <color name="on_tertiary_container">#EB4141</color>
+
+    <!-- Surfaces -->
+    <color name="surface">#0B1326</color>
+    <color name="surface_dim">#0B1326</color>
+    <color name="surface_bright">#31394D</color>
+    <color name="surface_container_lowest">#060E20</color>
+    <color name="surface_container_low">#131B2E</color>
+    <color name="surface_container">#171F33</color>
+    <color name="surface_container_high">#222A3D</color>
+    <color name="surface_container_highest">#2D3449</color>
+    <color name="surface_variant">#2D3449</color>
+
+    <!-- On-Surface / Text -->
+    <color name="on_surface">#DAE2FD</color>
+    <color name="on_surface_variant">#C6C6CD</color>
+    <color name="text_primary">#DAE2FD</color>
+    <color name="text_secondary">#909097</color>
+    <color name="text_hint">#5A5A63</color>
+
+    <!-- Outline -->
+    <color name="outline">#909097</color>
+    <color name="outline_variant">#45464D</color>
+    <color name="divider">#2D3449</color>
+
+    <!-- Error -->
+    <color name="error">#FFB4AB</color>
+    <color name="error_container">#93000A</color>
+    <color name="on_error">#690005</color>
 
     <!-- Priority Colors -->
-    <color name="priority_high">#FF4D4D</color>
+    <color name="priority_high">#EB4141</color>
     <color name="priority_medium">#FF9500</color>
-    <color name="priority_normal">#1A6FE8</color>
+    <color name="priority_normal">#89CEFF</color>
 
-    <!-- Neutrals -->
+    <!-- Gradient -->
+    <color name="gradient_start">#89CEFF</color>
+    <color name="gradient_end">#0089C3</color>
+
+    <!-- Glass / Overlay -->
+    <color name="glass_bg">#B3222A3D</color>
+    <color name="glass_border">#1A45464D</color>
+    <color name="ambient_glow">#1489CEFF</color>
+
+    <!-- Inverse -->
+    <color name="inverse_surface">#DAE2FD</color>
+    <color name="inverse_on_surface">#283044</color>
+    <color name="inverse_primary">#006591</color>
+
+    <!-- Status -->
+    <color name="status_active">#4CAF50</color>
+    <color name="status_warning">#FFD700</color>
+
+    <!-- Standard -->
     <color name="white">#FFFFFF</color>
-    <color name="background">#F5F7FA</color>
-    <color name="surface">#FFFFFF</color>
-    <color name="text_primary">#1A1F36</color>
-    <color name="text_secondary">#6B7280</color>
-    <color name="text_hint">#9CA3AF</color>
-    <color name="divider">#E5E7EB</color>
-    <color name="input_bg">#F9FAFB</color>
-    <color name="error">#EF4444</color>
     <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+
+    <!-- Legacy compatibility -->
+    <color name="background">#0B1326</color>
+    <color name="input_bg">#131B2E</color>
 </resources>

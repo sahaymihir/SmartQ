@@ -1,51 +1,249 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:background="@color/primary">
+    android:background="@color/surface">
 
-    <!-- App Icon -->
-    <androidx.cardview.widget.CardView
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        app:cardCornerRadius="28dp"
-        app:cardElevation="16dp"
-        app:cardBackgroundColor="#FFFFFF">
+    <!-- ═══ Ambient Glow Orbs ═══ -->
+    <View
+        android:id="@+id/glowTop"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
+        android:layout_gravity="start"
+        android:layout_marginStart="-80dp"
+        android:layout_marginTop="-60dp"
+        android:background="@drawable/bg_ambient_glow"
+        android:alpha="0.6"/>
 
-        <TextView
+    <View
+        android:id="@+id/glowBottom"
+        android:layout_width="250dp"
+        android:layout_height="250dp"
+        android:layout_gravity="end|bottom"
+        android:layout_marginEnd="-60dp"
+        android:layout_marginBottom="-40dp"
+        android:background="@drawable/bg_ambient_glow"
+        android:alpha="0.4"/>
+
+    <!-- ═══ Main Content ═══ -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp">
+
+        <!-- Spacer: Push content slightly above center -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1"/>
+
+        <!-- Logo Icon -->
+        <LinearLayout
+            android:id="@+id/logoContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:alpha="0">
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="@color/primary_container"
+                app:strokeColor="@color/outline_variant"
+                app:strokeWidth="1dp">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_clinical_notes"
+                    android:contentDescription="SmartQ"/>
+            </androidx.cardview.widget.CardView>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/app_name"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:textColor="@color/primary"
+                android:fontFamily="sans-serif-black"
+                android:letterSpacing="-0.03"
+                android:layout_marginStart="12dp"/>
+        </LinearLayout>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="32dp"/>
+
+        <!-- Clinical Badge -->
+        <LinearLayout
+            android:id="@+id/badgeContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_status_pill"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:alpha="0">
+
+            <View
+                android:id="@+id/pulseDot"
+                android:layout_width="6dp"
+                android:layout_height="6dp"
+                android:background="@color/primary"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/splash_badge"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="@color/primary_light"
+                android:textAllCaps="true"
+                android:letterSpacing="0.15"/>
+        </LinearLayout>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="24dp"/>
+
+        <!-- Editorial Headline -->
+        <LinearLayout
+            android:id="@+id/headlineContainer"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:text="Q"
-            android:textSize="48sp"
-            android:textStyle="bold"
-            android:textColor="@color/primary"
-            android:gravity="center"/>
-    </androidx.cardview.widget.CardView>
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:alpha="0">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="SmartQ"
-        android:textSize="32sp"
-        android:textStyle="bold"
-        android:textColor="@color/white"
-        android:layout_marginTop="20dp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/splash_headline_1"
+                android:textSize="42sp"
+                android:textStyle="bold"
+                android:textColor="@color/on_surface"
+                android:fontFamily="sans-serif-black"
+                android:letterSpacing="-0.04"
+                android:lineSpacingMultiplier="0.9"/>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Skip the wait. Not the care."
-        android:textSize="14sp"
-        android:textColor="#CCFFFFFF"
-        android:layout_marginTop="8dp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/splash_headline_2"
+                android:textSize="42sp"
+                android:textStyle="bold|italic"
+                android:textColor="@color/primary"
+                android:fontFamily="sans-serif-black"
+                android:letterSpacing="-0.04"
+                android:lineSpacingMultiplier="0.9"/>
 
-    <ProgressBar
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:indeterminateTint="@color/white"
-        android:layout_marginTop="48dp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/splash_headline_3"
+                android:textSize="42sp"
+                android:textStyle="bold"
+                android:textColor="@color/on_surface"
+                android:fontFamily="sans-serif-black"
+                android:letterSpacing="-0.04"
+                android:lineSpacingMultiplier="0.9"/>
+        </LinearLayout>
 
-</LinearLayout>
+        <View
+            android:layout_width="0dp"
+            android:layout_height="16dp"/>
+
+        <!-- Subtitle -->
+        <TextView
+            android:id="@+id/tvSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/splash_subtitle"
+            android:textSize="15sp"
+            android:textColor="@color/on_surface_variant"
+            android:gravity="center"
+            android:lineSpacingMultiplier="1.5"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:alpha="0"/>
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="48dp"/>
+
+        <!-- Loading Indicator -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:indeterminateTint="@color/primary"
+            android:alpha="0"
+            style="?android:attr/progressBarStyleSmall"/>
+
+        <!-- Spacer -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1"/>
+
+        <!-- Footer -->
+        <LinearLayout
+            android:id="@+id/footerContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:alpha="0">
+
+            <!-- Status -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <View
+                    android:layout_width="6dp"
+                    android:layout_height="6dp"
+                    android:background="@color/status_active"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/operational"
+                    android:textSize="10sp"
+                    android:textColor="@color/on_surface"
+                    android:layout_marginStart="6dp"/>
+            </LinearLayout>
+
+            <View
+                android:layout_width="24dp"
+                android:layout_height="1dp"
+                android:background="@color/outline_variant"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/app_version"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="@color/outline"
+                android:textAllCaps="true"
+                android:letterSpacing="0.1"/>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

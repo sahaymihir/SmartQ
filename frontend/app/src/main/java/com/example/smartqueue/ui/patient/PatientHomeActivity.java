@@ -5,6 +5,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -72,6 +74,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         bindViews();
         setupGreeting();
         setupClickListeners();
+        animateEntrance();
         checkExistingToken(); // check if patient already has an active token
     }
 
@@ -108,10 +111,32 @@ public class PatientHomeActivity extends AppCompatActivity {
         tvGreeting.setText(hour < 12 ? "Good morning," : hour < 17 ? "Good afternoon," : "Good evening,");
     }
 
+    private void animateEntrance() {
+        Animation scaleUp = AnimationUtils.loadAnimation(this, R.anim.scale_up);
+        Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_enter);
+
+        Handler handler = new Handler(Looper.getMainLooper());
+
+        // Animate cards in the not-in-queue state
+        int childCount = layoutNotInQueue.getChildCount();
+        for (int i = 0; i < childCount; i++) {
+            View child = layoutNotInQueue.getChildAt(i);
+            int delay = i * 120;
+            handler.postDelayed(() -> {
+                child.setAlpha(1f);
+                child.startAnimation(scaleUp);
+            }, delay);
+        }
+    }
+
     private void setupClickListeners() {
 
         // ── Join Queue ────────────────────────────────────
         btnJoinQueue.setOnClickListener(v -> {
+            // Button press animation
+            v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(80)
+                    .withEndAction(() -> v.animate().scaleX(1f).scaleY(1f).setDuration(80).start()).start();
+
             String doctorId = getSelectedDoctorId();
             String symptoms = etSymptoms.getText() != null ?
                     etSymptoms.getText().toString().trim() : "";
@@ -126,7 +151,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                         handleUnauthorized();
                         return;
                     }
-                    
+
                     if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                         TokenResponse body = response.body();
                         isInQueue = true;
@@ -241,8 +266,6 @@ public class PatientHomeActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<QueueResponse> call, Response<QueueResponse> response) {
                 if (response.code() == 401) {
-                    // Don't call handleUnauthorized here during onCreate, 
-                    // it might loop if token is cleared but session is still "logged in"
                     return;
                 }
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
@@ -316,6 +339,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             Intent intent = new Intent(this, LoginActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
+            overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
             finish();
         }
     }
@@ -345,21 +369,40 @@ public class PatientHomeActivity extends AppCompatActivity {
     }
 
     private void showNotInQueueState() {
-        layoutNotInQueue.setVisibility(View.VISIBLE);
-        layoutInQueue.setVisibility(View.GONE);
-        cardCalled.setVisibility(View.GONE);
+        // Fade transition between states
+        layoutInQueue.animate().alpha(0).setDuration(200).withEndAction(() -> {
+            layoutNotInQueue.setVisibility(View.VISIBLE);
+            layoutInQueue.setVisibility(View.GONE);
+            cardCalled.setVisibility(View.GONE);
+            layoutNotInQueue.setAlpha(0);
+            layoutNotInQueue.animate().alpha(1).setDuration(300).start();
+        }).start();
     }
 
     private void showInQueueState() {
-        layoutNotInQueue.setVisibility(View.GONE);
-        layoutInQueue.setVisibility(View.VISIBLE);
-        cardCalled.setVisibility(View.GONE);
+        layoutNotInQueue.animate().alpha(0).setDuration(200).withEndAction(() -> {
+            layoutNotInQueue.setVisibility(View.GONE);
+            layoutInQueue.setVisibility(View.VISIBLE);
+            cardCalled.setVisibility(View.GONE);
+            layoutInQueue.setAlpha(0);
+            layoutInQueue.animate().alpha(1).setDuration(300).start();
+        }).start();
     }
 
     private void showCalledState() {
         layoutNotInQueue.setVisibility(View.GONE);
-        layoutInQueue.setVisibility(View.GONE);
-        cardCalled.setVisibility(View.VISIBLE);
+        layoutInQueue.animate().alpha(0).setDuration(200).withEndAction(() -> {
+            layoutInQueue.setVisibility(View.GONE);
+            cardCalled.setVisibility(View.VISIBLE);
+            cardCalled.setAlpha(0);
+            cardCalled.setScaleX(0.9f);
+            cardCalled.setScaleY(0.9f);
+            cardCalled.animate().alpha(1).scaleX(1).scaleY(1)
+                    .setDuration(400).start();
+            // Pulse animation on called card
+            Animation pulse = AnimationUtils.loadAnimation(this, R.anim.pulse);
+            cardCalled.startAnimation(pulse);
+        }).start();
     }
 
     private String getSelectedDoctorId() {
@@ -396,6 +439,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                     Intent intent = new Intent(this, LoginActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
+                    overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
                     finish();
                 })
                 .setNegativeButton("Cancel", null)

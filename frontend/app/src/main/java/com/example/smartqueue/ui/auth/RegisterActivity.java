@@ -2,9 +2,13 @@ package com.example.smartqueue.ui.auth;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Patterns;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -49,9 +53,10 @@ public class RegisterActivity extends AppCompatActivity {
 
         sessionManager = new SessionManager(this);
         apiService = ApiClient.getInstance().create(ApiService.class);
-        
+
         bindViews();
         setupClickListeners();
+        animateEntrance();
     }
 
     private void bindViews() {
@@ -75,11 +80,33 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
-        btnRegister.setOnClickListener(v -> attemptRegister());
+        btnRegister.setOnClickListener(v -> {
+            // Scale press animation
+            v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(100)
+                    .withEndAction(() -> {
+                        v.animate().scaleX(1f).scaleY(1f).setDuration(100).start();
+                        attemptRegister();
+                    }).start();
+        });
+
         btnGoToLogin.setOnClickListener(v -> {
             startActivity(new Intent(this, LoginActivity.class));
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
             finish();
         });
+    }
+
+    private void animateEntrance() {
+        View registerHeader = findViewById(R.id.registerHeader);
+
+        Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_enter);
+        Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in);
+
+        Handler handler = new Handler(Looper.getMainLooper());
+
+        handler.postDelayed(() -> {
+            registerHeader.startAnimation(slideUp);
+        }, 0);
     }
 
     private void attemptRegister() {
@@ -91,7 +118,7 @@ public class RegisterActivity extends AppCompatActivity {
         String phone    = etPhone.getText().toString().trim();
         String ageStr   = etAge.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
-        
+
         String role = "patient";
         if (rbAdmin.isChecked()) role = "admin";
         else if (rbDoctor.isChecked()) role = "doctor";
@@ -130,7 +157,7 @@ public class RegisterActivity extends AppCompatActivity {
         ApiClient.setAuthToken(null);
 
         RegisterRequest request = new RegisterRequest(name, email, password, phone, age, role);
-        
+
         apiService.register(request).enqueue(new Callback<AuthResponse>() {
             @Override
             public void onResponse(Call<AuthResponse> call, Response<AuthResponse> response) {
@@ -138,7 +165,7 @@ public class RegisterActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     AuthResponse body = response.body();
                     AuthResponse.User user = body.getUser();
-                    
+
                     sessionManager.saveSession(
                             body.getToken(),
                             user.getId(),
@@ -147,7 +174,7 @@ public class RegisterActivity extends AppCompatActivity {
                             user.getRole(),
                             user.getAge()
                     );
-                    
+
                     ApiClient.setAuthToken(body.getToken());
                     navigateToHome(user.getRole());
                 } else {
@@ -174,6 +201,7 @@ public class RegisterActivity extends AppCompatActivity {
         }
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         finish();
     }
 
@@ -181,7 +209,7 @@ public class RegisterActivity extends AppCompatActivity {
         btnRegister.setEnabled(!loading);
         btnGoToLogin.setEnabled(!loading);
         progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
-        btnRegister.setText(loading ? "Creating account..." : "Create Account");
+        btnRegister.setText(loading ? "Creating account..." : getString(R.string.register));
     }
 
     private void clearErrors() {
@@ -193,6 +221,10 @@ public class RegisterActivity extends AppCompatActivity {
     private void showError(String msg) {
         tvError.setText(msg);
         tvError.setVisibility(View.VISIBLE);
+        // Shake animation on error
+        tvError.animate().translationX(-8).setDuration(50)
+                .withEndAction(() -> tvError.animate().translationX(8).setDuration(50)
+                        .withEndAction(() -> tvError.animate().translationX(0).setDuration(50).start()).start()).start();
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 }

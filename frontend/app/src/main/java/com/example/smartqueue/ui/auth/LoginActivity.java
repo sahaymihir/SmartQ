@@ -2,13 +2,21 @@ package com.example.smartqueue.ui.auth;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Patterns;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
 
 import com.example.smartqueue.R;
 import com.example.smartqueue.models.request.LoginRequest;
@@ -23,6 +31,8 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+import java.util.concurrent.Executor;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -34,6 +44,8 @@ public class LoginActivity extends AppCompatActivity {
     private MaterialButton btnLogin, btnGoToRegister;
     private ProgressBar progressBar;
     private TextView tvError;
+    private View biometricContainer;
+    private View btnBiometric;
     private SessionManager sessionManager;
     private ApiService apiService;
 
@@ -45,32 +57,113 @@ public class LoginActivity extends AppCompatActivity {
         sessionManager = new SessionManager(this);
         apiService = ApiClient.getInstance().create(ApiService.class);
 
+        bindViews();
+
         if (sessionManager.isLoggedIn()) {
             ApiClient.setAuthToken(sessionManager.getToken());
-            navigateToHome(sessionManager.getRole());
-            return;
+            // Show biometric container and trigger prompt
+            biometricContainer.setVisibility(View.VISIBLE);
+            showBiometricPrompt();
         }
 
-        bindViews();
         setupClickListeners();
+        animateEntrance();
+    }
+
+    private void showBiometricPrompt() {
+        Executor executor = ContextCompat.getMainExecutor(this);
+        BiometricPrompt biometricPrompt = new BiometricPrompt(LoginActivity.this,
+                executor, new BiometricPrompt.AuthenticationCallback() {
+            @Override
+            public void onAuthenticationError(int errorCode, @NonNull CharSequence errString) {
+                super.onAuthenticationError(errorCode, errString);
+                Toast.makeText(getApplicationContext(), "Authentication error: " + errString, Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onAuthenticationSucceeded(@NonNull BiometricPrompt.AuthenticationResult result) {
+                super.onAuthenticationSucceeded(result);
+                navigateToHome(sessionManager.getRole());
+            }
+
+            @Override
+            public void onAuthenticationFailed() {
+                super.onAuthenticationFailed();
+                Toast.makeText(getApplicationContext(), "Authentication failed", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        BiometricPrompt.PromptInfo promptInfo = new BiometricPrompt.PromptInfo.Builder()
+                .setTitle(getString(R.string.biometric_title))
+                .setSubtitle(getString(R.string.biometric_subtitle))
+                .setNegativeButtonText(getString(R.string.biometric_negative))
+                .build();
+
+        biometricPrompt.authenticate(promptInfo);
     }
 
     private void bindViews() {
-        tilEmail        = findViewById(R.id.tilEmail);
-        tilPassword     = findViewById(R.id.tilPassword);
-        etEmail         = findViewById(R.id.etEmail);
-        etPassword      = findViewById(R.id.etPassword);
-        btnLogin        = findViewById(R.id.btnLogin);
-        btnGoToRegister = findViewById(R.id.btnGoToRegister);
-        progressBar     = findViewById(R.id.progressBar);
-        tvError         = findViewById(R.id.tvError);
+        tilEmail            = findViewById(R.id.tilEmail);
+        tilPassword         = findViewById(R.id.tilPassword);
+        etEmail             = findViewById(R.id.etEmail);
+        etPassword          = findViewById(R.id.etPassword);
+        btnLogin            = findViewById(R.id.btnLogin);
+        btnGoToRegister     = findViewById(R.id.btnGoToRegister);
+        progressBar         = findViewById(R.id.progressBar);
+        tvError             = findViewById(R.id.tvError);
+        biometricContainer  = findViewById(R.id.biometricContainer);
+        btnBiometric        = findViewById(R.id.btnBiometric);
     }
 
     private void setupClickListeners() {
-        btnLogin.setOnClickListener(v -> attemptLogin());
-        btnGoToRegister.setOnClickListener(v ->
-                startActivity(new Intent(this, RegisterActivity.class))
-        );
+        btnLogin.setOnClickListener(v -> {
+            // Scale press animation
+            v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(100)
+                    .withEndAction(() -> {
+                        v.animate().scaleX(1f).scaleY(1f).setDuration(100).start();
+                        attemptLogin();
+                    }).start();
+        });
+
+        btnGoToRegister.setOnClickListener(v -> {
+            startActivity(new Intent(this, RegisterActivity.class));
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+        });
+
+        btnBiometric.setOnClickListener(v -> {
+            // Pulse animation on tap
+            v.animate().scaleX(0.9f).scaleY(0.9f).setDuration(100)
+                    .withEndAction(() -> {
+                        v.animate().scaleX(1f).scaleY(1f).setDuration(100).start();
+                        showBiometricPrompt();
+                    }).start();
+        });
+    }
+
+    private void animateEntrance() {
+        View loginLogo = findViewById(R.id.loginLogo);
+        View loginHeader = findViewById(R.id.loginHeader);
+        View loginForm = findViewById(R.id.loginForm);
+
+        Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_enter);
+        Animation fadeIn = AnimationUtils.loadAnimation(this, R.anim.fade_in);
+
+        Handler handler = new Handler(Looper.getMainLooper());
+
+        handler.postDelayed(() -> {
+            loginLogo.setAlpha(1f);
+            loginLogo.startAnimation(fadeIn);
+        }, 0);
+
+        handler.postDelayed(() -> {
+            loginHeader.setAlpha(1f);
+            loginHeader.startAnimation(slideUp);
+        }, 150);
+
+        handler.postDelayed(() -> {
+            loginForm.setAlpha(1f);
+            loginForm.startAnimation(slideUp);
+        }, 300);
     }
 
     private void attemptLogin() {
@@ -124,6 +217,7 @@ public class LoginActivity extends AppCompatActivity {
         }
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         finish();
     }
 
@@ -131,11 +225,15 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin.setEnabled(!loading);
         btnGoToRegister.setEnabled(!loading);
         progressBar.setVisibility(loading ? View.VISIBLE : View.GONE);
-        btnLogin.setText(loading ? "Please wait..." : "Login");
+        btnLogin.setText(loading ? "Initializing..." : getString(R.string.login));
     }
 
     private void showError(String msg) {
         tvError.setText(msg);
         tvError.setVisibility(View.VISIBLE);
+        // Shake animation on error
+        tvError.animate().translationX(-8).setDuration(50)
+                .withEndAction(() -> tvError.animate().translationX(8).setDuration(50)
+                        .withEndAction(() -> tvError.animate().translationX(0).setDuration(50).start()).start()).start();
     }
 }

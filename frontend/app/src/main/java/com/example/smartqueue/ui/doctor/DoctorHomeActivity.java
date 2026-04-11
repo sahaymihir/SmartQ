@@ -2,8 +2,12 @@ package com.example.smartqueue.ui.doctor;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -39,13 +43,13 @@ public class DoctorHomeActivity extends AppCompatActivity {
     private MaterialButton btnCallNext, btnPrescribe, btnLogout;
     private RecyclerView rvQueue;
     private ProgressBar progressBar;
-    
+
     private QueueAdapter adapter;
     private SessionManager sessionManager;
     private ApiService apiService;
-    
+
     private String currentTokenId = null;
-    private String currentPatientId = "mock_patient_id"; // Ideally from QueueEntry
+    private String currentPatientId = "mock_patient_id";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,7 +62,8 @@ public class DoctorHomeActivity extends AppCompatActivity {
         initViews();
         setupRecyclerView();
         setupListeners();
-        
+        animateEntrance();
+
         fetchQueueData();
     }
 
@@ -82,9 +87,29 @@ public class DoctorHomeActivity extends AppCompatActivity {
         rvQueue.setAdapter(adapter);
     }
 
+    private void animateEntrance() {
+        Animation slideUp = AnimationUtils.loadAnimation(this, R.anim.slide_up_enter);
+        Animation scaleUp = AnimationUtils.loadAnimation(this, R.anim.scale_up);
+
+        Handler handler = new Handler(Looper.getMainLooper());
+
+        // Animate header
+        handler.postDelayed(() -> {
+            if (tvDoctorName.getParent() != null) {
+                ((View) tvDoctorName.getParent().getParent()).startAnimation(slideUp);
+            }
+        }, 0);
+    }
+
     private void setupListeners() {
-        btnCallNext.setOnClickListener(v -> callNextPatient());
-        
+        btnCallNext.setOnClickListener(v -> {
+            v.animate().scaleX(0.96f).scaleY(0.96f).setDuration(80)
+                    .withEndAction(() -> {
+                        v.animate().scaleX(1f).scaleY(1f).setDuration(80).start();
+                        callNextPatient();
+                    }).start();
+        });
+
         btnPrescribe.setOnClickListener(v -> showPrescriptionDialog());
 
         switchAvailability.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -95,6 +120,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
             sessionManager.clearSession();
             ApiClient.setAuthToken(null);
             startActivity(new Intent(this, LoginActivity.class));
+            overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
             finish();
         });
     }
@@ -108,10 +134,9 @@ public class DoctorHomeActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     List<QueueResponse.QueueEntry> queue = response.body().getQueue();
                     adapter.setQueueList(queue != null ? queue : new ArrayList<>());
-                    
+
                     switchAvailability.setChecked(!response.body().isPaused());
-                    
-                    // Logic for current patient (simple: first in list if status is 'called' or similar)
+
                     if (queue != null && !queue.isEmpty()) {
                         QueueResponse.QueueEntry first = queue.get(0);
                         if ("called".equals(first.getStatus())) {
@@ -201,7 +226,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
 
     private void savePrescription(String diagnosis, String medicines, String notes) {
         if (currentTokenId == null) return;
-        
+
         PrescriptionRequest request = new PrescriptionRequest(currentTokenId, currentPatientId, diagnosis, medicines, notes);
         apiService.savePrescription(request).enqueue(new Callback<MessageResponse>() {
             @Override

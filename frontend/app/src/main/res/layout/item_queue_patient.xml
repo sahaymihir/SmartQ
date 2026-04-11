@@ -4,8 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="8dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp">
+    app:cardCornerRadius="14dp"
+    app:cardElevation="0dp"
+    app:cardBackgroundColor="@color/surface_container_low"
+    app:strokeColor="@color/outline_variant"
+    app:strokeWidth="1dp"
+    android:foreground="@drawable/ripple_dark">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -18,18 +22,19 @@
             android:id="@+id/tvTokenNum"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@drawable/circle_white_alpha"
-            android:backgroundTint="@color/primary"
+            android:background="@drawable/bg_token_circle"
             android:gravity="center"
             android:text="#1"
-            android:textColor="@color/white"
-            android:textStyle="bold" />
+            android:textColor="@color/primary"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif-medium" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="16dp"
+            android:layout_marginStart="12dp"
             android:orientation="vertical">
 
             <TextView
@@ -37,9 +42,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Patient Name"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                android:textColor="@color/on_surface"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-medium" />
 
             <TextView
                 android:id="@+id/tvPatientInfo"
@@ -47,17 +53,25 @@
                 android:layout_height="wrap_content"
                 android:text="Age: 40 | Priority: Normal"
                 android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
+                android:textSize="12sp"
+                android:layout_marginTop="2dp" />
         </LinearLayout>
 
         <TextView
             android:id="@+id/tvStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Checked In"
-            android:textColor="@color/accent"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:text="Waiting"
+            android:textColor="@color/primary"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textAllCaps="true"
+            android:letterSpacing="0.1"
+            android:background="@drawable/bg_status_pill"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
 
     </LinearLayout>
 </androidx.cardview.widget.CardView>

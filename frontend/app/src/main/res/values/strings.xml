@@ -1,29 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SmartQ</string>
-    <string name="app_tagline">Skip the wait. Not the care.</string>
+    <string name="app_tagline">Precision Patient Flow.</string>
+    <string name="app_version">v2.4.0-Stable</string>
+
+    <!-- Splash -->
+    <string name="splash_badge">Clinical Intelligence Engine</string>
+    <string name="splash_headline_1">Precision</string>
+    <string name="splash_headline_2">Patient</string>
+    <string name="splash_headline_3">Flow.</string>
+    <string name="splash_subtitle">Eliminate waiting room friction with real-time queue orchestration and predictive patient throughput.</string>
 
     <!-- Auth -->
-    <string name="login">Login</string>
-    <string name="register">Create Account</string>
+    <string name="login">Initialize Session</string>
+    <string name="register">Initialize Account</string>
+    <string name="access_portal">Access Portal</string>
+    <string name="sign_in_subtitle">Sign in to manage clinical operations</string>
+    <string name="medical_identifier">Medical Identifier</string>
+    <string name="security_key">Security Key</string>
+    <string name="keep_session">Keep Session Active</string>
+    <string name="reset_key">Reset Key</string>
+    <string name="register_clinic">Register Clinic</string>
+    <string name="new_facility">New facility onboarding?</string>
     <string name="email">Email Address</string>
     <string name="password">Password</string>
     <string name="full_name">Full Name</string>
     <string name="phone">Phone Number</string>
     <string name="age">Age</string>
-    <string name="no_account">Don\'t have an account? Sign Up</string>
-    <string name="have_account">Already have an account? Login</string>
-    <string name="loading">Please wait...</string>
+    <string name="no_account">New facility onboarding? Register Clinic</string>
+    <string name="have_account">Already have an account? Sign In</string>
+    <string name="loading">Initializing...</string>
+    <string name="create_account">Create Account</string>
+    <string name="create_account_subtitle">Join SmartQ clinical operations</string>
+
+    <!-- Biometric -->
+    <string name="biometric_title">Biometric Authentication</string>
+    <string name="biometric_subtitle">Verify identity to access SmartQ</string>
+    <string name="biometric_negative">Use credentials</string>
+    <string name="biometric_quick">Quick Access</string>
 
     <!-- Role -->
     <string name="role_patient">Patient</string>
     <string name="role_admin">Admin</string>
     <string name="role_doctor">Doctor</string>
-    <string name="select_role">I am a...</string>
+    <string name="select_role">Clinical Role</string>
 
     <!-- Errors -->
     <string name="error_empty_fields">Please fill all fields</string>
-    <string name="error_invalid_email">Enter a valid email</string>
-    <string name="error_short_password">Password must be at least 6 characters</string>
+    <string name="error_invalid_email">Enter a valid medical identifier</string>
+    <string name="error_short_password">Security key must be at least 6 characters</string>
     <string name="error_network">Network error. Please try again.</string>
+
+    <!-- Clinical Footer -->
+    <string name="clinical_footer">SmartQ Clinical OS // v2.4.0</string>
+    <string name="infrastructure_status">Infrastructure Status</string>
+    <string name="operational">Operational — 99.9% Up</string>
+    <string name="encryption_label">Secure Encryption</string>
+    <string name="encryption_status">AES-256 Enabled</string>
 </resources>

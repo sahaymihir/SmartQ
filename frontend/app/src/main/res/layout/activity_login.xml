@@ -3,124 +3,161 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="@color/surface_container_lowest"
     android:fillViewport="true">
 
-    <LinearLayout
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:layout_height="wrap_content">
 
-        <!-- Logo / Header -->
+        <!-- Ambient Glow -->
+        <View
+            android:layout_width="300dp"
+            android:layout_height="300dp"
+            android:layout_gravity="end"
+            android:layout_marginEnd="-80dp"
+            android:layout_marginTop="-40dp"
+            android:background="@drawable/bg_ambient_glow"
+            android:alpha="0.3"/>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:gravity="center"
-            android:paddingTop="48dp"
-            android:paddingBottom="40dp">
+            android:padding="28dp"
+            android:paddingTop="56dp">
 
-            <!-- App Icon Circle -->
-            <androidx.cardview.widget.CardView
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                app:cardCornerRadius="24dp"
-                app:cardElevation="8dp"
-                app:cardBackgroundColor="@color/primary">
+            <!-- ═══ Logo ═══ -->
+            <LinearLayout
+                android:id="@+id/loginLogo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginBottom="40dp">
+
+                <ImageView
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:src="@drawable/ic_clinical_notes"
+                    android:contentDescription="SmartQ"/>
 
                 <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:text="Q"
-                    android:textSize="36sp"
-                    android:textColor="@color/white"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textSize="24sp"
                     android:textStyle="bold"
-                    android:gravity="center"/>
-            </androidx.cardview.widget.CardView>
+                    android:textColor="@color/primary"
+                    android:fontFamily="sans-serif-black"
+                    android:letterSpacing="-0.03"
+                    android:layout_marginStart="10dp"/>
+            </LinearLayout>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="SmartQ"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"
-                android:layout_marginTop="16dp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/app_tagline"
-                android:textSize="14sp"
-                android:textColor="@color/text_secondary"
-                android:layout_marginTop="4dp"/>
-        </LinearLayout>
-
-        <!-- Login Card -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            style="@style/SmartQ.Card">
-
+            <!-- ═══ Access Portal Header ═══ -->
             <LinearLayout
+                android:id="@+id/loginHeader"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="24dp">
+                android:layout_marginBottom="32dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Welcome back"
-                    android:textSize="22sp"
+                    android:text="@string/access_portal"
+                    android:textSize="28sp"
                     android:textStyle="bold"
-                    android:textColor="@color/text_primary"/>
+                    android:textColor="@color/on_surface"
+                    android:fontFamily="sans-serif-black"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Sign in to your account"
+                    android:text="@string/sign_in_subtitle"
                     android:textSize="14sp"
-                    android:textColor="@color/text_secondary"
-                    android:layout_marginTop="4dp"
-                    android:layout_marginBottom="24dp"/>
+                    android:textColor="@color/on_surface_variant"
+                    android:layout_marginTop="4dp"/>
+            </LinearLayout>
 
-                <!-- Email Field -->
+            <!-- ═══ Login Form ═══ -->
+            <LinearLayout
+                android:id="@+id/loginForm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Email / Medical Identifier -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilEmail"
                     style="@style/SmartQ.TextInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/email"
-                    app:startIconDrawable="@android:drawable/ic_dialog_email">
+                    android:hint="@string/medical_identifier">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etEmail"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textEmailAddress"
-                        android:imeOptions="actionNext"/>
+                        android:imeOptions="actionNext"
+                        android:textColor="@color/on_surface"
+                        android:textSize="15sp"/>
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Password Field -->
+                <View android:layout_width="0dp" android:layout_height="24dp"/>
+
+                <!-- Password / Security Key -->
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/tilPassword"
                     style="@style/SmartQ.TextInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="@string/password"
-                    android:layout_marginTop="16dp"
+                    android:hint="@string/security_key"
                     app:passwordToggleEnabled="true"
-                    app:startIconDrawable="@android:drawable/ic_lock_idle_lock">
+                    app:passwordToggleTint="@color/outline">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etPassword"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="textPassword"
-                        android:imeOptions="actionDone"/>
+                        android:imeOptions="actionDone"
+                        android:textColor="@color/on_surface"
+                        android:textSize="15sp"/>
                 </com.google.android.material.textfield.TextInputLayout>
+
+                <View android:layout_width="0dp" android:layout_height="16dp"/>
+
+                <!-- Keep session / Reset key -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <CheckBox
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/keep_session"
+                        android:textSize="13sp"
+                        android:textColor="@color/on_surface_variant"
+                        android:buttonTint="@color/primary"/>
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/reset_key"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/primary"/>
+                </LinearLayout>
 
                 <!-- Error Text -->
                 <TextView
@@ -133,14 +170,25 @@
                     android:layout_marginTop="8dp"
                     android:visibility="gone"/>
 
-                <!-- Login Button -->
+                <View android:layout_width="0dp" android:layout_height="24dp"/>
+
+                <!-- Login CTA — Gradient -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnLogin"
-                    style="@style/SmartQ.Button"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="56dp"
+                    android:background="@drawable/bg_cta_gradient"
                     android:text="@string/login"
-                    android:layout_marginTop="24dp"/>
+                    android:textColor="@color/primary_container"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="false"
+                    android:letterSpacing="0.02"
+                    app:backgroundTint="@null"
+                    app:cornerRadius="12dp"
+                    app:icon="@android:drawable/ic_menu_send"
+                    app:iconGravity="end"
+                    app:iconTint="@color/primary_container"/>
 
                 <!-- Loading indicator -->
                 <ProgressBar
@@ -149,20 +197,112 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="center"
                     android:layout_marginTop="16dp"
+                    android:indeterminateTint="@color/primary"
                     android:visibility="gone"/>
 
+                <View android:layout_width="0dp" android:layout_height="24dp"/>
+
+                <!-- ═══ Biometric Auth ═══ -->
+                <LinearLayout
+                    android:id="@+id/biometricContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:visibility="gone">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/outline_variant"
+                        android:alpha="0.3"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/biometric_quick"
+                        android:textSize="12sp"
+                        android:textColor="@color/on_surface_variant"
+                        android:layout_marginTop="16dp"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.15"/>
+
+                    <View android:layout_width="0dp" android:layout_height="12dp"/>
+
+                    <!-- Fingerprint Button -->
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="64dp"
+                        android:layout_height="64dp"
+                        app:cardCornerRadius="32dp"
+                        app:cardElevation="0dp"
+                        app:cardBackgroundColor="@color/surface_container"
+                        app:strokeColor="@color/outline_variant"
+                        app:strokeWidth="1dp">
+
+                        <ImageView
+                            android:id="@+id/btnBiometric"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_fingerprint"
+                            android:contentDescription="Biometric Login"
+                            android:clickable="true"
+                            android:focusable="true"/>
+                    </androidx.cardview.widget.CardView>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Tap to authenticate"
+                        android:textSize="11sp"
+                        android:textColor="@color/text_secondary"
+                        android:layout_marginTop="8dp"/>
+
+                    <View android:layout_width="0dp" android:layout_height="16dp"/>
+                </LinearLayout>
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
 
-        <!-- Register Link -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnGoToRegister"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/no_account"
-            android:textColor="@color/primary"
-            android:layout_marginTop="16dp"/>
+            <!-- ═══ Register Link ═══ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginTop="24dp">
 
-    </LinearLayout>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/new_facility"
+                    android:textSize="14sp"
+                    android:textColor="@color/on_surface_variant"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnGoToRegister"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/register_clinic"
+                    android:textColor="@color/primary"
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:textAllCaps="false"
+                    android:layout_marginStart="-8dp"/>
+            </LinearLayout>
+
+            <!-- ═══ Footer Watermark ═══ -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/clinical_footer"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:textColor="@color/surface_container_highest"
+                android:textAllCaps="true"
+                android:letterSpacing="0.15"
+                android:gravity="center"
+                android:layout_marginTop="32dp"/>
+
+        </LinearLayout>
+    </FrameLayout>
 </ScrollView>
