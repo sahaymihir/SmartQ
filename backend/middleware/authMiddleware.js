@@ -49,12 +49,12 @@ const protect = async (req, res, next) => {
  * Usage: router.post('/admin/next', protect, adminOnly, handler)
  */
 const adminOnly = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && ['admin', 'doctor'].includes(req.user.role)) {
     return next();
   }
   return res.status(403).json({
     success: false,
-    message: 'Access denied. Admins only.'
+    message: 'Access denied. Admins or doctors only.'
   });
 };
 

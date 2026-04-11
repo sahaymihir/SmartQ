@@ -60,6 +60,89 @@ const tokenSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // SmartQ v2 visit-level triage details
+  ageBasedPriorityScore: {
+    type: Number,
+    default: 5
+  },
+  mlPriorityScore: {
+    type: Number,
+    default: null
+  },
+  triagePriorityClass: {
+    type: Number,
+    min: 1,
+    max: 5,
+    default: null
+  },
+  triageConfidence: {
+    type: Number,
+    default: 0
+  },
+  triageLowConfidence: {
+    type: Boolean,
+    default: false
+  },
+  triageRecommendation: {
+    type: String,
+    default: ''
+  },
+  triageAllClassProbs: {
+    type: mongoose.Schema.Types.Mixed,
+    default: () => ({})
+  },
+  triageModelVersion: {
+    type: String,
+    default: 'rules-v1'
+  },
+  triageSource: {
+    type: String,
+    default: 'age_rule_fallback'
+  },
+  overrideReason: {
+    type: String,
+    default: 'standard_age_rule'
+  },
+  manualReviewRequired: {
+    type: Boolean,
+    default: false
+  },
+  visitSnapshot: {
+    type: mongoose.Schema.Types.Mixed,
+    default: () => ({})
+  },
+  joinedAt: {
+    type: Date,
+    default: Date.now
+  },
+  calledAt: {
+    type: Date,
+    default: null
+  },
+  consultationStartedAt: {
+    type: Date,
+    default: null
+  },
+  completedAt: {
+    type: Date,
+    default: null
+  },
+  predictedWaitMinutes: {
+    type: Number,
+    default: 0
+  },
+  actualWaitMinutes: {
+    type: Number,
+    default: null
+  },
+  predictedConsultMinutes: {
+    type: Number,
+    default: 0
+  },
+  actualConsultMinutes: {
+    type: Number,
+    default: null
+  },
   // Snooze tracking
   snoozeCount: {
     type: Number,
@@ -68,6 +151,9 @@ const tokenSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+tokenSchema.index({ doctor: 1, createdAt: 1, status: 1, position: 1 });
+tokenSchema.index({ patient: 1, createdAt: 1, status: 1 });
 
 // ═══════════════════════════════════════════════════
 // QUEUE MODEL

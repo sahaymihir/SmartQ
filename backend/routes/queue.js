@@ -1,34 +1,62 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
 const { protect } = require('../middleware/authMiddleware');
-const { Token, Queue } = require('../models/Queue');
+const { Token } = require('../models/Queue');
+const { buildVisitSnapshot, determineTriageDecision } = require('../services/triageService');
+const {
+  ACTIVE_TOKEN_STATUSES,
+  buildDayQuery,
+  computeETA,
+  getTodayDateString,
+  getTodayQueue,
+  promoteTokenByPriority,
+  recomputeWaitingQueue,
+} = require('../utils/queueHelpers');
 
-// ─── ML Triage Microservice URL ───────────────────────────────
-const TRIAGE_API_URL = process.env.TRIAGE_API_URL || 'http://localhost:8000';
-
-// ─── Helper: get or create today's queue for a doctor ─────
-const getTodayQueue = async (doctorId) => {
-  const today = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
-  let queue = await Queue.findOne({ doctor: doctorId, date: today });
-  if (!queue) {
-    queue = await Queue.create({ doctor: doctorId, date: today });
-  }
-  return queue;
-};
-
-// ─── Helper: compute ETA for a given position ─────────────
-const computeETA = (position, avgConsultationMinutes) => {
-  // position 1 = next up, so ETA ≈ (position - 1) * avg
-  return Math.max(0, (position - 1) * avgConsultationMinutes);
-};
-
-// ─── Helper: determine priority label ─────────────────────
-const getPriorityLabel = (priorityScore) => {
-  if (priorityScore >= 10) return 'high';
-  if (priorityScore >= 7)  return 'medium';
-  return 'normal';
-};
+const buildTokenResponse = (token) => ({
+  tokenId: token._id,
+  tokenNumber: token.tokenNumber,
+  position: token.position,
+  etaMinutes: token.etaMinutes,
+  predictedWaitMinutes: token.predictedWaitMinutes,
+  actualWaitMinutes: token.actualWaitMinutes,
+  predictedConsultMinutes: token.predictedConsultMinutes,
+  actualConsultMinutes: token.actualConsultMinutes,
+  status: token.status,
+  checkedIn: token.checkedIn,
+  priority: token.priority,
+  priorityScore: token.priorityScore,
+  aiConfidence: token.aiConfidence,
+  triagePriorityClass: token.triagePriorityClass,
+  triageConfidence: token.triageConfidence,
+  triageLowConfidence: token.triageLowConfidence,
+  triageRecommendation: token.triageRecommendation,
+  triageSource: token.triageSource,
+  triageModelVersion: token.triageModelVersion,
+  manualReviewRequired: token.manualReviewRequired,
+  overrideReason: token.overrideReason,
+  triage: {
+    priorityClass: token.triagePriorityClass,
+    confidence: token.triageConfidence,
+    lowConfidence: token.triageLowConfidence,
+    recommendation: token.triageRecommendation,
+    source: token.triageSource,
+    modelVersion: token.triageModelVersion,
+    overrideReason: token.overrideReason,
+    manualReviewRequired: token.manualReviewRequired,
+    allClassProbs: token.triageAllClassProbs || {},
+  },
+  timing: {
+    joinedAt: token.joinedAt,
+    calledAt: token.calledAt,
+    consultationStartedAt: token.consultationStartedAt,
+    completedAt: token.completedAt,
+    predictedWaitMinutes: token.predictedWaitMinutes,
+    actualWaitMinutes: token.actualWaitMinutes,
+    predictedConsultMinutes: token.predictedConsultMinutes,
+    actualConsultMinutes: token.actualConsultMinutes,
+  },
+});
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/queue/join?doctorId=xxx
@@ -37,20 +65,26 @@ const getPriorityLabel = (priorityScore) => {
 router.post('/join', protect, async (req, res) => {
   try {
     const { doctorId } = req.query;
-    const { symptoms } = req.body;   // NEW: patient symptom text
+    const { symptoms } = req.body;
     const patient = req.user;
 
     if (!doctorId) {
       return res.status(400).json({ success: false, message: 'doctorId is required' });
     }
 
-    // Check if patient already has an active token for this doctor today
-    const today = new Date().toISOString().split('T')[0];
+    if (patient.role !== 'patient') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only patient accounts can join a queue',
+      });
+    }
+
+    const today = getTodayDateString();
     const existingToken = await Token.findOne({
       patient: patient._id,
       doctor: doctorId,
-      status: { $in: ['waiting', 'called', 'arrived'] },
-      createdAt: { $gte: new Date(today) }
+      status: { $in: ACTIVE_TOKEN_STATUSES },
+      createdAt: buildDayQuery(today),
     });
 
     if (existingToken) {
@@ -65,76 +99,59 @@ router.post('/join', protect, async (req, res) => {
     if (!queue.isActive) {
       return res.status(400).json({ success: false, message: 'This queue is not active today' });
     }
-
-    // ─── AI Triage: call Python microservice ─────────────────
-    let priorityScore = patient.priorityScore; // fallback: age-based
-    let priorityLabel = getPriorityLabel(priorityScore);
-    let aiConfidence = 0;
-
-    if (symptoms && symptoms.trim().length >= 3) {
-      try {
-        const triageResponse = await axios.post(
-          `${TRIAGE_API_URL}/predict-triage`,
-          { symptoms: symptoms.trim(), age: patient.age },
-          { timeout: 5000 }
-        );
-
-        if (triageResponse.data && triageResponse.data.priority_score) {
-          priorityScore = triageResponse.data.priority_score;
-          priorityLabel = triageResponse.data.priority_label;
-          aiConfidence  = triageResponse.data.confidence;
-          console.log(`🧠 AI Triage: "${symptoms}" → ${priorityLabel} (${aiConfidence}% confidence)`);
-        }
-      } catch (aiErr) {
-        // AI service is optional — fall back to age-based priority
-        console.warn('⚠️  AI triage service unavailable, using age-based priority:', aiErr.message);
-      }
+    if (queue.isPaused) {
+      return res.status(400).json({ success: false, message: 'This queue is currently paused' });
     }
 
-    // Count current waiting patients to determine position
+    const triageDecision = await determineTriageDecision(patient, req.body);
+
     const waitingCount = await Token.countDocuments({
       doctor: doctorId,
       status: 'waiting',
-      createdAt: { $gte: new Date(today) }
+      createdAt: buildDayQuery(today),
     });
 
     const position = waitingCount + 1;
     const tokenNumber = queue.totalTokensIssued + 1;
-    const etaMinutes = computeETA(position, queue.avgConsultationMinutes);
+    const predictedWaitMinutes = computeETA(position, queue.avgConsultationMinutes);
+    const joinedAt = new Date();
 
-    // Create token with AI-generated priority
     const token = await Token.create({
       patient: patient._id,
       doctor: doctorId,
       tokenNumber,
       position,
-      etaMinutes,
-      priority: priorityLabel,
-      priorityScore: priorityScore,
+      etaMinutes: predictedWaitMinutes,
+      priority: triageDecision.priorityLabel,
+      priorityScore: triageDecision.priorityScore,
       symptoms: symptoms || '',
-      aiConfidence: aiConfidence
+      aiConfidence: triageDecision.aiConfidence,
+      ageBasedPriorityScore: triageDecision.ageBasedPriorityScore,
+      mlPriorityScore: triageDecision.mlPriorityScore,
+      triagePriorityClass: triageDecision.triagePriorityClass,
+      triageConfidence: triageDecision.triageConfidence,
+      triageLowConfidence: triageDecision.triageLowConfidence,
+      triageRecommendation: triageDecision.triageRecommendation,
+      triageAllClassProbs: triageDecision.triageAllClassProbs,
+      triageModelVersion: triageDecision.triageModelVersion,
+      triageSource: triageDecision.triageSource,
+      overrideReason: triageDecision.overrideReason,
+      manualReviewRequired: triageDecision.manualReviewRequired,
+      visitSnapshot: buildVisitSnapshot(patient, req.body),
+      joinedAt,
+      predictedWaitMinutes,
+      predictedConsultMinutes: queue.avgConsultationMinutes,
     });
 
-    // Update queue stats
     queue.totalTokensIssued = tokenNumber;
     await queue.save();
 
-    // ─── Priority reorder: if high priority, bump up ────────
-    if (priorityScore >= 10) {
-      await reorderQueueForPriority(doctorId, token._id, today);
-    }
-
-    // Fetch updated position after reorder
+    await promoteTokenByPriority(doctorId, token._id, queue.avgConsultationMinutes, today);
     const updatedToken = await Token.findById(token._id);
 
     res.status(201).json({
       success: true,
-      tokenId: updatedToken._id,
-      tokenNumber: updatedToken.tokenNumber,
-      position: updatedToken.position,
-      etaMinutes: updatedToken.etaMinutes,
-      priority: updatedToken.priority,
-      aiConfidence: updatedToken.aiConfidence,
+      ...buildTokenResponse(updatedToken),
       message: `Token #${tokenNumber} issued. You are #${updatedToken.position} in queue.`
     });
 
@@ -150,12 +167,12 @@ router.post('/join', protect, async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.get('/status', protect, async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDateString();
 
     const token = await Token.findOne({
       patient: req.user._id,
-      status: { $in: ['waiting', 'called', 'arrived'] },
-      createdAt: { $gte: new Date(today) }
+      status: { $in: ACTIVE_TOKEN_STATUSES },
+      createdAt: buildDayQuery(today),
     }).populate('doctor', 'name');
 
     if (!token) {
@@ -165,20 +182,18 @@ router.get('/status', protect, async (req, res) => {
       });
     }
 
-    // Recalculate live ETA
     const queue = await getTodayQueue(token.doctor._id);
-    const liveETA = computeETA(token.position, queue.avgConsultationMinutes);
+    const liveETA = token.status === 'waiting'
+      ? computeETA(token.position, queue.avgConsultationMinutes)
+      : 0;
 
     res.json({
       success: true,
-      tokenId: token._id,
-      tokenNumber: token.tokenNumber,
-      position: token.position,
-      etaMinutes: liveETA,
-      status: token.status,
-      priority: token.priority,
-      checkedIn: token.checkedIn,
-      doctorName: token.doctor.name
+      ...buildTokenResponse({
+        ...token.toObject(),
+        etaMinutes: liveETA,
+      }),
+      doctorName: token.doctor.name,
     });
 
   } catch (err) {
@@ -193,13 +208,13 @@ router.get('/status', protect, async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.post('/snooze', protect, async (req, res) => {
   try {
-    const pushBack = parseInt(req.query.positions) || 2;
-    const today = new Date().toISOString().split('T')[0];
+    const pushBack = parseInt(req.query.positions, 10) || 2;
+    const today = getTodayDateString();
 
     const token = await Token.findOne({
       patient: req.user._id,
       status: 'waiting',
-      createdAt: { $gte: new Date(today) }
+      createdAt: buildDayQuery(today),
     });
 
     if (!token) {
@@ -213,24 +228,39 @@ router.post('/snooze', protect, async (req, res) => {
       });
     }
 
-    const oldPosition = token.position;
-    const newPosition = oldPosition + pushBack;
+    const totalWaiting = await Token.countDocuments({
+      doctor: token.doctor,
+      status: 'waiting',
+      createdAt: buildDayQuery(today),
+    });
 
-    // Shift up everyone between oldPosition+1 and newPosition
+    const oldPosition = token.position;
+    const newPosition = Math.min(oldPosition + pushBack, totalWaiting);
+
+    if (newPosition === oldPosition) {
+      return res.json({
+        success: true,
+        message: `Queue snoozed. Position remains #${oldPosition}`,
+        newPosition: oldPosition,
+      });
+    }
+
     await Token.updateMany(
       {
         doctor: token.doctor,
         status: 'waiting',
         position: { $gt: oldPosition, $lte: newPosition },
-        createdAt: { $gte: new Date(today) }
+        createdAt: buildDayQuery(today),
       },
       { $inc: { position: -1 } }
     );
 
-    // Update snoozed patient's position
     token.position = newPosition;
     token.snoozeCount += 1;
     await token.save();
+
+    const queue = await getTodayQueue(token.doctor, today);
+    await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, today);
 
     res.json({
       success: true,
@@ -250,12 +280,12 @@ router.post('/snooze', protect, async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.post('/checkin', protect, async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDateString();
 
     const token = await Token.findOne({
       patient: req.user._id,
-      status: 'waiting',
-      createdAt: { $gte: new Date(today) }
+      status: { $in: ACTIVE_TOKEN_STATUSES },
+      createdAt: buildDayQuery(today),
     });
 
     if (!token) {
@@ -280,39 +310,5 @@ router.post('/checkin', protect, async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
-
-// ─── Priority Reorder Helper ───────────────────────────────
-// Inserts high-priority patient before normal-priority patients
-async function reorderQueueForPriority(doctorId, highPriorityTokenId, today) {
-  const allTokens = await Token.find({
-    doctor: doctorId,
-    status: 'waiting',
-    createdAt: { $gte: new Date(today) }
-  }).sort({ position: 1 });
-
-  // Find first normal-priority patient
-  const firstNormalIdx = allTokens.findIndex(
-    t => t.priority === 'normal' && t._id.toString() !== highPriorityTokenId.toString()
-  );
-
-  if (firstNormalIdx === -1) return; // no normal patients to jump ahead of
-
-  const targetPosition = allTokens[firstNormalIdx].position;
-
-  // Shift everyone from targetPosition down by 1
-  await Token.updateMany(
-    {
-      doctor: doctorId,
-      status: 'waiting',
-      position: { $gte: targetPosition },
-      _id: { $ne: highPriorityTokenId },
-      createdAt: { $gte: new Date(today) }
-    },
-    { $inc: { position: 1 } }
-  );
-
-  // Assign the high priority patient the target position
-  await Token.findByIdAndUpdate(highPriorityTokenId, { position: targetPosition });
-}
 
 module.exports = router;

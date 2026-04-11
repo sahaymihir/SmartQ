@@ -8,6 +8,18 @@ The system is composed of:
 1. **Frontend:** A native Android Application (written in Java/XML).
 2. **Backend:** A scalable Node.js + Express REST API backed by MongoDB.
 
+## Current Status
+
+The sections below describe the original **SmartQ v1** implementation. The repository now also contains a **SmartQ v2 backend reframe**:
+
+- Node/Express + MongoDB remain the source of truth for queues, tokens, timings, and business rules
+- FastAPI is used as a separate **ML triage microservice**
+- Queue priority is now intended to be **visit-level**, not just age/user-level
+- ETA remains **moving-average in production**, while ETA ML is explicitly a future research phase
+- Backend analytics now track triage confidence, predicted vs actual wait times, low-confidence cases, no-shows, and snoozes
+
+Report notes for the v1 -> v2 rewrite are in [docs/smartq_v2_backend_report_notes.md](/home/mihirsahay/project_MADL/docs/smartq_v2_backend_report_notes.md:1).
+
 ---
 
 ## 🛠️ Technology Stack
