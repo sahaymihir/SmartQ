@@ -70,7 +70,7 @@
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipAll"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/SmartQ.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="All"
@@ -78,21 +78,21 @@
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipDoctors"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/SmartQ.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Doctors"/>
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipNurses"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/SmartQ.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Nurses"/>
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipPatients"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/SmartQ.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Patients"/>
@@ -100,7 +100,7 @@
             <!-- Hidden for non-superusers — visibility set in code -->
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipAdmins"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/SmartQ.Chip.Filter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Admins"/>

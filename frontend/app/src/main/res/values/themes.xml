@@ -136,6 +136,17 @@
         <item name="android:textAllCaps">false</item>
     </style>
 
+    <!-- Stable choice chip style for role filters -->
+    <style name="SmartQ.Chip.Filter" parent="Widget.MaterialComponents.Chip.Choice">
+        <item name="chipBackgroundColor">@color/chip_filter_background</item>
+        <item name="chipStrokeColor">@color/chip_filter_stroke</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="android:textColor">@color/chip_filter_text</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="chipMinHeight">36dp</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.MaterialComponents.SmallComponent</item>
+    </style>
+
     <!-- ── Text Input ──────────────────────────────────── -->
 
     <!-- Clinical Precision Input — Bottom line style -->

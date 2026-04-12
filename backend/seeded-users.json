@@ -132,6 +132,78 @@
       "specialty": "Cardiology"
     },
     {
+      "name": "Dr. Neeraj Malhotra",
+      "email": "dr.neeraj@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000011",
+      "age": 44,
+      "role": "doctor",
+      "specialty": "Orthopaedics"
+    },
+    {
+      "name": "Dr. Nandita Bose",
+      "email": "dr.nandita@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000012",
+      "age": 37,
+      "role": "doctor",
+      "specialty": "Neurology"
+    },
+    {
+      "name": "Dr. Rhea D'Souza",
+      "email": "dr.rhea@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000013",
+      "age": 41,
+      "role": "doctor",
+      "specialty": "Otolaryngology (ENT)"
+    },
+    {
+      "name": "Dr. Neha Bansal",
+      "email": "dr.neha@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000014",
+      "age": 43,
+      "role": "doctor",
+      "specialty": "Endocrinology"
+    },
+    {
+      "name": "Dr. Vivek Kulkarni",
+      "email": "dr.vivek.k@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000015",
+      "age": 46,
+      "role": "doctor",
+      "specialty": "Nephrology / Urology"
+    },
+    {
+      "name": "Dr. Tara Fernandes",
+      "email": "dr.tara@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000016",
+      "age": 39,
+      "role": "doctor",
+      "specialty": "Emergency Medicine"
+    },
+    {
+      "name": "Dr. Charu Singh",
+      "email": "dr.charu@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000017",
+      "age": 40,
+      "role": "doctor",
+      "specialty": "Hematology"
+    },
+    {
+      "name": "Dr. Sonal Abraham",
+      "email": "dr.sonal@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000018",
+      "age": 42,
+      "role": "doctor",
+      "specialty": "Infectious Disease"
+    },
+    {
       "name": "Nurse Radha Pillai",
       "email": "radha.nurse@smartq.in",
       "password": "Nurse@123",
