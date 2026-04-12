@@ -22,6 +22,15 @@ fi
 
 cd "$REPO_ROOT"
 
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "[ERROR] Uncommitted local changes detected."
+  echo "Please commit or stash your local changes first, then re-run this script."
+  echo ""
+  echo "Changed files:"
+  git status --short
+  exit 1
+fi
+
 echo "[1/5] Ensuring repository is on branch: $DEPLOY_BRANCH"
 git fetch origin "$DEPLOY_BRANCH"
 CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
