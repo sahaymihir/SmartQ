@@ -3,7 +3,7 @@ const router = express.Router();
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 const { Token, Queue } = require('../models/Queue');
 const User = require('../models/User');
-const { hasFinalizedPrescription } = require('../services/prescriptionService');
+const { buildPrescriptionView, hasFinalizedPrescription, hasLegacyPrescription } = require('../services/prescriptionService');
 const predictionHistory = require('../store/predictionStore');
 const { getMlOpsLogs, getMlOpsSummary } = require('../store/mlOpsLogStore');
 const { mapPriorityClassToScore } = require('../services/triageService');
@@ -274,6 +274,69 @@ router.post('/pause', async (req, res) => {
 
   } catch (err) {
     console.error('Pause error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/admin/patient-history?patientId=xxx&limit=20
+// Doctor/admin view of a patient's completed consultations.
+// ─────────────────────────────────────────────────────────────
+router.get('/patient-history', async (req, res) => {
+  try {
+    const { patientId } = req.query;
+    if (!patientId) {
+      return res.status(400).json({ success: false, message: 'patientId is required' });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+
+    const query = {
+      patient: patientId,
+      status: 'completed',
+    };
+
+    const tokens = await Token.find(query)
+      .populate('doctor', 'name specialty')
+      .populate('prescriptionId')
+      .sort({ completedAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const history = tokens.map((token) => {
+      const prescriptionView = buildPrescriptionView(token, token.prescriptionId);
+      return {
+        ...prescriptionView,
+        tokenId: token._id,
+        tokenNumber: token.tokenNumber,
+        date: token.completedAt || token.createdAt,
+        doctorName: token.doctor?.name || 'Unknown doctor',
+        doctorId: token.doctor?._id || null,
+        doctorSpecialty: token.doctor?.specialty || '',
+        symptoms: token.symptoms || '',
+        diagnosis: prescriptionView.conclusion || token.prescription?.diagnosis || '',
+        medicines: prescriptionView.medications || token.prescription?.medicines || '',
+        notes: prescriptionView.adviceNotes || token.prescription?.notes || '',
+        symptomsSummary: prescriptionView.symptomsSummary || token.symptoms || '',
+        conclusionPreview: prescriptionView.conclusion || token.prescription?.diagnosis || '',
+        prescriptionSource: token.prescription?.source || 'doctor_typed',
+        ocrStatus: token.prescription?.ocrStatus || 'none',
+        triageRecommendation: token.triageRecommendation || '',
+        priority: token.priority,
+        visitType: token.visitType || 'new',
+        hasPrescription: Boolean(token.prescriptionId || hasLegacyPrescription(token)),
+        actualWaitMinutes: token.actualWaitMinutes,
+        actualConsultMinutes: token.actualConsultMinutes,
+      };
+    });
+
+    res.json({
+      success: true,
+      total: history.length,
+      history,
+    });
+  } catch (err) {
+    console.error('Admin patient history error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

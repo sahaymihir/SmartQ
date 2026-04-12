@@ -43,7 +43,9 @@
             style="@style/SmartQ.TextInput.Outlined"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Temperature (C)">
+            android:hint="Temperature (C)"
+            app:helperText="Typical adult range: 35.0 - 42.0"
+            app:placeholderText="e.g. 37.0">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etTemperature"
@@ -57,7 +59,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:hint="SpO2">
+            android:hint="SpO2"
+            app:helperText="Oxygen saturation percent"
+            app:placeholderText="e.g. 98">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etSpo2"
@@ -71,7 +75,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:hint="Heart rate">
+            android:hint="Heart rate"
+            app:helperText="Beats per minute"
+            app:placeholderText="e.g. 80">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etHeartRate"
@@ -85,7 +91,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:hint="Systolic BP">
+            android:hint="Systolic BP"
+            app:helperText="Upper blood pressure value (mmHg)"
+            app:placeholderText="e.g. 120">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etSystolicBp"
@@ -99,7 +107,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:hint="Diastolic BP">
+            android:hint="Diastolic BP"
+            app:helperText="Lower blood pressure value (mmHg)"
+            app:placeholderText="e.g. 80">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etDiastolicBp"
@@ -113,7 +123,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:hint="GCS total">
+            android:hint="GCS total"
+            app:helperText="Glasgow Coma Scale total: 3 - 15"
+            app:placeholderText="e.g. 15">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etGcsTotal"
@@ -127,7 +139,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:hint="NEWS2 score">
+            android:hint="NEWS2 score"
+            app:helperText="National Early Warning Score 2: 0 - 20"
+            app:placeholderText="e.g. 0">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etNews2Score"
@@ -141,7 +155,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:hint="Pain score">
+            android:hint="Pain score"
+            app:helperText="Pain intensity: 0 - 10"
+            app:placeholderText="e.g. 0">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etPainScore"
@@ -155,7 +171,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:hint="Triage note">
+            android:hint="Triage note"
+            app:helperText="Short nursing observation (optional)"
+            app:placeholderText="e.g. Alert, speaking full sentences">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etTriageNote"

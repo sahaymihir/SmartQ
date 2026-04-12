@@ -143,8 +143,9 @@
                 <!-- Availability Switch Card -->
                 <androidx.cardview.widget.CardView
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
+                    android:minHeight="112dp"
                     app:cardCornerRadius="14dp"
                     app:cardElevation="0dp"
                     app:cardBackgroundColor="@color/surface_container_low"
@@ -184,8 +185,9 @@
                 <!-- Wait Time Card -->
                 <androidx.cardview.widget.CardView
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
+                    android:minHeight="112dp"
                     app:cardCornerRadius="14dp"
                     app:cardElevation="0dp"
                     app:cardBackgroundColor="@color/surface_container_low"
@@ -311,10 +313,14 @@
                 android:id="@+id/btnCallNext"
                 style="@style/SmartQ.Button"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
                 android:text="Call Next Patient"
                 android:textSize="15sp"
                 android:textStyle="bold"
+                android:textAllCaps="false"
+                android:gravity="center"
+                android:maxLines="2"
                 android:layout_marginBottom="20dp"/>
 
             <!-- ═══ LIVE QUEUE ═══ -->

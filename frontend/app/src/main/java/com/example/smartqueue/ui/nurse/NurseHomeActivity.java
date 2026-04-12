@@ -232,6 +232,15 @@ public class NurseHomeActivity extends AppCompatActivity {
         MaterialButton btnDialogSubmit = dialogView.findViewById(R.id.btnDialogSubmit);
         MaterialButton btnDialogCancel = dialogView.findViewById(R.id.btnDialogCancel);
 
+        setDefaultIfEmpty(etTemperature, "37.0");
+        setDefaultIfEmpty(etSpo2, "98");
+        setDefaultIfEmpty(etHeartRate, "80");
+        setDefaultIfEmpty(etSystolicBp, "120");
+        setDefaultIfEmpty(etDiastolicBp, "80");
+        setDefaultIfEmpty(etGcsTotal, "15");
+        setDefaultIfEmpty(etNews2Score, "0");
+        setDefaultIfEmpty(etPainScore, "0");
+
         tvDialogTitle.setText("Submit nurse vitals");
         tvDialogSubtitle.setText(textOrDefault(entry.getPatientName(), "Patient")
                 + " · Token #" + entry.getTokenNumber());
@@ -449,6 +458,12 @@ public class NurseHomeActivity extends AppCompatActivity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private void setDefaultIfEmpty(TextInputEditText input, String value) {
+        if (input.getText() == null || TextUtils.isEmpty(input.getText().toString().trim())) {
+            input.setText(value);
+        }
     }
 
     private Float parseOptionalFloat(TextInputEditText input, String label) {

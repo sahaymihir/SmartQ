@@ -28,6 +28,7 @@ public class PrescriptionActivity extends AppCompatActivity {
 
     public static final String EXTRA_TOKEN_ID = "extra_token_id";
     public static final String EXTRA_READ_ONLY = "extra_read_only";
+    public static final String EXTRA_FOCUS_MEDICATIONS = "extra_focus_medications";
 
     private TextView tvPrescriptionTitle;
     private TextView tvPrescriptionSubtitle;
@@ -49,6 +50,7 @@ public class PrescriptionActivity extends AppCompatActivity {
     private ApiService apiService;
     private String tokenId;
     private boolean readOnly;
+    private boolean focusMedications;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +60,7 @@ public class PrescriptionActivity extends AppCompatActivity {
         sessionManager = new SessionManager(this);
         tokenId = getIntent().getStringExtra(EXTRA_TOKEN_ID);
         readOnly = getIntent().getBooleanExtra(EXTRA_READ_ONLY, false);
+        focusMedications = getIntent().getBooleanExtra(EXTRA_FOCUS_MEDICATIONS, false);
 
         if (TextUtils.isEmpty(tokenId)) {
             Toast.makeText(this, getString(R.string.prescription_missing_token), Toast.LENGTH_SHORT).show();
@@ -151,6 +154,13 @@ public class PrescriptionActivity extends AppCompatActivity {
 
         boolean editable = !readOnly && body.canEdit();
         setEditorEnabled(editable);
+
+        if (editable && focusMedications) {
+            etMedications.requestFocus();
+            if (etMedications.getText() != null) {
+                etMedications.setSelection(etMedications.getText().length());
+            }
+        }
     }
 
     private void setEditorEnabled(boolean editable) {

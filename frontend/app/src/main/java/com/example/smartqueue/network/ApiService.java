@@ -94,6 +94,10 @@ public interface ApiService {
     @POST("admin/pause")
     Call<MessageResponse> togglePause(@Query("doctorId") String doctorId, @Query("paused") boolean paused);
 
+    @GET("admin/patient-history")
+    Call<ConsultationHistoryResponse> getPatientHistory(@Query("patientId") String patientId,
+                                                        @Query("limit") int limit);
+
     @POST("queue/noshow")
     Call<MessageResponse> markNoShow(@Query("tokenId") String tokenId);
 

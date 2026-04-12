@@ -235,6 +235,9 @@ public class PatientHomeActivity extends AppCompatActivity {
         // Dismiss test recommendations
         btnDismissTestRecs.setOnClickListener(v -> cardTestRecs.setVisibility(View.GONE));
 
+        tvPatientName.setOnClickListener(v -> showVisitHistoryDialog());
+        tvGreeting.setOnClickListener(v -> showVisitHistoryDialog());
+
         // Find doctor using prediction
         btnFindDoctor.setOnClickListener(v -> {
             String symptoms = etSymptoms.getText() != null
@@ -950,6 +953,30 @@ public class PatientHomeActivity extends AppCompatActivity {
                 .setTitle(getString(R.string.follow_up_choose_visit))
                 .setItems(options, (dialog, which) -> applyFollowUpSelection(consultationHistory.get(which)))
                 .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showVisitHistoryDialog() {
+        if (consultationHistory.isEmpty()) {
+            Toast.makeText(this, getString(R.string.history_empty), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        CharSequence[] options = new CharSequence[consultationHistory.size()];
+        for (int i = 0; i < consultationHistory.size(); i++) {
+            ConsultationHistoryResponse.Consultation consultation = consultationHistory.get(i);
+            String doctorName = !isBlank(consultation.getDoctorName()) ? consultation.getDoctorName() : "Previous visit";
+            String conclusion = !isBlank(consultation.getConclusionPreview())
+                    ? consultation.getConclusionPreview()
+                    : (!isBlank(consultation.getDiagnosis()) ? consultation.getDiagnosis() : "Visit details");
+            options[i] = formatHistoryDate(consultation.getDate()) + " • " + doctorName + "\n" + conclusion;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.history_title))
+                .setItems(options, (dialog, which) ->
+                        openPrescriptionScreen(consultationHistory.get(which).getTokenId(), true))
+                .setNegativeButton("Close", null)
                 .show();
     }
 
