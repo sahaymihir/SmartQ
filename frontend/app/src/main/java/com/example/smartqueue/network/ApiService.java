@@ -66,7 +66,9 @@ public interface ApiService {
     @GET("admin/model-eval-history")
     Call<ModelEvalHistoryResponse> getModelEvalHistory();
 
+    @POST("admin/model-eval-run")
+    Call<SymptomPredictResponse> runAdminModelEval(@Body SymptomRequest body);
+
     @POST("admin/seed")
     Call<MessageResponse> seedDummyData();
 }
-

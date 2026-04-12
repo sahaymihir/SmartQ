@@ -4,6 +4,8 @@ const { protect, adminOnly } = require('../middleware/authMiddleware');
 const { Token, Queue } = require('../models/Queue');
 const User = require('../models/User');
 const predictionHistory = require('../store/predictionStore');
+const { determineTriageDecision } = require('../services/triageService');
+const { predictSpecialty } = require('../services/specialtyService');
 
 const today = () => new Date().toISOString().split('T')[0];
 
@@ -184,6 +186,172 @@ router.post('/pause', async (req, res) => {
 
   } catch (err) {
     console.error('Pause error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+const SYMPTOM_COMPLAINT_HINTS = [
+  { complaint: 'cardiac', patterns: [/chest pain/i, /chest pressure/i, /palpitation/i, /heart/i] },
+  { complaint: 'respiratory', patterns: [/shortness of breath/i, /breath/i, /cough/i, /wheez/i, /phlegm/i] },
+  { complaint: 'neurological', patterns: [/headache/i, /dizz/i, /seizure/i, /stroke/i, /numb/i, /tingling/i] },
+  { complaint: 'gastrointestinal', patterns: [/abdominal/i, /stomach/i, /vomit/i, /nausea/i, /diarrhea/i, /constipat/i] },
+  { complaint: 'trauma', patterns: [/fracture/i, /injury/i, /fall/i, /sprain/i, /bleeding/i, /trauma/i] },
+  { complaint: 'renal', patterns: [/urination/i, /urine/i, /kidney/i, /flank/i] },
+  { complaint: 'endocrine', patterns: [/diabetes/i, /sugar/i, /thyroid/i, /thirst/i] },
+  { complaint: 'dermatological', patterns: [/rash/i, /itch/i, /eczema/i, /skin/i, /hives/i] },
+];
+
+const SPECIALTY_TO_COMPLAINT = {
+  Cardiology: 'cardiac',
+  Pulmonology: 'respiratory',
+  'Infectious Disease': 'respiratory',
+  Neurology: 'neurological',
+  Gastroenterology: 'gastrointestinal',
+  Orthopaedics: 'trauma',
+  Dermatology: 'dermatological',
+  'Nephrology / Urology': 'renal',
+  Endocrinology: 'endocrine',
+  Paediatrics: 'respiratory',
+};
+
+const inferChiefComplaintSystem = (symptoms = '', primarySpecialist = '') => {
+  const text = String(symptoms || '').trim();
+  for (const hint of SYMPTOM_COMPLAINT_HINTS) {
+    if (hint.patterns.some((pattern) => pattern.test(text))) {
+      return hint.complaint;
+    }
+  }
+  return SPECIALTY_TO_COMPLAINT[primarySpecialist] || 'other';
+};
+
+const findRecommendedDoctor = async (routedSpecialty) => {
+  let recommendedDoc = await User.findOne({
+    role: 'doctor',
+    specialty: routedSpecialty,
+  }).select('name specialty _id');
+
+  let doctorRoutingNote = '';
+  if (!recommendedDoc && routedSpecialty !== 'General OPD') {
+    recommendedDoc = await User.findOne({
+      role: 'doctor',
+      specialty: 'General OPD',
+    }).select('name specialty _id');
+    doctorRoutingNote = ` No exact ${routedSpecialty} doctor was available, so SmartQ fell back to General OPD.`;
+  }
+
+  if (!recommendedDoc) {
+    recommendedDoc = await User.findOne({ role: 'doctor' }).select('name specialty _id');
+    if (recommendedDoc) {
+      doctorRoutingNote = ` No staffed ${routedSpecialty} route was available, so SmartQ used the next available doctor.`;
+    }
+  }
+
+  const recommendedDoctor = recommendedDoc
+    ? {
+        id: recommendedDoc._id,
+        name: recommendedDoc.name,
+        specialty: recommendedDoc.specialty || routedSpecialty,
+      }
+    : {
+        id: null,
+        name: 'No doctor available',
+        specialty: routedSpecialty,
+      };
+
+  return { recommendedDoctor, doctorRoutingNote };
+};
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/admin/model-eval-run
+// Admin-only simulation of specialty routing + priority scoring
+// ─────────────────────────────────────────────────────────────
+router.post('/model-eval-run', async (req, res) => {
+  try {
+    const symptoms = String(req.body.symptoms || '').trim();
+    const age = Number(req.body.age);
+
+    if (!symptoms) {
+      return res.status(400).json({ success: false, message: 'Symptoms text is required' });
+    }
+
+    if (!Number.isFinite(age) || age < 0 || age > 130) {
+      return res.status(400).json({ success: false, message: 'Valid age is required' });
+    }
+
+    const specialtyPrediction = await predictSpecialty({
+      symptoms,
+      age,
+      temperature_c: req.body.temperature_c,
+      pain_score: req.body.pain_score,
+      chief_complaint_system: req.body.chief_complaint_system,
+      language: req.body.language || req.body.intakeLanguage,
+    });
+
+    const derivedChiefComplaintSystem =
+      req.body.chief_complaint_system ||
+      inferChiefComplaintSystem(symptoms, specialtyPrediction.primarySpecialist);
+
+    const triageDecision = await determineTriageDecision(
+      { age },
+      {
+        symptomsText: symptoms,
+        symptoms,
+        age,
+        chief_complaint_system: derivedChiefComplaintSystem,
+        temperature_c: req.body.temperature_c,
+        pain_score: req.body.pain_score,
+      }
+    );
+
+    const routedSpecialty = specialtyPrediction.routedSpecialty || 'General OPD';
+    const { recommendedDoctor, doctorRoutingNote } = await findRecommendedDoctor(routedSpecialty);
+
+    const reasoning = `${specialtyPrediction.reasoning}${doctorRoutingNote}`.trim();
+
+    const evaluation = {
+      symptoms,
+      age,
+      derivedChiefComplaintSystem,
+      normalizedSymptoms: specialtyPrediction.normalizedSymptoms,
+      extractedFactors: specialtyPrediction.extractedSignals,
+      extractedSignals: specialtyPrediction.extractedSignals,
+      specialtyScores: specialtyPrediction.specialtyScores,
+      alternativeSpecialists: specialtyPrediction.alternativeSpecialists,
+      primarySpecialist: specialtyPrediction.primarySpecialist,
+      routedSpecialty,
+      recommendedDoctor,
+      confidence: specialtyPrediction.confidence,
+      lowConfidence: specialtyPrediction.lowConfidence,
+      reasoning,
+      modelSource: specialtyPrediction.modelSource,
+      priorityLabel: triageDecision.priorityLabel,
+      priorityScore: triageDecision.priorityScore,
+      priorityFinalScore: triageDecision.priorityFinalScore,
+      triagePriorityClass: triageDecision.triagePriorityClass,
+      triageConfidence: triageDecision.triageConfidence,
+      triageLowConfidence: triageDecision.triageLowConfidence,
+      triageRecommendation: triageDecision.triageRecommendation,
+      triageSource: triageDecision.triageSource,
+      priorityComponents: triageDecision.priorityComponents,
+      priorityDecisionTrace: triageDecision.priorityDecisionTrace,
+      triageAllClassProbs: triageDecision.triageAllClassProbs,
+      triageModelVersion: triageDecision.triageModelVersion,
+      timestamp: new Date().toISOString(),
+      patientName: 'Admin simulation',
+      patientId: req.user._id,
+    };
+
+    predictionHistory.unshift(evaluation);
+    if (predictionHistory.length > 100) {
+      predictionHistory.pop();
+    }
+
+    res.json({
+      success: true,
+      ...evaluation,
+    });
+  } catch (err) {
+    console.error('Admin model eval error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

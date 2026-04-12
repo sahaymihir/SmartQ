@@ -4,6 +4,8 @@ import java.util.List;
 
 public class SymptomPredictResponse {
     private boolean success;
+    private Integer age;
+    private String derivedChiefComplaintSystem;
     private List<String> extractedFactors;
     private List<String> extractedSignals;
     private List<SpecialtyScore> specialtyScores;
@@ -16,8 +18,20 @@ public class SymptomPredictResponse {
     private String normalizedSymptoms;
     private boolean lowConfidence;
     private String modelSource;
+    private String priorityLabel;
+    private Double priorityScore;
+    private Double priorityFinalScore;
+    private Integer triagePriorityClass;
+    private double triageConfidence;
+    private boolean triageLowConfidence;
+    private String triageRecommendation;
+    private String triageSource;
+    private String priorityDecisionTrace;
+    private PriorityComponents priorityComponents;
 
     public boolean isSuccess() { return success; }
+    public Integer getAge() { return age; }
+    public String getDerivedChiefComplaintSystem() { return derivedChiefComplaintSystem; }
 
     public List<String> getExtractedFactors() {
         return extractedFactors != null && !extractedFactors.isEmpty()
@@ -39,6 +53,18 @@ public class SymptomPredictResponse {
     public String getNormalizedSymptoms() { return normalizedSymptoms; }
     public boolean isLowConfidence() { return lowConfidence; }
     public String getModelSource() { return modelSource; }
+    public String getPriorityLabel() { return priorityLabel; }
+    public Double getPriorityScore() { return priorityScore; }
+    public Double getPriorityFinalScore() {
+        return priorityFinalScore != null ? priorityFinalScore : priorityScore;
+    }
+    public Integer getTriagePriorityClass() { return triagePriorityClass; }
+    public double getTriageConfidence() { return triageConfidence; }
+    public boolean isTriageLowConfidence() { return triageLowConfidence; }
+    public String getTriageRecommendation() { return triageRecommendation; }
+    public String getTriageSource() { return triageSource; }
+    public String getPriorityDecisionTrace() { return priorityDecisionTrace; }
+    public PriorityComponents getPriorityComponents() { return priorityComponents; }
 
     public static class SpecialtyScore {
         private String specialty;
@@ -77,5 +103,19 @@ public class SymptomPredictResponse {
         public String getId() { return id; }
         public String getName() { return name; }
         public String getSpecialty() { return specialty; }
+    }
+
+    public static class PriorityComponents {
+        private double age;
+        private double triage;
+        private double symptomNlp;
+        private double ocrFlags;
+        private double clinicianOverride;
+
+        public double getAge() { return age; }
+        public double getTriage() { return triage; }
+        public double getSymptomNlp() { return symptomNlp; }
+        public double getOcrFlags() { return ocrFlags; }
+        public double getClinicianOverride() { return clinicianOverride; }
     }
 }

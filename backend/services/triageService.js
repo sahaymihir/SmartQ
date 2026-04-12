@@ -68,11 +68,6 @@ const buildTriagePayload = (patient, requestBody = {}) => {
     age: patient.age,
   };
 
-  const canonicalSymptoms = getCanonicalSymptoms(requestBody);
-  if (canonicalSymptoms) {
-    payload.symptoms = canonicalSymptoms;
-  }
-
   for (const field of TRIAGE_PAYLOAD_FIELDS) {
     if (field === 'age') {
       continue;
