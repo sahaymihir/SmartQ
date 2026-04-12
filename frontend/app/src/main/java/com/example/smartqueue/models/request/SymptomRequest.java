@@ -28,6 +28,8 @@ public class SymptomRequest {
     private Integer gcsTotal;
     @SerializedName("news2_score")
     private Double news2Score;
+    @SerializedName("scenario_key")
+    private String scenarioKey;
 
     public SymptomRequest(String symptoms) {
         this(symptoms, null);
@@ -113,6 +115,11 @@ public class SymptomRequest {
 
     public SymptomRequest setNews2Score(Double news2Score) {
         this.news2Score = news2Score;
+        return this;
+    }
+
+    public SymptomRequest setScenarioKey(String scenarioKey) {
+        this.scenarioKey = scenarioKey;
         return this;
     }
 }

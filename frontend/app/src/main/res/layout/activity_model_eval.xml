@@ -472,6 +472,17 @@
                                 android:text="Itchy Rash"
                                 android:insetTop="0dp"
                                 android:insetBottom="0dp"
+                                android:minHeight="40dp"
+                                android:layout_marginEnd="8dp"/>
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnExampleTrauma"
+                                style="@style/SmartQ.Button.Outlined"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Child Trauma"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
                                 android:minHeight="40dp"/>
                         </LinearLayout>
                     </HorizontalScrollView>
