@@ -46,7 +46,7 @@ const ADMIN_MODEL_EVAL_SCENARIOS = {
     description:
       'Child age 5 with broken right/left leg, hand, and skull under trauma complaint for clinical flow walkthrough.',
     payload: {
-      symptoms: 'broken right and left leg and hand and skull',
+      symptoms: 'broken right leg, left leg, hand, and skull',
       age: 5,
       chief_complaint_system: 'trauma',
       sex: 'M',
@@ -304,6 +304,8 @@ const parseOptionalNumber = (value, fieldLabel, { min, max, integer = false } = 
 const buildAdminEvalPayload = (body = {}) => {
   const scenarioKey = parseOptionalText(body.scenario_key || body.scenarioKey);
   const selectedScenario = resolveAdminEvalScenario(scenarioKey);
+  // Scenario defaults are merge-first to provide a one-click walkthrough baseline,
+  // while still allowing explicit request fields to override for ad-hoc what-if simulation.
   const sourceBody = selectedScenario
     ? { ...selectedScenario.payload, ...body }
     : body;

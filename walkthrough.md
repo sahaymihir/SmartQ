@@ -9,7 +9,7 @@
 **What the patient (or guardian) provides at intake:**
 
 ```
-Symptoms typed:  "broken right and left leg and hand and skull"
+Symptoms typed:  "broken right leg, left leg, hand, and skull"
 Age:             5
 Chief complaint: Injury / bones  →  trauma
 ```
@@ -18,7 +18,7 @@ Chief complaint: Injury / bones  →  trauma
 
 | Field | Value |
 |---|---|
-| What the system understood | broken right and left leg and hand and skull |
+| What the system understood | broken right leg, left leg, hand, and skull |
 | Estimated wait time | **Seen immediately at Orthopaedics** (wait = 0 m) |
 
 ---

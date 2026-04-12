@@ -205,7 +205,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         btnExampleTrauma.setOnClickListener(v ->
                 applyExample(new EvalScenario(
                         "trauma_child_polyfracture",
-                        "broken right and left leg and hand and skull",
+                        "broken right leg, left leg, hand, and skull",
                         5,
                         "Male",
                         "Alert",
