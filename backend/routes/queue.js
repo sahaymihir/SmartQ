@@ -27,7 +27,7 @@ const {
 
 // Minimum predicted wait time (minutes) before test recommendations are surfaced.
 const HIGH_WAIT_THRESHOLD_MIN = Number(process.env.TEST_SUGGEST_WAIT_THRESHOLD_MIN || 30);
-const HIGH_WAIT_THRESHOLD_PATIENTS = Number(
+const PATIENTS_AHEAD_THRESHOLD = Number(
   process.env.TEST_SUGGEST_PATIENTS_AHEAD_THRESHOLD || 3
 );
 
@@ -46,6 +46,12 @@ const emergencyLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
   message: { success: false, message: 'Too many emergency-token requests, please try again later.' },
+});
+
+const joinLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 40,
+  message: { success: false, message: 'Too many queue-join requests, please try again shortly.' },
 });
 
 const buildTokenResponse = (token) => ({
@@ -129,7 +135,7 @@ const buildJoinMessage = (token) => {
 // POST /api/queue/join?doctorId=xxx
 // Patient joins the queue for a specific doctor
 // ─────────────────────────────────────────────────────────────
-router.post('/join', protect, async (req, res) => {
+router.post('/join', joinLimiter, protect, async (req, res) => {
   try {
     const requestedDoctorId = req.query.doctorId;
     const { symptoms } = req.body;
@@ -219,8 +225,12 @@ router.post('/join', protect, async (req, res) => {
     if (!doctorId) {
       return res.status(400).json({ success: false, message: 'doctorId is required' });
     }
+    if (!isValidObjectId(doctorId)) {
+      return res.status(400).json({ success: false, message: 'Invalid doctorId: must be a valid MongoDB ObjectId' });
+    }
+    const doctorObjectId = new mongoose.Types.ObjectId(doctorId);
 
-    const assignedDoctor = await User.findById(doctorId).select('_id role name').lean();
+    const assignedDoctor = await User.findById(doctorObjectId).select('_id role name').lean();
     if (!assignedDoctor || assignedDoctor.role !== 'doctor') {
       return res.status(404).json({
         success: false,
@@ -249,7 +259,7 @@ router.post('/join', protect, async (req, res) => {
     const routingLane = triageDecision.routingLane || 'normal';
 
     const waitingCount = await Token.countDocuments({
-      doctor: doctorId,
+      doctor: doctorObjectId,
       status: 'waiting',
       routingLane: { $ne: IMMEDIATE_REVIEW_LANE },
       createdAt: buildDayQuery(today),
@@ -272,7 +282,7 @@ router.post('/join', protect, async (req, res) => {
 
     const token = await Token.create({
       patient: patient._id,
-      doctor: doctorId,
+      doctor: doctorObjectId,
       tokenNumber,
       position,
       etaMinutes: predictedWaitMinutes,
@@ -322,17 +332,17 @@ router.post('/join', protect, async (req, res) => {
     await queue.save();
 
     if (routingLane !== IMMEDIATE_REVIEW_LANE) {
-      await reorderWaitingQueueByUrgency(doctorId, queue.avgConsultationMinutes, today);
-      await promoteTokenByPriority(doctorId, token._id, queue.avgConsultationMinutes, today);
+      await reorderWaitingQueueByUrgency(doctorObjectId, queue.avgConsultationMinutes, today);
+      await promoteTokenByPriority(doctorObjectId, token._id, queue.avgConsultationMinutes, today);
     }
     const updatedToken = await Token.findById(token._id);
 
     // Apply pre-doctor test suggestions only after final queue placement is known.
     if (updatedToken && routingLane !== IMMEDIATE_REVIEW_LANE && mlTestRecs.length > 0) {
-      const patientsAhead = Math.max(0, Number(updatedToken.position || 1) - 1);
+      const patientsAhead = Math.max(0, Number(updatedToken.position ?? 1) - 1);
       const livePredictedWaitMinutes = computeETA(updatedToken.position, queue.avgConsultationMinutes);
       const shouldSuggestTests =
-        patientsAhead >= HIGH_WAIT_THRESHOLD_PATIENTS ||
+        patientsAhead >= PATIENTS_AHEAD_THRESHOLD ||
         livePredictedWaitMinutes >= HIGH_WAIT_THRESHOLD_MIN;
 
       if (shouldSuggestTests) {
@@ -668,8 +678,7 @@ router.patch('/nurse-triage/:tokenId', nurseTriageLimiter, protect, staffOnly, a
       intakeLanguage: token.intakeLanguage || 'en',
       sex: token.visitSnapshot?.sex,
       chief_complaint_system: token.visitSnapshot?.chief_complaint_system,
-      mental_status_triage:
-        req.body.mental_status_triage || token.visitSnapshot?.mental_status_triage,
+      mental_status_triage: token.visitSnapshot?.mental_status_triage,
       ...nurseVitals,
     };
 
