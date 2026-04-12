@@ -12,6 +12,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 import com.example.smartqueue.R;
 import com.example.smartqueue.models.request.NurseTriageRequest;
@@ -161,6 +162,8 @@ public class NurseHomeActivity extends AppCompatActivity {
             TextView tvPatientMeta = row.findViewById(R.id.tvPatientMeta);
             TextView tvDoctorMeta = row.findViewById(R.id.tvDoctorMeta);
             TextView tvSymptoms = row.findViewById(R.id.tvSymptoms);
+            TextView tvPriorityBadge = row.findViewById(R.id.tvPriorityBadge);
+            TextView tvImmediateFlag = row.findViewById(R.id.tvImmediateFlag);
             MaterialButton btnCaptureVitals = row.findViewById(R.id.btnCaptureVitals);
 
             tvPatientName.setText(textOrDefault(entry.getPatientName(), "Patient"));
@@ -168,6 +171,7 @@ public class NurseHomeActivity extends AppCompatActivity {
             tvDoctorMeta.setText(textOrDefault(entry.getDoctorName(), "Assigned doctor")
                     + " · " + textOrDefault(entry.getDoctorSpecialty(), "Department pending"));
             tvSymptoms.setText("Symptoms: " + textOrDefault(entry.getSymptoms(), "No symptom summary provided."));
+            bindPriorityBadges(entry, tvPriorityBadge, tvImmediateFlag);
             btnCaptureVitals.setOnClickListener(v -> showTriageDialog(entry));
 
             layoutQueueList.addView(row);
@@ -177,9 +181,14 @@ public class NurseHomeActivity extends AppCompatActivity {
         tvQueueSummary.setText(entries.isEmpty()
                 ? "No patients waiting for nurse vitals"
                 : String.format(Locale.getDefault(), "%d patients waiting for nurse triage", entries.size()));
-        tvQueueSubSummary.setText(urgentCount > 0
-                ? String.format(Locale.getDefault(), "%d patients are already flagged for higher-priority review.", urgentCount)
-                : "Capture vitals to move patients into the doctor queue.");
+        if (urgentCount > 0) {
+            tvQueueSubSummary.setText(String.format(Locale.getDefault(),
+                "%d patients are already flagged for immediate review.", urgentCount));
+            tvQueueSubSummary.setTextColor(ContextCompat.getColor(this, R.color.priority_high));
+        } else {
+            tvQueueSubSummary.setText("Capture vitals to move patients into the doctor queue.");
+            tvQueueSubSummary.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
+        }
     }
 
     private void renderQueueError(String message) {
@@ -209,6 +218,8 @@ public class NurseHomeActivity extends AppCompatActivity {
 
     private void showTriageDialog(QueueResponse.QueueEntry entry) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_nurse_triage, null, false);
+        TextView tvDialogTitle = dialogView.findViewById(R.id.tvDialogTitle);
+        TextView tvDialogSubtitle = dialogView.findViewById(R.id.tvDialogSubtitle);
         TextInputEditText etTemperature = dialogView.findViewById(R.id.etTemperature);
         TextInputEditText etSpo2 = dialogView.findViewById(R.id.etSpo2);
         TextInputEditText etHeartRate = dialogView.findViewById(R.id.etHeartRate);
@@ -218,17 +229,19 @@ public class NurseHomeActivity extends AppCompatActivity {
         TextInputEditText etNews2Score = dialogView.findViewById(R.id.etNews2Score);
         TextInputEditText etPainScore = dialogView.findViewById(R.id.etPainScore);
         TextInputEditText etTriageNote = dialogView.findViewById(R.id.etTriageNote);
+        MaterialButton btnDialogSubmit = dialogView.findViewById(R.id.btnDialogSubmit);
+        MaterialButton btnDialogCancel = dialogView.findViewById(R.id.btnDialogCancel);
+
+        tvDialogTitle.setText("Submit nurse vitals");
+        tvDialogSubtitle.setText(textOrDefault(entry.getPatientName(), "Patient")
+                + " · Token #" + entry.getTokenNumber());
 
         AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Submit nurse vitals")
-                .setMessage(textOrDefault(entry.getPatientName(), "Patient")
-                        + " · Token #" + entry.getTokenNumber())
                 .setView(dialogView)
-                .setPositiveButton("Submit", null)
-                .setNegativeButton("Cancel", null)
                 .create();
 
-        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+        btnDialogCancel.setOnClickListener(v -> dialog.dismiss());
+        btnDialogSubmit.setOnClickListener(v -> {
             try {
                 NurseTriageRequest request = new NurseTriageRequest();
                 request.setTemperatureC(parseOptionalFloat(etTemperature, "temperature"));
@@ -240,11 +253,11 @@ public class NurseHomeActivity extends AppCompatActivity {
                 request.setNews2Score(parseOptionalFloat(etNews2Score, "NEWS2 score"));
                 request.setPainScore(parseOptionalFloat(etPainScore, "pain score"));
                 request.setNurseTriageNote(textOrEmpty(etTriageNote));
-                submitNurseTriage(entry, request, dialog);
+                submitNurseTriage(entry, request, dialog, btnDialogSubmit);
             } catch (IllegalArgumentException ex) {
                 Toast.makeText(this, ex.getMessage(), Toast.LENGTH_SHORT).show();
             }
-        }));
+        });
 
         dialog.show();
     }
@@ -252,13 +265,14 @@ public class NurseHomeActivity extends AppCompatActivity {
     private void submitNurseTriage(
             QueueResponse.QueueEntry entry,
             NurseTriageRequest request,
-            AlertDialog dialog
+            AlertDialog dialog,
+            MaterialButton submitButton
     ) {
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+        submitButton.setEnabled(false);
         apiService.nurseTriageToken(entry.getTokenId(), request).enqueue(new Callback<TokenResponse>() {
             @Override
             public void onResponse(Call<TokenResponse> call, Response<TokenResponse> response) {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                submitButton.setEnabled(true);
                 if (isFinishing() || isDestroyed()) return;
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     TokenResponse body = response.body();
@@ -280,7 +294,7 @@ public class NurseHomeActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<TokenResponse> call, Throwable t) {
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
+                submitButton.setEnabled(true);
                 if (isFinishing() || isDestroyed()) return;
                 Toast.makeText(NurseHomeActivity.this,
                         "Network error while submitting nurse triage.",
@@ -294,6 +308,7 @@ public class NurseHomeActivity extends AppCompatActivity {
         tvLastResultPatient.setText(textOrDefault(entry.getPatientName(), "Patient")
                 + " · Token #" + entry.getTokenNumber());
         tvLastResultPriority.setText(buildPriorityHeadline(body));
+        styleLastResultPriority(body);
         tvLastResultBreakdown.setText(buildPriorityBreakdown(body));
 
         List<TokenResponse.SafetyMatch> safetyMatches = body.getSafetyMatches();
@@ -369,6 +384,71 @@ public class NurseHomeActivity extends AppCompatActivity {
                 + " · " + ahead + " ahead"
                 + " · " + availableDoctors + " doctors"
                 + " · wait " + wait + "m";
+    }
+
+    private void bindPriorityBadges(
+            QueueResponse.QueueEntry entry,
+            TextView tvPriorityBadge,
+            TextView tvImmediateFlag
+    ) {
+        String priorityLabel = resolvePriorityLabel(entry);
+        tvPriorityBadge.setText(priorityLabel);
+
+        if ("HIGH".equals(priorityLabel)) {
+            tvPriorityBadge.setBackgroundResource(R.drawable.badge_high);
+            tvPriorityBadge.setTextColor(ContextCompat.getColor(this, R.color.priority_high));
+        } else if ("MEDIUM".equals(priorityLabel)) {
+            tvPriorityBadge.setBackgroundResource(R.drawable.badge_medium);
+            tvPriorityBadge.setTextColor(ContextCompat.getColor(this, R.color.priority_medium));
+        } else {
+            tvPriorityBadge.setBackgroundResource(R.drawable.badge_normal);
+            tvPriorityBadge.setTextColor(ContextCompat.getColor(this, R.color.priority_normal));
+        }
+
+        boolean immediateReview = entry.isImmediateReviewRequired()
+                || "immediate_review".equals(entry.getRoutingLane());
+        tvImmediateFlag.setVisibility(immediateReview ? View.VISIBLE : View.GONE);
+    }
+
+    private String resolvePriorityLabel(QueueResponse.QueueEntry entry) {
+        String priority = entry.getPriority();
+        if (!TextUtils.isEmpty(priority)) {
+            String normalized = priority.trim().toLowerCase(Locale.ROOT);
+            if (normalized.contains("high") || normalized.contains("urgent")) return "HIGH";
+            if (normalized.contains("medium") || normalized.contains("moderate")) return "MEDIUM";
+            if (normalized.contains("normal") || normalized.contains("low")) return "NORMAL";
+        }
+
+        Integer cls = entry.getTriagePriorityClass() != null
+                ? entry.getTriagePriorityClass()
+                : entry.getModelPriorityClass();
+        if (cls == null) return "NORMAL";
+        if (cls <= 2) return "HIGH";
+        if (cls == 3) return "MEDIUM";
+        return "NORMAL";
+    }
+
+    private void styleLastResultPriority(TokenResponse body) {
+        int priorityClass = body.getTriagePriorityClass() != null
+                ? body.getTriagePriorityClass()
+                : 4;
+        if (priorityClass <= 2) {
+            tvLastResultPriority.setBackgroundResource(R.drawable.badge_high);
+            tvLastResultPriority.setTextColor(ContextCompat.getColor(this, R.color.priority_high));
+        } else if (priorityClass == 3) {
+            tvLastResultPriority.setBackgroundResource(R.drawable.badge_medium);
+            tvLastResultPriority.setTextColor(ContextCompat.getColor(this, R.color.priority_medium));
+        } else {
+            tvLastResultPriority.setBackgroundResource(R.drawable.badge_normal);
+            tvLastResultPriority.setTextColor(ContextCompat.getColor(this, R.color.priority_normal));
+        }
+        int hPad = dp(10);
+        int vPad = dp(6);
+        tvLastResultPriority.setPadding(hPad, vPad, hPad, vPad);
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private Float parseOptionalFloat(TextInputEditText input, String label) {
