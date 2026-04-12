@@ -3,7 +3,7 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
 const { protect, staffOnly } = require('../middleware/authMiddleware');
-const { Token } = require('../models/Queue');
+const { Queue, Token } = require('../models/Queue');
 const User = require('../models/User');
 const {
   buildPrescriptionView,
@@ -52,6 +52,12 @@ const joinLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 40,
   message: { success: false, message: 'Too many queue-join requests, please try again shortly.' },
+});
+
+const noShowLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { success: false, message: 'Too many no-show updates, please try again shortly.' },
 });
 
 const buildTokenResponse = (token) => ({
@@ -568,6 +574,71 @@ router.post('/leave', protect, async (req, res) => {
     });
   } catch (err) {
     console.error('Leave queue error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/queue/noshow?tokenId=xxx
+// Staff clears a no-show patient from the active queue
+// ─────────────────────────────────────────────────────────────
+router.post('/noshow', noShowLimiter, protect, staffOnly, async (req, res) => {
+  try {
+    const { tokenId } = req.query;
+    if (!tokenId) {
+      return res.status(400).json({ success: false, message: 'tokenId is required' });
+    }
+    if (!isValidObjectId(tokenId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid tokenId: must be a valid MongoDB ObjectId',
+      });
+    }
+
+    const token = await Token.findById(tokenId);
+    if (!token) {
+      return res.status(404).json({ success: false, message: 'Token not found' });
+    }
+
+    if (req.user.role === 'doctor' && String(token.doctor) !== String(req.user._id)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only manage patients in your own queue',
+      });
+    }
+
+    if (!ACTIVE_TOKEN_STATUSES.includes(token.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only active queue tokens can be marked as no-show',
+      });
+    }
+
+    const wasCalled = token.status === 'called';
+    const now = new Date();
+    token.status = 'no_show';
+    token.completedAt = now;
+    if (!Number.isFinite(token.actualWaitMinutes)) {
+      token.actualWaitMinutes = diffMinutes(
+        token.joinedAt || token.createdAt,
+        token.calledAt || now
+      );
+    }
+    await token.save();
+
+    const queueDate = new Date(token.createdAt || now).toISOString().split('T')[0];
+    const queue = await Queue.findOne({ doctor: token.doctor, date: queueDate });
+    if (queue) {
+      if (wasCalled && queue.currentToken === token.tokenNumber) {
+        queue.currentToken = 0;
+        await queue.save();
+      }
+      await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, queueDate);
+    }
+
+    res.json({ success: true, message: 'Patient marked as no-show' });
+  } catch (err) {
+    console.error('Staff no-show error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

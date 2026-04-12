@@ -87,7 +87,7 @@ public interface ApiService {
     @POST("admin/pause")
     Call<MessageResponse> togglePause(@Query("doctorId") String doctorId, @Query("paused") boolean paused);
 
-    @POST("admin/noshow")
+    @POST("queue/noshow")
     Call<MessageResponse> markNoShow(@Query("tokenId") String tokenId);
 
     @GET("prescriptions/{tokenId}")
