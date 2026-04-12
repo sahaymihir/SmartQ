@@ -45,8 +45,8 @@ Chief complaint: Injury / bones  →  trauma
 | Top department matches | Orthopaedics 56% ← trauma complaint · Emergency Medicine 35% ← trauma complaint, severe pain score · General Practice 9% |
 | Recommended Doctor | **Dr. Rajesh Patel (Orthopaedics)** |
 | Suggested Tests | `immediate` Full trauma series X-rays — identify fractures and internal injury |
-| | `immediate` FAST ultrasound — detect haemoperitoneum |
-| | `urgent` CBC + coagulation screen — baseline haematology post-trauma |
+| | `immediate` FAST ultrasound — detect hemoperitoneum |
+| | `urgent` CBC + coagulation screen — baseline hematology post-trauma |
 | | `urgent` Serum lactate — assess tissue perfusion in severe pain states |
 | Reasoning | Primary clinical fit is Orthopaedics based on signals like trauma complaint, severe pain score. SmartQ can route directly to Orthopaedics. Symptom overlap is high, so manual review or doctor override is recommended. |
 | Sources | patient_flow_v1 · specialty_hybrid_v1 · ml_v3 · rule_based_v1 |
