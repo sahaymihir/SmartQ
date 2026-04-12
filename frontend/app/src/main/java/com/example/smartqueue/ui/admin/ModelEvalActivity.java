@@ -4,6 +4,8 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -32,12 +34,26 @@ import retrofit2.Response;
 
 public class ModelEvalActivity extends AppCompatActivity {
 
+    private static final String[] SEX_OPTIONS = {"Female", "Male", "Other"};
+    private static final String[] CHIEF_COMPLAINT_OPTIONS = {
+            "Chest / heart",
+            "Breathing",
+            "Head / brain",
+            "Stomach / abdomen",
+            "Skin / rash",
+            "Injury / bones",
+            "Urine / kidney",
+            "Sugar / hormones",
+            "Not sure"
+    };
+    private static final String[] MENTAL_STATUS_OPTIONS = {"Alert", "Drowsy", "Unresponsive"};
+
     private ApiService apiService;
 
-    private TextInputEditText etTestSymptoms, etTestAge, etTestChiefComplaint, etTestSex,
-            etTestMentalStatus, etTestTemperature, etTestPainScore, etTestSpo2,
+    private TextInputEditText etTestSymptoms, etTestAge, etTestTemperature, etTestPainScore, etTestSpo2,
             etTestRespiratoryRate, etTestHeartRate, etTestSystolicBp, etTestDiastolicBp,
             etTestGcs, etTestNews2;
+    private AutoCompleteTextView etTestChiefComplaint, etTestSex, etTestMentalStatus;
     private MaterialButton btnRunTest, btnBack, btnRefreshHistory;
     private MaterialButton btnExampleCardio, btnExampleFever, btnExampleRash;
     private LinearLayout layoutTestResult, layoutTestScores, layoutEvalHistory, layoutNoHistory;
@@ -54,6 +70,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         apiService = ApiClient.getInstance().create(ApiService.class);
 
         bindViews();
+        setupInputOptions();
         setupClickListeners();
         loadHistory();
     }
@@ -98,6 +115,28 @@ public class ModelEvalActivity extends AppCompatActivity {
         tvHistoryCount = findViewById(R.id.tvHistoryCount);
     }
 
+    private void setupInputOptions() {
+        attachDropdown(etTestSex, SEX_OPTIONS);
+        attachDropdown(etTestChiefComplaint, CHIEF_COMPLAINT_OPTIONS);
+        attachDropdown(etTestMentalStatus, MENTAL_STATUS_OPTIONS);
+    }
+
+    private void attachDropdown(AutoCompleteTextView field, String[] values) {
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_list_item_1,
+                values
+        );
+        field.setAdapter(adapter);
+        field.setThreshold(0);
+        field.setOnClickListener(v -> field.showDropDown());
+        field.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                field.showDropDown();
+            }
+        });
+    }
+
     private void setupClickListeners() {
         btnBack.setOnClickListener(v -> {
             finish();
@@ -110,9 +149,9 @@ public class ModelEvalActivity extends AppCompatActivity {
                 applyExample(new EvalScenario(
                         "I feel pressure in my chest and I am short of breath",
                         67,
-                        "M",
-                        "alert",
-                        "cardiac",
+                        "Male",
+                        "Alert",
+                        "Chest / heart",
                         38.7,
                         8.0,
                         91.0,
@@ -128,9 +167,9 @@ public class ModelEvalActivity extends AppCompatActivity {
                 applyExample(new EvalScenario(
                         "I have fever and cold for two days with body ache",
                         29,
-                        "F",
-                        "alert",
-                        "respiratory",
+                        "Female",
+                        "Alert",
+                        "Breathing",
                         39.1,
                         4.0,
                         92.0,
@@ -146,9 +185,9 @@ public class ModelEvalActivity extends AppCompatActivity {
                 applyExample(new EvalScenario(
                         "I have an itchy rash on my arms and neck",
                         34,
-                        "F",
-                        "alert",
-                        "dermatological",
+                        "Female",
+                        "Alert",
+                        "Skin / rash",
                         36.8,
                         2.0,
                         98.0,
@@ -181,9 +220,9 @@ public class ModelEvalActivity extends AppCompatActivity {
         etTestSymptoms.setText(scenario.symptoms);
         etTestSymptoms.setSelection(scenario.symptoms.length());
         etTestAge.setText(String.valueOf(scenario.age));
-        etTestSex.setText(scenario.sex);
-        etTestMentalStatus.setText(scenario.mentalStatus);
-        etTestChiefComplaint.setText(scenario.chiefComplaint);
+        etTestSex.setText(scenario.sex, false);
+        etTestMentalStatus.setText(scenario.mentalStatus, false);
+        etTestChiefComplaint.setText(scenario.chiefComplaint, false);
         etTestTemperature.setText(formatOptionalDouble(scenario.temperatureC));
         etTestPainScore.setText(formatOptionalDouble(scenario.painScore));
         etTestSpo2.setText(formatOptionalDouble(scenario.spo2));
@@ -220,55 +259,55 @@ public class ModelEvalActivity extends AppCompatActivity {
             return null;
         }
 
-        Integer gcsTotal = parseOptionalInteger(etTestGcs, "GCS total", 0, 15);
+        Integer gcsTotal = parseOptionalInteger(etTestGcs, "consciousness check score", 0, 15);
         if (gcsTotal == null && !TextUtils.isEmpty(getTextValue(etTestGcs))) {
             return null;
         }
 
-        Double temperature = parseOptionalDouble(etTestTemperature, "Temperature", 0, 50);
+        Double temperature = parseOptionalDouble(etTestTemperature, "body temperature", 0, 50);
         if (temperature == null && !TextUtils.isEmpty(getTextValue(etTestTemperature))) {
             return null;
         }
 
-        Double painScore = parseOptionalDouble(etTestPainScore, "Pain score", 0, 10);
+        Double painScore = parseOptionalDouble(etTestPainScore, "pain level", 0, 10);
         if (painScore == null && !TextUtils.isEmpty(getTextValue(etTestPainScore))) {
             return null;
         }
 
-        Double spo2 = parseOptionalDouble(etTestSpo2, "SpO2", 0, 100);
+        Double spo2 = parseOptionalDouble(etTestSpo2, "oxygen level", 0, 100);
         if (spo2 == null && !TextUtils.isEmpty(getTextValue(etTestSpo2))) {
             return null;
         }
 
-        Double respiratoryRate = parseOptionalDouble(etTestRespiratoryRate, "Respiratory rate", 0, 80);
+        Double respiratoryRate = parseOptionalDouble(etTestRespiratoryRate, "breaths per minute", 0, 80);
         if (respiratoryRate == null && !TextUtils.isEmpty(getTextValue(etTestRespiratoryRate))) {
             return null;
         }
 
-        Double heartRate = parseOptionalDouble(etTestHeartRate, "Heart rate", 0, 250);
+        Double heartRate = parseOptionalDouble(etTestHeartRate, "pulse / heart rate", 0, 250);
         if (heartRate == null && !TextUtils.isEmpty(getTextValue(etTestHeartRate))) {
             return null;
         }
 
-        Double systolicBp = parseOptionalDouble(etTestSystolicBp, "Systolic BP", 0, 300);
+        Double systolicBp = parseOptionalDouble(etTestSystolicBp, "upper blood pressure number", 0, 300);
         if (systolicBp == null && !TextUtils.isEmpty(getTextValue(etTestSystolicBp))) {
             return null;
         }
 
-        Double diastolicBp = parseOptionalDouble(etTestDiastolicBp, "Diastolic BP", 0, 200);
+        Double diastolicBp = parseOptionalDouble(etTestDiastolicBp, "lower blood pressure number", 0, 200);
         if (diastolicBp == null && !TextUtils.isEmpty(getTextValue(etTestDiastolicBp))) {
             return null;
         }
 
-        Double news2 = parseOptionalDouble(etTestNews2, "NEWS2 score", 0, 25);
+        Double news2 = parseOptionalDouble(etTestNews2, "nurse urgency score", 0, 25);
         if (news2 == null && !TextUtils.isEmpty(getTextValue(etTestNews2))) {
             return null;
         }
 
         return new SymptomRequest(symptoms, age)
-                .setChiefComplaintSystem(emptyToNull(getTextValue(etTestChiefComplaint)))
-                .setSex(emptyToNull(getTextValue(etTestSex)))
-                .setMentalStatusTriage(emptyToNull(getTextValue(etTestMentalStatus)))
+                .setChiefComplaintSystem(normalizeChiefComplaintSelection(getTextValue(etTestChiefComplaint)))
+                .setSex(normalizeSexSelection(getTextValue(etTestSex)))
+                .setMentalStatusTriage(normalizeMentalStatusSelection(getTextValue(etTestMentalStatus)))
                 .setTemperatureC(temperature)
                 .setPainScore(painScore)
                 .setSpo2(spo2)
@@ -280,7 +319,7 @@ public class ModelEvalActivity extends AppCompatActivity {
                 .setNews2Score(news2);
     }
 
-    private String getTextValue(TextInputEditText field) {
+    private String getTextValue(TextView field) {
         return field.getText() != null ? field.getText().toString().trim() : "";
     }
 
@@ -288,7 +327,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         return TextUtils.isEmpty(value) ? null : value;
     }
 
-    private Integer parseRequiredInteger(TextInputEditText field, String label, int min, int max) {
+    private Integer parseRequiredInteger(TextView field, String label, int min, int max) {
         String value = getTextValue(field);
         if (TextUtils.isEmpty(value)) {
             field.setError("Required");
@@ -299,7 +338,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         return parseOptionalInteger(field, label, min, max);
     }
 
-    private Integer parseOptionalInteger(TextInputEditText field, String label, int min, int max) {
+    private Integer parseOptionalInteger(TextView field, String label, int min, int max) {
         String value = getTextValue(field);
         if (TextUtils.isEmpty(value)) {
             field.setError(null);
@@ -324,7 +363,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         }
     }
 
-    private Double parseOptionalDouble(TextInputEditText field, String label, double min, double max) {
+    private Double parseOptionalDouble(TextView field, String label, double min, double max) {
         String value = getTextValue(field);
         if (TextUtils.isEmpty(value)) {
             field.setError(null);
@@ -355,6 +394,52 @@ public class ModelEvalActivity extends AppCompatActivity {
 
     private String formatOptionalDouble(Double value) {
         return value == null ? "" : formatScore(value);
+    }
+
+    private String normalizeSexSelection(String value) {
+        if (TextUtils.isEmpty(value)) return null;
+
+        String lower = value.toLowerCase(Locale.getDefault());
+        if (lower.startsWith("f")) return "F";
+        if (lower.startsWith("m")) return "M";
+        return "Other";
+    }
+
+    private String normalizeMentalStatusSelection(String value) {
+        if (TextUtils.isEmpty(value)) return null;
+
+        String lower = value.toLowerCase(Locale.getDefault());
+        if (lower.startsWith("alert")) return "alert";
+        if (lower.startsWith("drows")) return "drowsy";
+        if (lower.startsWith("unresponsive")) return "unresponsive";
+        return value.toLowerCase(Locale.getDefault());
+    }
+
+    private String normalizeChiefComplaintSelection(String value) {
+        if (TextUtils.isEmpty(value)) return null;
+
+        switch (value) {
+            case "Chest / heart":
+                return "cardiac";
+            case "Breathing":
+                return "respiratory";
+            case "Head / brain":
+                return "neurological";
+            case "Stomach / abdomen":
+                return "gastrointestinal";
+            case "Skin / rash":
+                return "dermatological";
+            case "Injury / bones":
+                return "trauma";
+            case "Urine / kidney":
+                return "renal";
+            case "Sugar / hormones":
+                return "endocrine";
+            case "Not sure":
+                return "other";
+            default:
+                return value.toLowerCase(Locale.getDefault());
+        }
     }
 
     private void runTestPrediction(SymptomRequest request) {
@@ -827,25 +912,75 @@ public class ModelEvalActivity extends AppCompatActivity {
 
     private String buildInputSnapshot(ModelEvalHistoryResponse.EvalEntry entry) {
         ArrayList<String> parts = new ArrayList<>();
-        if (entry.getAge() != null) parts.add("age " + entry.getAge());
-        if (!TextUtils.isEmpty(entry.getSex())) parts.add("sex " + entry.getSex());
-        if (!TextUtils.isEmpty(entry.getChiefComplaintSystem())) parts.add("complaint " + entry.getChiefComplaintSystem());
-        if (!TextUtils.isEmpty(entry.getMentalStatusTriage())) parts.add("mental " + entry.getMentalStatusTriage());
-        if (entry.getTemperatureC() != null) parts.add("temp " + formatScore(entry.getTemperatureC()) + "°C");
-        if (entry.getPainScore() != null) parts.add("pain " + formatScore(entry.getPainScore()));
-        if (entry.getSpo2() != null) parts.add("SpO2 " + formatScore(entry.getSpo2()) + "%");
-        if (entry.getRespiratoryRate() != null) parts.add("RR " + formatScore(entry.getRespiratoryRate()));
-        if (entry.getHeartRate() != null) parts.add("HR " + formatScore(entry.getHeartRate()));
+        if (entry.getAge() != null) parts.add("Age " + entry.getAge());
+        if (!TextUtils.isEmpty(entry.getSex())) parts.add("Sex " + toReadableSex(entry.getSex()));
+        if (!TextUtils.isEmpty(entry.getChiefComplaintSystem())) {
+            parts.add("Problem area " + toReadableComplaint(entry.getChiefComplaintSystem()));
+        }
+        if (!TextUtils.isEmpty(entry.getMentalStatusTriage())) {
+            parts.add("Alertness " + toReadableMentalStatus(entry.getMentalStatusTriage()));
+        }
+        if (entry.getTemperatureC() != null) parts.add("Temperature " + formatScore(entry.getTemperatureC()) + "°C");
+        if (entry.getPainScore() != null) parts.add("Pain " + formatScore(entry.getPainScore()) + "/10");
+        if (entry.getSpo2() != null) parts.add("Oxygen " + formatScore(entry.getSpo2()) + "%");
+        if (entry.getRespiratoryRate() != null) parts.add("Breathing " + formatScore(entry.getRespiratoryRate()) + "/min");
+        if (entry.getHeartRate() != null) parts.add("Pulse " + formatScore(entry.getHeartRate()) + "/min");
         if (entry.getSystolicBp() != null || entry.getDiastolicBp() != null) {
-            parts.add("BP "
+            parts.add("Blood pressure "
                     + (entry.getSystolicBp() != null ? formatScore(entry.getSystolicBp()) : "—")
                     + "/"
                     + (entry.getDiastolicBp() != null ? formatScore(entry.getDiastolicBp()) : "—"));
         }
-        if (entry.getGcsTotal() != null) parts.add("GCS " + entry.getGcsTotal());
-        if (entry.getNews2Score() != null) parts.add("NEWS2 " + formatScore(entry.getNews2Score()));
+        if (entry.getGcsTotal() != null) parts.add("Consciousness check " + entry.getGcsTotal());
+        if (entry.getNews2Score() != null) parts.add("Urgency score " + formatScore(entry.getNews2Score()));
 
-        return parts.isEmpty() ? "Symptoms-only scenario" : TextUtils.join("  •  ", parts);
+        return parts.isEmpty() ? "Only symptoms and age were provided" : TextUtils.join("  •  ", parts);
+    }
+
+    private String toReadableSex(String value) {
+        if (TextUtils.isEmpty(value)) return value;
+
+        String lower = value.toLowerCase(Locale.getDefault());
+        if (lower.equals("f") || lower.equals("female")) return "Female";
+        if (lower.equals("m") || lower.equals("male")) return "Male";
+        return capitalize(value);
+    }
+
+    private String toReadableMentalStatus(String value) {
+        if (TextUtils.isEmpty(value)) return value;
+
+        String lower = value.toLowerCase(Locale.getDefault());
+        if (lower.equals("alert")) return "Alert";
+        if (lower.equals("drowsy")) return "Drowsy";
+        if (lower.equals("unresponsive")) return "Unresponsive";
+        return capitalize(value);
+    }
+
+    private String toReadableComplaint(String value) {
+        if (TextUtils.isEmpty(value)) return value;
+
+        switch (value.toLowerCase(Locale.getDefault())) {
+            case "cardiac":
+                return "Chest / heart";
+            case "respiratory":
+                return "Breathing";
+            case "neurological":
+                return "Head / brain";
+            case "gastrointestinal":
+                return "Stomach / abdomen";
+            case "dermatological":
+                return "Skin / rash";
+            case "trauma":
+                return "Injury / bones";
+            case "renal":
+                return "Urine / kidney";
+            case "endocrine":
+                return "Sugar / hormones";
+            case "other":
+                return "Not sure";
+            default:
+                return capitalize(value.replace('_', ' '));
+        }
     }
 
     private String buildPredictionSafetySummary(List<SymptomPredictResponse.SafetyMatch> safetyMatches) {

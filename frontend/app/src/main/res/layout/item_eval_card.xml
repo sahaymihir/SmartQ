@@ -112,7 +112,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Normalized Symptoms"
+            android:text="What the system understood"
             android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="@color/text_secondary"
@@ -131,7 +131,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Extracted Factors"
+            android:text="Key signals detected"
             android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="@color/text_secondary"
@@ -195,7 +195,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Clinical Routing"
+            android:text="Department suggestion"
             android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="@color/text_secondary"
@@ -213,7 +213,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Queue Assignment"
+            android:text="Queue assignment"
             android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="@color/text_secondary"
@@ -232,7 +232,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Specialty Scores"
+            android:text="Department matches"
             android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="@color/text_secondary"

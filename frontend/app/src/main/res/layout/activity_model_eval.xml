@@ -115,7 +115,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Enter symptoms to see how the model evaluates"
+                                android:text="Capture what the patient knows first, then add nurse measurements if available"
                                 android:textSize="12sp"
                                 android:textColor="@color/text_secondary"/>
                         </LinearLayout>
@@ -124,9 +124,9 @@
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/SmartQ.TextInput"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:hint="e.g. chest pain, shortness of breath"
-                        android:layout_marginTop="8dp">
+                            android:layout_height="wrap_content"
+                            android:hint="e.g. chest pain, shortness of breath"
+                            android:layout_marginTop="8dp">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etTestSymptoms"
@@ -138,6 +138,15 @@
                             android:textSize="14sp"
                             android:textColor="@color/text_primary"/>
                     </com.google.android.material.textfield.TextInputLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Patient-known details"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_secondary"
+                        android:layout_marginTop="10dp"/>
 
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/SmartQ.TextInput"
@@ -156,14 +165,6 @@
                             android:textColor="@color/text_primary"/>
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Leave optional vitals blank if they are unknown. The more complete the case, the more realistic the evaluation."
-                        android:textSize="11sp"
-                        android:textColor="@color/text_secondary"
-                        android:layout_marginTop="6dp"/>
-
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -175,13 +176,15 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="Chief complaint system"
-                            android:layout_marginEnd="6dp">
+                            android:hint="Main problem area"
+                            android:layout_marginEnd="6dp"
+                            app:endIconMode="dropdown_menu">
 
-                            <com.google.android.material.textfield.TextInputEditText
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
                                 android:id="@+id/etTestChiefComplaint"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
+                                android:inputType="none"
                                 android:textSize="14sp"
                                 android:textColor="@color/text_primary"/>
                         </com.google.android.material.textfield.TextInputLayout>
@@ -192,12 +195,14 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:hint="Sex"
-                            android:layout_marginStart="6dp">
+                            android:layout_marginStart="6dp"
+                            app:endIconMode="dropdown_menu">
 
-                            <com.google.android.material.textfield.TextInputEditText
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
                                 android:id="@+id/etTestSex"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
+                                android:inputType="none"
                                 android:textSize="14sp"
                                 android:textColor="@color/text_primary"/>
                         </com.google.android.material.textfield.TextInputLayout>
@@ -207,16 +212,35 @@
                         style="@style/SmartQ.TextInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Mental status triage"
-                        android:layout_marginTop="8dp">
+                        android:hint="How alert is the patient?"
+                        android:layout_marginTop="8dp"
+                        app:endIconMode="dropdown_menu">
 
-                        <com.google.android.material.textfield.TextInputEditText
+                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
                             android:id="@+id/etTestMentalStatus"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
+                            android:inputType="none"
                             android:textSize="14sp"
                             android:textColor="@color/text_primary"/>
                     </com.google.android.material.textfield.TextInputLayout>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Nurse / triage measurements"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_secondary"
+                        android:layout_marginTop="12dp"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Leave these blank if they have not been measured yet. If a field is unfamiliar, the nurse can fill it in later."
+                        android:textSize="11sp"
+                        android:textColor="@color/text_secondary"
+                        android:layout_marginTop="4dp"/>
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -229,7 +253,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="Temperature °C"
+                            android:hint="Body temperature (°C)"
                             android:layout_marginEnd="6dp">
 
                             <com.google.android.material.textfield.TextInputEditText
@@ -246,7 +270,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="Pain score /10"
+                            android:hint="Pain level (0-10)"
                             android:layout_marginStart="6dp">
 
                             <com.google.android.material.textfield.TextInputEditText
@@ -270,7 +294,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="SpO2 %"
+                            android:hint="Oxygen level (%)"
                             android:layout_marginEnd="6dp">
 
                             <com.google.android.material.textfield.TextInputEditText
@@ -287,7 +311,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="Respiratory rate"
+                            android:hint="Breaths per minute"
                             android:layout_marginStart="6dp">
 
                             <com.google.android.material.textfield.TextInputEditText
@@ -311,7 +335,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="Heart rate"
+                            android:hint="Pulse / heart rate"
                             android:layout_marginEnd="6dp">
 
                             <com.google.android.material.textfield.TextInputEditText
@@ -328,7 +352,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="NEWS2 score"
+                            android:hint="Nurse urgency score"
                             android:layout_marginStart="6dp">
 
                             <com.google.android.material.textfield.TextInputEditText
@@ -352,7 +376,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="Systolic BP"
+                            android:hint="Upper blood pressure number"
                             android:layout_marginEnd="6dp">
 
                             <com.google.android.material.textfield.TextInputEditText
@@ -369,7 +393,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="Diastolic BP"
+                            android:hint="Lower blood pressure number"
                             android:layout_marginStart="6dp">
 
                             <com.google.android.material.textfield.TextInputEditText
@@ -386,7 +410,7 @@
                         style="@style/SmartQ.TextInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="GCS total"
+                        android:hint="Consciousness check score"
                         android:layout_marginTop="8dp">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -524,7 +548,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Primary Clinical Specialty"
+                            android:text="Likely department"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary"
@@ -543,7 +567,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="SmartQ Routed Specialty"
+                            android:text="Assigned queue / department"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary"
@@ -561,7 +585,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Queue Assignment"
+                            android:text="Queue assignment"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary"
@@ -579,7 +603,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Normalized Symptoms"
+                            android:text="What the system understood"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary"
@@ -597,7 +621,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Extracted Factors"
+                            android:text="Key signals detected"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary"
@@ -615,7 +639,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Top Specialty Matches"
+                            android:text="Top department matches"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary"
