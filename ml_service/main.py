@@ -169,6 +169,15 @@ class HealthResponse(BaseModel):
     model_version: str
 
 
+class RootResponse(BaseModel):
+    service: str
+    status: str
+    model_version: str
+    docs_url: str
+    health_url: str
+    predict_url: str
+
+
 class TestRecommendationRequest(BaseModel):
     model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
     priority_class: int | None = Field(default=None, ge=1, le=5)
@@ -194,8 +203,6 @@ class TestRecommendationResponse(BaseModel):
     source: str = "rule_based_v1"
     low_confidence: bool = False
 
-
-# ── Rule-based test recommendation engine ────────────────────────────────────
 
 _COMPLAINT_TESTS: dict[str, list[dict]] = {
     "respiratory": [
@@ -236,7 +243,7 @@ _COMPLAINT_TESTS: dict[str, list[dict]] = {
 }
 
 _HIGH_FEVER_TESTS = [
-    {"test": "Blood cultures (×2)", "rationale": "Identify bacteraemia / sepsis source", "urgency": "immediate"},
+    {"test": "Blood cultures (x2)", "rationale": "Identify bacteraemia / sepsis source", "urgency": "immediate"},
     {"test": "CBC + CRP + procalcitonin", "rationale": "Sepsis work-up", "urgency": "immediate"},
     {"test": "Urinalysis + urine culture", "rationale": "Common infection source", "urgency": "urgent"},
 ]
@@ -257,48 +264,48 @@ _ELDERLY_VITALS_TESTS = [
 def _deduplicate(recs: list[dict]) -> list[TestRecommendation]:
     seen: set[str] = set()
     out: list[TestRecommendation] = []
-    for r in recs:
-        key = r["test"].lower()
+    for recommendation in recs:
+        key = recommendation["test"].lower()
         if key not in seen:
             seen.add(key)
-            out.append(TestRecommendation(**r))
+            out.append(TestRecommendation(**recommendation))
     return out
 
 
 def generate_test_recommendations(payload: TestRecommendationRequest) -> TestRecommendationResponse:
     recs: list[dict] = []
 
-    # Complaint-system rules
     complaint = (payload.chief_complaint_system or "").lower().strip()
     if complaint in _COMPLAINT_TESTS:
         recs.extend(_COMPLAINT_TESTS[complaint])
 
-    # High fever — WHO/CDC define fever as >= 38.0 °C; 38.5 °C is the clinically
-    # actionable threshold commonly used for empirical sepsis work-up initiation.
     if payload.temperature_c is not None and payload.temperature_c >= 38.5:
         recs.extend(_HIGH_FEVER_TESTS)
 
-    # Severe pain (>= 7 / 10)
     if payload.pain_score is not None and payload.pain_score >= 7:
         recs.extend(_SEVERE_PAIN_TESTS)
 
-    # Paediatric (age <= 15)
     if payload.age is not None and payload.age <= 15:
         recs.extend(_PEDIATRIC_TESTS)
 
-    # Elderly (> 65) with borderline vitals
     if payload.age is not None and payload.age > 65:
         recs.extend(_ELDERLY_VITALS_TESTS)
 
-    # Priority class 1 / 2 always warrants basic resuscitation panel
     if payload.priority_class is not None and payload.priority_class <= 2:
         recs = [
-            {"test": "ABG (arterial blood gas)", "rationale": "Critical patient — assess oxygenation and acid-base", "urgency": "immediate"},
-            {"test": "Stat CBC + CMP + coagulation", "rationale": "Baseline panel for critical triage", "urgency": "immediate"},
+            {
+                "test": "ABG (arterial blood gas)",
+                "rationale": "Critical patient - assess oxygenation and acid-base",
+                "urgency": "immediate",
+            },
+            {
+                "test": "Stat CBC + CMP + coagulation",
+                "rationale": "Baseline panel for critical triage",
+                "urgency": "immediate",
+            },
             *recs,
         ]
 
-    # Fallback if no rules fired
     if not recs:
         recs = [
             {"test": "CBC", "rationale": "Standard baseline haematology", "urgency": "routine"},
@@ -586,6 +593,18 @@ def get_artifacts(request: Request) -> ModelArtifacts:
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     return HealthResponse(status="ok", model_version=MODEL_VERSION)
+
+
+@app.get("/", response_model=RootResponse)
+async def root() -> RootResponse:
+    return RootResponse(
+        service="SmartQ Triage ML Service",
+        status="ok",
+        model_version=MODEL_VERSION,
+        docs_url="/docs",
+        health_url="/health",
+        predict_url="/predict",
+    )
 
 
 @app.post("/predict", response_model=PredictionResponse)

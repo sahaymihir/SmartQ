@@ -1,0 +1,15 @@
+.git
+.gitignore
+.vscode
+.idea
+.codex
+.venv
+**/.venv
+**/venv
+**/__pycache__
+**/*.pyc
+backend
+docs
+frontend
+ml_service/data
+ml_service/reports
