@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { postWithRetry } = require('../utils/httpRetry');
 
 const {
   buildAlternativeSpecialists,
@@ -7,7 +8,7 @@ const {
 } = require('./specialtyService');
 
 const ML_SERVICE_URL = process.env.SPECIALTY_API_URL || process.env.TRIAGE_API_URL || 'http://localhost:8000';
-const FLOW_TIMEOUT_MS = Number(process.env.PATIENT_FLOW_TIMEOUT_MS || process.env.TRIAGE_TIMEOUT_MS || 7000);
+const FLOW_TIMEOUT_MS = Number(process.env.PATIENT_FLOW_TIMEOUT_MS || process.env.TRIAGE_TIMEOUT_MS || 12000);
 const PATIENT_FLOW_SOURCE = 'patient_flow_v1';
 
 const normalizeSpecialtyScores = (specialty = {}, symptoms = '') => {
@@ -93,8 +94,10 @@ const runPatientFlow = async (payload = {}) => {
   }
 
   try {
-    const response = await axios.post(`${ML_SERVICE_URL}/patient-flow`, payload, {
+    const response = await postWithRetry(axios, `${ML_SERVICE_URL}/patient-flow`, payload, {
       timeout: FLOW_TIMEOUT_MS,
+      retries: Number(process.env.PATIENT_FLOW_RETRY_COUNT || 2),
+      initialDelayMs: Number(process.env.PATIENT_FLOW_RETRY_DELAY_MS || 500),
     });
 
     const data = response.data || {};

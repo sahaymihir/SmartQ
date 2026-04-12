@@ -1,7 +1,8 @@
 const axios = require('axios');
+const { postWithRetry } = require('../utils/httpRetry');
 
 const ML_SERVICE_URL = process.env.SPECIALTY_API_URL || process.env.TRIAGE_API_URL || 'http://localhost:8000';
-const SPECIALTY_TIMEOUT_MS = Number(process.env.SPECIALTY_TIMEOUT_MS || process.env.TRIAGE_TIMEOUT_MS || 5000);
+const SPECIALTY_TIMEOUT_MS = Number(process.env.SPECIALTY_TIMEOUT_MS || process.env.TRIAGE_TIMEOUT_MS || 10000);
 const MODEL_SOURCE = 'specialty_hybrid_v1';
 
 const ROUTE_MAP = {
@@ -95,8 +96,10 @@ const predictSpecialty = async (payload = {}) => {
   }
 
   try {
-    const response = await axios.post(`${ML_SERVICE_URL}/specialty`, payload, {
+    const response = await postWithRetry(axios, `${ML_SERVICE_URL}/specialty`, payload, {
       timeout: SPECIALTY_TIMEOUT_MS,
+      retries: Number(process.env.SPECIALTY_RETRY_COUNT || 2),
+      initialDelayMs: Number(process.env.SPECIALTY_RETRY_DELAY_MS || 500),
     });
 
     const data = response.data || {};

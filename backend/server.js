@@ -19,6 +19,8 @@ const doctorsRoutes = require('./routes/doctors');
 const app = express();
 
 // ─── Middleware ───────────────────────────────────────────
+// Render sits behind a reverse proxy; trust it so rate limiting keys by client IP correctly.
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
 

@@ -1,10 +1,11 @@
 const axios = require('axios');
 const { getPriorityLabel } = require('../utils/queueHelpers');
 const { runPatientFlow } = require('./patientFlowService');
+const { postWithRetry } = require('../utils/httpRetry');
 
 const TRIAGE_API_URL = process.env.TRIAGE_API_URL || 'http://localhost:8000';
 const TRIAGE_MODEL_VERSION = process.env.TRIAGE_MODEL_VERSION || 'v3';
-const TRIAGE_TIMEOUT_MS = Number(process.env.TRIAGE_TIMEOUT_MS || 5000);
+const TRIAGE_TIMEOUT_MS = Number(process.env.TRIAGE_TIMEOUT_MS || 10000);
 
 const TRIAGE_PAYLOAD_FIELDS = [
   'news2_score',
@@ -382,10 +383,15 @@ const determineTriageDecision = async (patient, requestBody = {}) => {
   }
 
   try {
-    const response = await axios.post(
+    const response = await postWithRetry(
+      axios,
       `${TRIAGE_API_URL}/predict`,
       triagePayload,
-      { timeout: TRIAGE_TIMEOUT_MS }
+      {
+        timeout: TRIAGE_TIMEOUT_MS,
+        retries: Number(process.env.TRIAGE_RETRY_COUNT || 2),
+        initialDelayMs: Number(process.env.TRIAGE_RETRY_DELAY_MS || 500),
+      }
     );
 
     const data = response.data || {};
