@@ -4,8 +4,10 @@ const { protect, adminOnly } = require('../middleware/authMiddleware');
 const { Token, Queue } = require('../models/Queue');
 const User = require('../models/User');
 const predictionHistory = require('../store/predictionStore');
-const { determineTriageDecision } = require('../services/triageService');
-const { predictSpecialty } = require('../services/specialtyService');
+const { mapPriorityClassToScore } = require('../services/triageService');
+const { runPatientFlow } = require('../services/patientFlowService');
+const { routeToSupportedSpecialty } = require('../services/specialtyService');
+const { ACTIVE_TOKEN_STATUSES, getPriorityLabel } = require('../utils/queueHelpers');
 
 const today = () => new Date().toISOString().split('T')[0];
 
@@ -190,59 +192,208 @@ router.post('/pause', async (req, res) => {
   }
 });
 
-const SYMPTOM_COMPLAINT_HINTS = [
-  { complaint: 'cardiac', patterns: [/chest pain/i, /chest pressure/i, /palpitation/i, /heart/i] },
-  { complaint: 'respiratory', patterns: [/shortness of breath/i, /breath/i, /cough/i, /wheez/i, /phlegm/i] },
-  { complaint: 'neurological', patterns: [/headache/i, /dizz/i, /seizure/i, /stroke/i, /numb/i, /tingling/i] },
-  { complaint: 'gastrointestinal', patterns: [/abdominal/i, /stomach/i, /vomit/i, /nausea/i, /diarrhea/i, /constipat/i] },
-  { complaint: 'trauma', patterns: [/fracture/i, /injury/i, /fall/i, /sprain/i, /bleeding/i, /trauma/i] },
-  { complaint: 'renal', patterns: [/urination/i, /urine/i, /kidney/i, /flank/i] },
-  { complaint: 'endocrine', patterns: [/diabetes/i, /sugar/i, /thyroid/i, /thirst/i] },
-  { complaint: 'dermatological', patterns: [/rash/i, /itch/i, /eczema/i, /skin/i, /hives/i] },
-];
-
-const SPECIALTY_TO_COMPLAINT = {
-  Cardiology: 'cardiac',
-  Pulmonology: 'respiratory',
-  'Infectious Disease': 'respiratory',
-  Neurology: 'neurological',
-  Gastroenterology: 'gastrointestinal',
-  Orthopaedics: 'trauma',
-  Dermatology: 'dermatological',
-  'Nephrology / Urology': 'renal',
-  Endocrinology: 'endocrine',
-  Paediatrics: 'respiratory',
+const parseOptionalText = (value) => {
+  const text = String(value || '').trim();
+  return text.length ? text : undefined;
 };
 
-const inferChiefComplaintSystem = (symptoms = '', primarySpecialist = '') => {
-  const text = String(symptoms || '').trim();
-  for (const hint of SYMPTOM_COMPLAINT_HINTS) {
-    if (hint.patterns.some((pattern) => pattern.test(text))) {
-      return hint.complaint;
-    }
+const parseOptionalNumber = (value, fieldLabel, { min, max, integer = false } = {}) => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
   }
-  return SPECIALTY_TO_COMPLAINT[primarySpecialist] || 'other';
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${fieldLabel} must be a valid number`);
+  }
+  if (min != null && parsed < min) {
+    throw new Error(`${fieldLabel} must be at least ${min}`);
+  }
+  if (max != null && parsed > max) {
+    throw new Error(`${fieldLabel} must be at most ${max}`);
+  }
+  if (integer && !Number.isInteger(parsed)) {
+    throw new Error(`${fieldLabel} must be a whole number`);
+  }
+
+  return parsed;
 };
 
-const findRecommendedDoctor = async (routedSpecialty) => {
-  let recommendedDoc = await User.findOne({
+const buildAdminEvalPayload = (body = {}) => {
+  const symptoms = parseOptionalText(body.symptoms);
+  if (!symptoms) {
+    throw new Error('Symptoms text is required');
+  }
+
+  const age = parseOptionalNumber(body.age, 'Age', { min: 0, max: 130, integer: true });
+  if (age == null) {
+    throw new Error('Valid age is required');
+  }
+
+  return {
+    symptoms,
+    age,
+    sex: parseOptionalText(body.sex),
+    mental_status_triage: parseOptionalText(body.mental_status_triage),
+    chief_complaint_system: parseOptionalText(body.chief_complaint_system),
+    language: parseOptionalText(body.language || body.intakeLanguage),
+    temperature_c: parseOptionalNumber(body.temperature_c, 'Temperature', { min: 0, max: 50 }),
+    pain_score: parseOptionalNumber(body.pain_score, 'Pain score', { min: 0, max: 10 }),
+    spo2: parseOptionalNumber(body.spo2, 'SpO2', { min: 0, max: 100 }),
+    respiratory_rate: parseOptionalNumber(body.respiratory_rate, 'Respiratory rate', { min: 0, max: 80 }),
+    heart_rate: parseOptionalNumber(body.heart_rate, 'Heart rate', { min: 0, max: 250 }),
+    systolic_bp: parseOptionalNumber(body.systolic_bp, 'Systolic BP', { min: 0, max: 300 }),
+    diastolic_bp: parseOptionalNumber(body.diastolic_bp, 'Diastolic BP', { min: 0, max: 200 }),
+    gcs_total: parseOptionalNumber(body.gcs_total, 'GCS total', { min: 0, max: 15, integer: true }),
+    news2_score: parseOptionalNumber(body.news2_score, 'NEWS2 score', { min: 0, max: 25 }),
+  };
+};
+
+const getDoctorRoute = (doctor = {}) =>
+  routeToSupportedSpecialty(doctor.specialty || 'General OPD', doctor.specialty || 'General OPD');
+
+const buildAvailableRoutes = async () => {
+  const doctors = await User.find({ role: 'doctor' }).select('_id specialty').lean();
+  if (!doctors.length) {
+    return [];
+  }
+
+  const doctorIds = doctors.map((doctor) => doctor._id);
+  const activeTokens = await Token.find({
+    doctor: { $in: doctorIds },
+    status: { $in: ACTIVE_TOKEN_STATUSES },
+    createdAt: { $gte: new Date(today()) },
+  }).select('doctor').lean();
+
+  const queues = await Queue.find({
+    doctor: { $in: doctorIds },
+    date: today(),
+  }).select('doctor avgConsultationMinutes isPaused').lean();
+
+  const queueByDoctorId = new Map(queues.map((queue) => [String(queue.doctor), queue]));
+  const routeStats = new Map();
+  const doctorRouteById = new Map();
+
+  doctors.forEach((doctor) => {
+    const doctorId = String(doctor._id);
+    const route = getDoctorRoute(doctor);
+    doctorRouteById.set(doctorId, route);
+
+    if (!routeStats.has(route)) {
+      routeStats.set(route, {
+        route,
+        currentQueueLength: 0,
+        availableDoctors: 0,
+        totalConsultationMinutes: 0,
+        consultationSamples: 0,
+        acceptsFallback: route === 'General OPD',
+      });
+    }
+
+    const stats = routeStats.get(route);
+    const queue = queueByDoctorId.get(doctorId);
+    const isAvailable = !queue?.isPaused;
+    if (isAvailable) {
+      stats.availableDoctors += 1;
+      stats.totalConsultationMinutes += Number(queue?.avgConsultationMinutes || 8);
+      stats.consultationSamples += 1;
+    }
+  });
+
+  activeTokens.forEach((token) => {
+    const route = doctorRouteById.get(String(token.doctor));
+    if (route && routeStats.has(route)) {
+      routeStats.get(route).currentQueueLength += 1;
+    }
+  });
+
+  return Array.from(routeStats.values())
+    .map((stats) => {
+      const avgConsultationMinutes = stats.consultationSamples > 0
+        ? stats.totalConsultationMinutes / stats.consultationSamples
+        : 8;
+      const doctorDivisor = Math.max(stats.availableDoctors, 1);
+
+      return {
+        route: stats.route,
+        currentQueueLength: stats.currentQueueLength,
+        availableDoctors: stats.availableDoctors,
+        avgWaitMinutes: Number(((stats.currentQueueLength * avgConsultationMinutes) / doctorDivisor).toFixed(1)),
+        acceptsFallback: stats.acceptsFallback,
+      };
+    })
+    .sort((left, right) => left.route.localeCompare(right.route));
+};
+
+const chooseRecommendedDoctor = async (route) => {
+  const doctors = await User.find({
     role: 'doctor',
-    specialty: routedSpecialty,
-  }).select('name specialty _id');
+    specialty: route,
+  }).select('name specialty _id').lean();
+
+  if (!doctors.length) {
+    return null;
+  }
+
+  const doctorIds = doctors.map((doctor) => doctor._id);
+  const queues = await Queue.find({
+    doctor: { $in: doctorIds },
+    date: today(),
+  }).select('doctor isPaused').lean();
+  const pausedDoctorIds = new Set(
+    queues.filter((queue) => queue.isPaused).map((queue) => String(queue.doctor))
+  );
+
+  const tokenCounts = await Token.aggregate([
+    {
+      $match: {
+        doctor: { $in: doctorIds },
+        status: { $in: ACTIVE_TOKEN_STATUSES },
+        createdAt: { $gte: new Date(today()) },
+      },
+    },
+    {
+      $group: {
+        _id: '$doctor',
+        queueLength: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const queueLengthByDoctorId = new Map(
+    tokenCounts.map((entry) => [String(entry._id), Number(entry.queueLength || 0)])
+  );
+
+  return doctors
+    .map((doctor) => ({
+      ...doctor,
+      queueLength: queueLengthByDoctorId.get(String(doctor._id)) || 0,
+      paused: pausedDoctorIds.has(String(doctor._id)),
+    }))
+    .sort((left, right) => {
+      if (left.paused !== right.paused) {
+        return left.paused ? 1 : -1;
+      }
+      if (left.queueLength !== right.queueLength) {
+        return left.queueLength - right.queueLength;
+      }
+      return left.name.localeCompare(right.name);
+    })[0];
+};
+
+const findRecommendedDoctor = async (selectedRoute) => {
+  let recommendedDoc = await chooseRecommendedDoctor(selectedRoute);
 
   let doctorRoutingNote = '';
-  if (!recommendedDoc && routedSpecialty !== 'General OPD') {
-    recommendedDoc = await User.findOne({
-      role: 'doctor',
-      specialty: 'General OPD',
-    }).select('name specialty _id');
-    doctorRoutingNote = ` No exact ${routedSpecialty} doctor was available, so SmartQ fell back to General OPD.`;
+  if (!recommendedDoc && selectedRoute !== 'General OPD') {
+    recommendedDoc = await chooseRecommendedDoctor('General OPD');
+    doctorRoutingNote = ` No staffed ${selectedRoute} doctor was free, so SmartQ fell back to General OPD.`;
   }
 
   if (!recommendedDoc) {
-    recommendedDoc = await User.findOne({ role: 'doctor' }).select('name specialty _id');
+    recommendedDoc = await User.findOne({ role: 'doctor' }).select('name specialty _id').lean();
     if (recommendedDoc) {
-      doctorRoutingNote = ` No staffed ${routedSpecialty} route was available, so SmartQ used the next available doctor.`;
+      doctorRoutingNote = ` No staffed ${selectedRoute} route was available, so SmartQ used the next available doctor.`;
     }
   }
 
@@ -250,92 +401,128 @@ const findRecommendedDoctor = async (routedSpecialty) => {
     ? {
         id: recommendedDoc._id,
         name: recommendedDoc.name,
-        specialty: recommendedDoc.specialty || routedSpecialty,
+        specialty: recommendedDoc.specialty || selectedRoute,
       }
     : {
         id: null,
         name: 'No doctor available',
-        specialty: routedSpecialty,
+        specialty: selectedRoute,
       };
 
   return { recommendedDoctor, doctorRoutingNote };
 };
 
+const buildAdminPriorityComponents = (age, rawPriorityClass, finalPriorityClass) => {
+  const ageScore = Number(age) >= 60 ? 10 : 5;
+  const rawScore = rawPriorityClass == null ? 0 : mapPriorityClassToScore(rawPriorityClass);
+  const finalScore = finalPriorityClass == null ? 0 : mapPriorityClassToScore(finalPriorityClass);
+
+  return {
+    age: ageScore,
+    triage: rawScore,
+    symptomNlp: 0,
+    ocrFlags: 0,
+    clinicianOverride: Math.max(0, finalScore - rawScore),
+  };
+};
+
 // ─────────────────────────────────────────────────────────────
 // POST /api/admin/model-eval-run
-// Admin-only simulation of specialty routing + priority scoring
+// Admin-only simulation of layered patient flow:
+// safety -> priority -> specialty -> queue -> tests
 // ─────────────────────────────────────────────────────────────
 router.post('/model-eval-run', async (req, res) => {
   try {
-    const symptoms = String(req.body.symptoms || '').trim();
-    const age = Number(req.body.age);
+    const payload = buildAdminEvalPayload(req.body);
+    payload.availableRoutes = await buildAvailableRoutes();
 
-    if (!symptoms) {
-      return res.status(400).json({ success: false, message: 'Symptoms text is required' });
-    }
-
-    if (!Number.isFinite(age) || age < 0 || age > 130) {
-      return res.status(400).json({ success: false, message: 'Valid age is required' });
-    }
-
-    const specialtyPrediction = await predictSpecialty({
-      symptoms,
-      age,
-      temperature_c: req.body.temperature_c,
-      pain_score: req.body.pain_score,
-      chief_complaint_system: req.body.chief_complaint_system,
-      language: req.body.language || req.body.intakeLanguage,
-    });
-
-    const derivedChiefComplaintSystem =
-      req.body.chief_complaint_system ||
-      inferChiefComplaintSystem(symptoms, specialtyPrediction.primarySpecialist);
-
-    const triageDecision = await determineTriageDecision(
-      { age },
-      {
-        symptomsText: symptoms,
-        symptoms,
-        age,
-        chief_complaint_system: derivedChiefComplaintSystem,
-        temperature_c: req.body.temperature_c,
-        pain_score: req.body.pain_score,
-      }
+    const flow = await runPatientFlow(payload);
+    const finalPriorityClass = flow.priority.guardrailedPriorityClass;
+    const rawPriorityClass = flow.priority.modelPriorityClass;
+    const finalPriorityScore = finalPriorityClass == null ? null : mapPriorityClassToScore(finalPriorityClass);
+    const rawPriorityScore = rawPriorityClass == null ? null : mapPriorityClassToScore(rawPriorityClass);
+    const priorityComponents = buildAdminPriorityComponents(
+      payload.age,
+      rawPriorityClass,
+      finalPriorityClass
     );
 
-    const routedSpecialty = specialtyPrediction.routedSpecialty || 'General OPD';
-    const { recommendedDoctor, doctorRoutingNote } = await findRecommendedDoctor(routedSpecialty);
+    const selectedRoute = flow.queueAssignment.selectedRoute || 'General OPD';
+    const { recommendedDoctor, doctorRoutingNote } = await findRecommendedDoctor(selectedRoute);
 
-    const reasoning = `${specialtyPrediction.reasoning}${doctorRoutingNote}`.trim();
+    const safetySummary = flow.safety.length
+      ? ` Safety rules: ${flow.safety.map((rule) => rule.ruleId).join(', ')}.`
+      : '';
+    const reasoning = [
+      flow.specialty.reasoning,
+      flow.queueAssignment.rationale,
+      doctorRoutingNote,
+      safetySummary,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
 
     const evaluation = {
-      symptoms,
-      age,
-      derivedChiefComplaintSystem,
-      normalizedSymptoms: specialtyPrediction.normalizedSymptoms,
-      extractedFactors: specialtyPrediction.extractedSignals,
-      extractedSignals: specialtyPrediction.extractedSignals,
-      specialtyScores: specialtyPrediction.specialtyScores,
-      alternativeSpecialists: specialtyPrediction.alternativeSpecialists,
-      primarySpecialist: specialtyPrediction.primarySpecialist,
-      routedSpecialty,
+      symptoms: payload.symptoms,
+      age: payload.age,
+      sex: payload.sex || null,
+      mentalStatusTriage: payload.mental_status_triage || null,
+      chiefComplaintSystem: payload.chief_complaint_system || null,
+      temperatureC: payload.temperature_c ?? null,
+      painScore: payload.pain_score ?? null,
+      spo2: payload.spo2 ?? null,
+      respiratoryRate: payload.respiratory_rate ?? null,
+      heartRate: payload.heart_rate ?? null,
+      systolicBp: payload.systolic_bp ?? null,
+      diastolicBp: payload.diastolic_bp ?? null,
+      gcsTotal: payload.gcs_total ?? null,
+      news2Score: payload.news2_score ?? null,
+      derivedChiefComplaintSystem: flow.derivedChiefComplaintSystem,
+      normalizedSymptoms: flow.normalizedSymptoms,
+      extractedFactors: flow.specialty.extractedSignals,
+      extractedSignals: flow.specialty.extractedSignals,
+      specialtyScores: flow.specialty.specialtyScores,
+      alternativeSpecialists: flow.specialty.alternativeSpecialists,
+      primarySpecialist: flow.specialty.primarySpecialist,
+      routedSpecialty: flow.specialty.routedSpecialty,
+      queueSelectedRoute: selectedRoute,
+      queueRouteType: flow.queueAssignment.routeType,
+      queueRationale: flow.queueAssignment.rationale,
+      queueCurrentLength: flow.queueAssignment.currentQueueLength,
+      queueAvailableDoctors: flow.queueAssignment.availableDoctors,
+      queueAvgWaitMinutes: flow.queueAssignment.avgWaitMinutes,
       recommendedDoctor,
-      confidence: specialtyPrediction.confidence,
-      lowConfidence: specialtyPrediction.lowConfidence,
+      confidence: flow.specialty.confidence,
+      lowConfidence: flow.specialty.lowConfidence,
       reasoning,
-      modelSource: specialtyPrediction.modelSource,
-      priorityLabel: triageDecision.priorityLabel,
-      priorityScore: triageDecision.priorityScore,
-      priorityFinalScore: triageDecision.priorityFinalScore,
-      triagePriorityClass: triageDecision.triagePriorityClass,
-      triageConfidence: triageDecision.triageConfidence,
-      triageLowConfidence: triageDecision.triageLowConfidence,
-      triageRecommendation: triageDecision.triageRecommendation,
-      triageSource: triageDecision.triageSource,
-      priorityComponents: triageDecision.priorityComponents,
-      priorityDecisionTrace: triageDecision.priorityDecisionTrace,
-      triageAllClassProbs: triageDecision.triageAllClassProbs,
-      triageModelVersion: triageDecision.triageModelVersion,
+      modelSource: flow.specialty.modelSource,
+      flowSource: flow.flowSource,
+      priorityLabel: finalPriorityScore == null ? null : getPriorityLabel(finalPriorityScore),
+      priorityScore: rawPriorityScore,
+      priorityFinalScore: finalPriorityScore,
+      triagePriorityClass: finalPriorityClass,
+      triageConfidence: flow.priority.modelConfidence,
+      triageLowConfidence: flow.priority.lowConfidence,
+      triageRecommendation: flow.priority.guardrailedRecommendation || flow.priority.modelRecommendation,
+      triageSource: flow.priority.source,
+      priorityComponents,
+      priorityDecisionTrace: [
+        `rawClass=${rawPriorityClass ?? 'n/a'}`,
+        `finalClass=${finalPriorityClass ?? 'n/a'}`,
+        `source=${flow.priority.source || 'ml_v3'}`,
+        `safety=${flow.safety.length ? flow.safety.map((rule) => rule.ruleId).join(',') : 'none'}`,
+      ].join(';'),
+      triageAllClassProbs: flow.priority.allClassProbs || {},
+      triageModelVersion: 'ml_v3',
+      modelPriorityClass: rawPriorityClass,
+      guardrailedPriorityClass: finalPriorityClass,
+      guardrailedRecommendation: flow.priority.guardrailedRecommendation || flow.priority.modelRecommendation,
+      safetyMatches: flow.safety,
+      testRecommendations: flow.tests.recommendations,
+      testSource: flow.tests.source,
+      testLowConfidence: flow.tests.lowConfidence,
+      availableRoutes: payload.availableRoutes,
       timestamp: new Date().toISOString(),
       patientName: 'Admin simulation',
       patientId: req.user._id,
@@ -352,7 +539,10 @@ router.post('/model-eval-run', async (req, res) => {
     });
   } catch (err) {
     console.error('Admin model eval error:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(err.status || 500).json({
+      success: false,
+      message: err.message || 'Server error',
+    });
   }
 });
 

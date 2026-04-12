@@ -12,6 +12,18 @@ public class ModelEvalHistoryResponse {
     public static class EvalEntry {
         private String symptoms;
         private Integer age;
+        private String sex;
+        private String mentalStatusTriage;
+        private String chiefComplaintSystem;
+        private Double temperatureC;
+        private Double painScore;
+        private Double spo2;
+        private Double respiratoryRate;
+        private Double heartRate;
+        private Double systolicBp;
+        private Double diastolicBp;
+        private Integer gcsTotal;
+        private Double news2Score;
         private String derivedChiefComplaintSystem;
         private String normalizedSymptoms;
         private List<String> extractedFactors;
@@ -37,9 +49,35 @@ public class ModelEvalHistoryResponse {
         private String triageSource;
         private String priorityDecisionTrace;
         private PriorityComponents priorityComponents;
+        private Integer modelPriorityClass;
+        private Integer guardrailedPriorityClass;
+        private String guardrailedRecommendation;
+        private List<SafetyMatch> safetyMatches;
+        private String queueSelectedRoute;
+        private String queueRouteType;
+        private String queueRationale;
+        private Integer queueCurrentLength;
+        private Integer queueAvailableDoctors;
+        private Double queueAvgWaitMinutes;
+        private List<TestRecommendation> testRecommendations;
+        private String testSource;
+        private boolean testLowConfidence;
+        private String flowSource;
 
         public String getSymptoms() { return symptoms; }
         public Integer getAge() { return age; }
+        public String getSex() { return sex; }
+        public String getMentalStatusTriage() { return mentalStatusTriage; }
+        public String getChiefComplaintSystem() { return chiefComplaintSystem; }
+        public Double getTemperatureC() { return temperatureC; }
+        public Double getPainScore() { return painScore; }
+        public Double getSpo2() { return spo2; }
+        public Double getRespiratoryRate() { return respiratoryRate; }
+        public Double getHeartRate() { return heartRate; }
+        public Double getSystolicBp() { return systolicBp; }
+        public Double getDiastolicBp() { return diastolicBp; }
+        public Integer getGcsTotal() { return gcsTotal; }
+        public Double getNews2Score() { return news2Score; }
         public String getDerivedChiefComplaintSystem() { return derivedChiefComplaintSystem; }
         public String getNormalizedSymptoms() { return normalizedSymptoms; }
 
@@ -76,6 +114,22 @@ public class ModelEvalHistoryResponse {
         public String getTriageSource() { return triageSource; }
         public String getPriorityDecisionTrace() { return priorityDecisionTrace; }
         public PriorityComponents getPriorityComponents() { return priorityComponents; }
+        public Integer getModelPriorityClass() { return modelPriorityClass; }
+        public Integer getGuardrailedPriorityClass() {
+            return guardrailedPriorityClass != null ? guardrailedPriorityClass : triagePriorityClass;
+        }
+        public String getGuardrailedRecommendation() { return guardrailedRecommendation; }
+        public List<SafetyMatch> getSafetyMatches() { return safetyMatches; }
+        public String getQueueSelectedRoute() { return queueSelectedRoute; }
+        public String getQueueRouteType() { return queueRouteType; }
+        public String getQueueRationale() { return queueRationale; }
+        public Integer getQueueCurrentLength() { return queueCurrentLength; }
+        public Integer getQueueAvailableDoctors() { return queueAvailableDoctors; }
+        public Double getQueueAvgWaitMinutes() { return queueAvgWaitMinutes; }
+        public List<TestRecommendation> getTestRecommendations() { return testRecommendations; }
+        public String getTestSource() { return testSource; }
+        public boolean isTestLowConfidence() { return testLowConfidence; }
+        public String getFlowSource() { return flowSource; }
     }
 
     public static class SpecialtyScore {
@@ -129,5 +183,29 @@ public class ModelEvalHistoryResponse {
         public double getSymptomNlp() { return symptomNlp; }
         public double getOcrFlags() { return ocrFlags; }
         public double getClinicianOverride() { return clinicianOverride; }
+    }
+
+    public static class SafetyMatch {
+        private String ruleId;
+        private String severity;
+        private Integer forcedPriorityClass;
+        private String preferredRoute;
+        private String rationale;
+
+        public String getRuleId() { return ruleId; }
+        public String getSeverity() { return severity; }
+        public Integer getForcedPriorityClass() { return forcedPriorityClass; }
+        public String getPreferredRoute() { return preferredRoute; }
+        public String getRationale() { return rationale; }
+    }
+
+    public static class TestRecommendation {
+        private String test;
+        private String rationale;
+        private String urgency;
+
+        public String getTest() { return test; }
+        public String getRationale() { return rationale; }
+        public String getUrgency() { return urgency; }
     }
 }

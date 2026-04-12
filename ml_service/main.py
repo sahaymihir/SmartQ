@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from collections import Counter
 
 import joblib
 import numpy as np
@@ -14,14 +15,18 @@ from pydantic import BaseModel, ConfigDict, Field
 
 try:
     from specialty_hybrid import (
+        GENERAL_ROUTE,
         SpecialtyPredictionRequest,
         SpecialtyPredictionResponse,
+        normalize_symptoms_text,
         predict_specialty,
     )
 except ModuleNotFoundError:
     from .specialty_hybrid import (
+        GENERAL_ROUTE,
         SpecialtyPredictionRequest,
         SpecialtyPredictionResponse,
+        normalize_symptoms_text,
         predict_specialty,
     )
 
@@ -217,6 +222,73 @@ class TestRecommendationResponse(BaseModel):
     low_confidence: bool = False
 
 
+class SafetyRuleMatch(BaseModel):
+    ruleId: str
+    severity: str
+    forcedPriorityClass: int | None = Field(default=None, ge=1, le=5)
+    preferredRoute: str | None = None
+    rationale: str
+
+
+class QueueRouteOption(BaseModel):
+    route: str = Field(min_length=1)
+    currentQueueLength: int = Field(default=0, ge=0)
+    availableDoctors: int = Field(default=1, ge=0)
+    avgWaitMinutes: float | None = Field(default=None, ge=0)
+    acceptsFallback: bool = False
+
+
+class QueueAssignmentResponse(BaseModel):
+    selectedRoute: str
+    routeType: str
+    rationale: str
+    currentQueueLength: int = Field(default=0, ge=0)
+    availableDoctors: int = Field(default=0, ge=0)
+    avgWaitMinutes: float | None = Field(default=None, ge=0)
+
+
+class PriorityPipelineResponse(BaseModel):
+    modelPriorityClass: int | None = Field(default=None, ge=1, le=5)
+    modelConfidence: float = Field(ge=0, le=1)
+    lowConfidence: bool
+    modelRecommendation: str
+    allClassProbs: dict[str, float] = Field(default_factory=dict)
+    guardrailedPriorityClass: int = Field(ge=1, le=5)
+    guardrailedRecommendation: str
+    source: str
+
+
+class PatientFlowRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+
+    symptoms: str = Field(min_length=1)
+    age: int | None = Field(default=None, ge=0, le=130)
+    sex: str | None = None
+    mental_status_triage: str | None = None
+    chief_complaint_system: str | None = None
+    language: str | None = None
+    temperature_c: float | None = Field(default=None, ge=0)
+    pain_score: float | None = Field(default=None, ge=0, le=10)
+    spo2: float | None = Field(default=None, ge=0, le=100)
+    respiratory_rate: float | None = Field(default=None, ge=0)
+    heart_rate: float | None = Field(default=None, ge=0)
+    systolic_bp: float | None = Field(default=None, ge=0)
+    diastolic_bp: float | None = Field(default=None, ge=0)
+    gcs_total: int | None = Field(default=None, ge=0, le=15)
+    news2_score: float | None = Field(default=None, ge=0)
+    availableRoutes: list[QueueRouteOption] = Field(default_factory=list)
+
+
+class PatientFlowResponse(BaseModel):
+    normalizedSymptoms: str
+    derivedChiefComplaintSystem: str
+    safety: list[SafetyRuleMatch] = Field(default_factory=list)
+    priority: PriorityPipelineResponse
+    specialty: SpecialtyPredictionResponse
+    queueAssignment: QueueAssignmentResponse
+    tests: TestRecommendationResponse
+
+
 _COMPLAINT_TESTS: dict[str, list[dict]] = {
     "respiratory": [
         {"test": "Chest X-ray", "rationale": "Assess lung fields and cardiac silhouette", "urgency": "urgent"},
@@ -272,6 +344,32 @@ _PEDIATRIC_TESTS = [
 _ELDERLY_VITALS_TESTS = [
     {"test": "Electrolytes + renal panel", "rationale": "Elderly patients at risk of electrolyte disturbance", "urgency": "urgent"},
 ]
+
+SYMPTOM_COMPLAINT_HINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("cardiac", ("chest pain", "chest pressure", "palpitation", "heart pain", "heart attack")),
+    ("respiratory", ("shortness of breath", "breath", "cough", "wheez", "phlegm")),
+    ("neurological", ("headache", "dizz", "seizure", "stroke", "numb", "tingling", "face droop")),
+    ("gastrointestinal", ("abdominal", "stomach", "vomit", "nausea", "diarrhea", "constipat")),
+    ("trauma", ("fracture", "injury", "fall", "sprain", "bleeding", "trauma")),
+    ("renal", ("urination", "urine", "kidney", "flank")),
+    ("endocrine", ("diabetes", "sugar", "thyroid", "thirst")),
+    ("dermatological", ("rash", "itch", "eczema", "skin", "hives")),
+)
+
+SPECIALTY_TO_COMPLAINT_MAP: dict[str, str] = {
+    "Cardiology": "cardiac",
+    "Pulmonology": "respiratory",
+    "Infectious Disease": "respiratory",
+    "Neurology": "neurological",
+    "Gastroenterology": "gastrointestinal",
+    "Orthopaedics": "trauma",
+    "Dermatology": "dermatological",
+    "Nephrology / Urology": "renal",
+    "Endocrinology": "endocrine",
+    "Paediatrics": "respiratory",
+}
+
+FALLBACK_ROUTE_NAMES = {"general opd", "general practice", "general"}
 
 
 def _deduplicate(recs: list[dict]) -> list[TestRecommendation]:
@@ -329,6 +427,349 @@ def generate_test_recommendations(payload: TestRecommendationRequest) -> TestRec
         recommendations=_deduplicate(recs),
         source="rule_based_v1",
         low_confidence=len(recs) < 2,
+    )
+
+
+def _contains_any(text: str, terms: tuple[str, ...]) -> bool:
+    lowered = text.casefold()
+    return any(term in lowered for term in terms)
+
+
+def evaluate_safety_rules(payload: PatientFlowRequest, normalized_symptoms: str) -> list[SafetyRuleMatch]:
+    matches: list[SafetyRuleMatch] = []
+    mental_status = (payload.mental_status_triage or "").strip().casefold()
+
+    if payload.spo2 is not None and payload.spo2 <= 90:
+        matches.append(
+            SafetyRuleMatch(
+                ruleId="critical_hypoxia",
+                severity="critical",
+                forcedPriorityClass=1,
+                preferredRoute="Pulmonology",
+                rationale="SpO2 at or below 90 suggests immediate respiratory compromise.",
+            )
+        )
+    elif payload.spo2 is not None and payload.spo2 <= 93:
+        matches.append(
+            SafetyRuleMatch(
+                ruleId="moderate_hypoxia",
+                severity="urgent",
+                forcedPriorityClass=2,
+                preferredRoute="Pulmonology",
+                rationale="SpO2 at or below 93 warrants urgent respiratory review.",
+            )
+        )
+
+    if payload.gcs_total is not None and payload.gcs_total <= 8:
+        matches.append(
+            SafetyRuleMatch(
+                ruleId="severely_reduced_consciousness",
+                severity="critical",
+                forcedPriorityClass=1,
+                preferredRoute="Neurology",
+                rationale="GCS 8 or below indicates a high-risk altered consciousness state.",
+            )
+        )
+    elif (payload.gcs_total is not None and payload.gcs_total <= 12) or mental_status in {"unresponsive", "drowsy"}:
+        matches.append(
+            SafetyRuleMatch(
+                ruleId="altered_mental_status",
+                severity="urgent",
+                forcedPriorityClass=2,
+                preferredRoute="Neurology",
+                rationale="Reduced GCS or abnormal mental status requires urgent escalation.",
+            )
+        )
+
+    if _contains_any(
+        normalized_symptoms,
+        ("slurred speech", "face droop", "one sided weakness", "stroke", "paralysis"),
+    ):
+        matches.append(
+            SafetyRuleMatch(
+                ruleId="possible_stroke",
+                severity="critical",
+                forcedPriorityClass=1,
+                preferredRoute="Neurology",
+                rationale="Symptoms match a possible stroke pattern.",
+            )
+        )
+
+    if _contains_any(
+        normalized_symptoms,
+        ("unconscious", "passed out", "fainted", "seizure", "convulsion"),
+    ):
+        matches.append(
+            SafetyRuleMatch(
+                ruleId="loss_of_consciousness_or_seizure",
+                severity="critical",
+                forcedPriorityClass=1,
+                preferredRoute="Neurology",
+                rationale="Loss of consciousness or seizure activity is a high-acuity emergency.",
+            )
+        )
+
+    if _contains_any(
+        normalized_symptoms,
+        ("can not breathe", "cannot breathe", "cant breathe", "can't breathe", "shortness of breath"),
+    ) and (
+        (payload.respiratory_rate is not None and payload.respiratory_rate >= 24)
+        or (payload.spo2 is not None and payload.spo2 <= 93)
+    ):
+        matches.append(
+            SafetyRuleMatch(
+                ruleId="respiratory_distress",
+                severity="critical" if (payload.spo2 is not None and payload.spo2 <= 90) else "urgent",
+                forcedPriorityClass=1 if (payload.spo2 is not None and payload.spo2 <= 90) else 2,
+                preferredRoute="Pulmonology",
+                rationale="Breathing difficulty plus abnormal respiratory vitals suggests acute respiratory distress.",
+            )
+        )
+
+    if _contains_any(
+        normalized_symptoms,
+        ("crushing chest pain", "heart attack", "chest pain", "chest pressure"),
+    ) and (
+        _contains_any(normalized_symptoms, ("shortness of breath", "palpitations", "heart racing"))
+        or (payload.pain_score is not None and payload.pain_score >= 7)
+    ):
+        matches.append(
+            SafetyRuleMatch(
+                ruleId="cardiac_red_flag",
+                severity="urgent",
+                forcedPriorityClass=2,
+                preferredRoute="Cardiology",
+                rationale="Chest pain with cardiopulmonary overlap needs urgent cardiac evaluation.",
+            )
+        )
+
+    if payload.temperature_c is not None and payload.temperature_c >= 39.5 and (
+        (payload.heart_rate is not None and payload.heart_rate >= 110)
+        or (payload.systolic_bp is not None and payload.systolic_bp < 95)
+    ):
+        matches.append(
+            SafetyRuleMatch(
+                ruleId="possible_sepsis",
+                severity="urgent",
+                forcedPriorityClass=2,
+                preferredRoute="General OPD",
+                rationale="High fever plus unstable vitals suggests possible sepsis physiology.",
+            )
+        )
+
+    return matches
+
+
+def resolve_guardrailed_priority(
+    model_prediction: PredictionResponse,
+    safety_matches: list[SafetyRuleMatch],
+) -> PriorityPipelineResponse:
+    guardrailed_class = model_prediction.priority_class
+    source = "ml_v3"
+
+    forced_classes = [match.forcedPriorityClass for match in safety_matches if match.forcedPriorityClass is not None]
+    if forced_classes:
+        strongest_override = min(forced_classes)
+        if strongest_override < guardrailed_class:
+            guardrailed_class = strongest_override
+            source = "ml_v3_guardrailed"
+
+    return PriorityPipelineResponse(
+        modelPriorityClass=model_prediction.priority_class,
+        modelConfidence=model_prediction.confidence,
+        lowConfidence=model_prediction.low_confidence,
+        modelRecommendation=model_prediction.recommendation,
+        allClassProbs=model_prediction.all_class_probs,
+        guardrailedPriorityClass=guardrailed_class,
+        guardrailedRecommendation=RECOMMENDATION_MAP[guardrailed_class],
+        source=source,
+    )
+
+
+def infer_chief_complaint_system(payload: PatientFlowRequest, normalized_symptoms: str) -> str:
+    if payload.chief_complaint_system:
+        return payload.chief_complaint_system.strip().casefold()
+
+    for complaint, terms in SYMPTOM_COMPLAINT_HINTS:
+        if _contains_any(normalized_symptoms, terms):
+            return complaint
+
+    return "other"
+
+
+def resolve_test_complaint_system(
+    derived_complaint: str,
+    payload: PatientFlowRequest,
+    specialty_prediction: SpecialtyPredictionResponse,
+) -> str:
+    if payload.chief_complaint_system:
+        return payload.chief_complaint_system.strip().casefold()
+    if derived_complaint != "other":
+        return derived_complaint
+    return SPECIALTY_TO_COMPLAINT_MAP.get(specialty_prediction.primarySpecialist, "other")
+
+
+def select_route_hint(
+    specialty_prediction: SpecialtyPredictionResponse,
+    safety_matches: list[SafetyRuleMatch],
+) -> tuple[str, str]:
+    preferred_route = specialty_prediction.routedSpecialty or GENERAL_ROUTE
+    safety_routes = [match.preferredRoute for match in safety_matches if match.preferredRoute]
+
+    if not safety_routes:
+        return preferred_route, "primary"
+
+    if any(match.severity == "critical" for match in safety_matches):
+        return GENERAL_ROUTE, "safety_override"
+
+    if preferred_route in safety_routes:
+        return preferred_route, "safety_override"
+
+    most_common_route = Counter(safety_routes).most_common(1)[0][0]
+    return most_common_route, "safety_override"
+
+
+def assign_queue_route(
+    payload: PatientFlowRequest,
+    priority: PriorityPipelineResponse,
+    specialty_prediction: SpecialtyPredictionResponse,
+    safety_matches: list[SafetyRuleMatch],
+) -> QueueAssignmentResponse:
+    route_hint, route_type_base = select_route_hint(specialty_prediction, safety_matches)
+
+    if not payload.availableRoutes:
+        rationale = (
+            "No live queue-state context was supplied, so the clinically preferred route was returned directly."
+        )
+        return QueueAssignmentResponse(
+            selectedRoute=route_hint,
+            routeType=route_type_base,
+            rationale=rationale,
+            currentQueueLength=0,
+            availableDoctors=0,
+            avgWaitMinutes=None,
+        )
+
+    def route_key(value: str) -> str:
+        return value.strip().casefold()
+
+    preferred_key = route_key(route_hint)
+    exact_matches = [option for option in payload.availableRoutes if route_key(option.route) == preferred_key]
+    fallback_routes = [
+        option
+        for option in payload.availableRoutes
+        if option.acceptsFallback or route_key(option.route) in FALLBACK_ROUTE_NAMES
+    ]
+
+    candidates = exact_matches + [
+        option for option in fallback_routes if route_key(option.route) != preferred_key
+    ]
+    if not candidates:
+        candidates = payload.availableRoutes
+
+    staffed_candidates = [option for option in candidates if option.availableDoctors > 0]
+    if staffed_candidates:
+        candidates = staffed_candidates
+
+    priority_weight = 1.3 if priority.guardrailedPriorityClass <= 2 else 1.0
+
+    def candidate_score(option: QueueRouteOption) -> float:
+        wait = option.avgWaitMinutes if option.avgWaitMinutes is not None else option.currentQueueLength * 8.0
+        route_penalty = 0.0 if route_key(option.route) == preferred_key else 6.0
+        doctor_bonus = min(option.availableDoctors, 3) * 2.5
+        return (wait * priority_weight) + (option.currentQueueLength * 1.5) + route_penalty - doctor_bonus
+
+    selected = min(candidates, key=candidate_score)
+    estimated_wait = selected.avgWaitMinutes if selected.avgWaitMinutes is not None else float(selected.currentQueueLength * 8)
+    route_type = route_type_base if route_key(selected.route) == preferred_key else "fallback"
+    rationale = (
+        f"Selected {selected.route} using route hint {route_hint}; "
+        f"queue={selected.currentQueueLength}, doctors={selected.availableDoctors}, "
+        f"estimated_wait={estimated_wait:.0f}m."
+    )
+
+    return QueueAssignmentResponse(
+        selectedRoute=selected.route,
+        routeType=route_type,
+        rationale=rationale,
+        currentQueueLength=selected.currentQueueLength,
+        availableDoctors=selected.availableDoctors,
+        avgWaitMinutes=selected.avgWaitMinutes,
+    )
+
+
+def build_priority_request(
+    payload: PatientFlowRequest,
+    chief_complaint_system: str,
+) -> PredictionRequest:
+    return PredictionRequest(
+        news2_score=payload.news2_score,
+        gcs_total=payload.gcs_total,
+        pain_score=payload.pain_score,
+        spo2=payload.spo2,
+        temperature_c=payload.temperature_c,
+        respiratory_rate=payload.respiratory_rate,
+        heart_rate=payload.heart_rate,
+        mental_status_triage=payload.mental_status_triage,
+        diastolic_bp=payload.diastolic_bp,
+        systolic_bp=payload.systolic_bp,
+        age=payload.age,
+        chief_complaint_system=chief_complaint_system,
+        language=payload.language,
+        sex=payload.sex,
+    )
+
+
+def run_patient_flow(payload: PatientFlowRequest, artifacts: ModelArtifacts) -> PatientFlowResponse:
+    normalized_symptoms = normalize_symptoms_text(payload.symptoms)
+    if not normalized_symptoms:
+        normalized_symptoms = payload.symptoms.strip().lower()
+
+    safety_matches = evaluate_safety_rules(payload, normalized_symptoms)
+
+    derived_complaint = infer_chief_complaint_system(payload, normalized_symptoms)
+
+    priority_request = build_priority_request(payload, derived_complaint)
+    priority_frame = build_feature_frame(priority_request, artifacts)
+    model_priority = run_inference(priority_frame, artifacts)
+    guardrailed_priority = resolve_guardrailed_priority(model_priority, safety_matches)
+
+    specialty_request = SpecialtyPredictionRequest(
+        symptoms=payload.symptoms,
+        age=payload.age,
+        sex=payload.sex,
+        temperature_c=payload.temperature_c,
+        pain_score=payload.pain_score,
+        chief_complaint_system=derived_complaint,
+        language=payload.language,
+    )
+    specialty_prediction = predict_specialty(specialty_request)
+
+    queue_assignment = assign_queue_route(payload, guardrailed_priority, specialty_prediction, safety_matches)
+
+    complaint = resolve_test_complaint_system(derived_complaint, payload, specialty_prediction)
+    tests_request = TestRecommendationRequest(
+        priority_class=guardrailed_priority.guardrailedPriorityClass,
+        chief_complaint_system=complaint,
+        age=payload.age,
+        temperature_c=payload.temperature_c,
+        spo2=payload.spo2,
+        heart_rate=payload.heart_rate,
+        systolic_bp=payload.systolic_bp,
+        pain_score=payload.pain_score,
+        gcs_total=payload.gcs_total,
+        symptoms=payload.symptoms,
+    )
+    test_recommendations = generate_test_recommendations(tests_request)
+
+    return PatientFlowResponse(
+        normalizedSymptoms=normalized_symptoms,
+        derivedChiefComplaintSystem=derived_complaint,
+        safety=safety_matches,
+        priority=guardrailed_priority,
+        specialty=specialty_prediction,
+        queueAssignment=queue_assignment,
+        tests=test_recommendations,
     )
 
 
@@ -652,6 +1093,20 @@ async def specialty(payload: SpecialtyPredictionRequest) -> SpecialtyPredictionR
     except Exception as exc:
         logger.exception("Specialty prediction failed")
         raise HTTPException(status_code=500, detail="Specialty prediction failed") from exc
+
+
+@app.post("/patient-flow", response_model=PatientFlowResponse)
+async def patient_flow(payload: PatientFlowRequest, request: Request) -> PatientFlowResponse:
+    artifacts = get_artifacts(request)
+    try:
+        return run_patient_flow(payload, artifacts)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Patient flow orchestration failed")
+        raise HTTPException(status_code=500, detail="Patient flow orchestration failed") from exc
 
 
 @app.post("/test-recommendations", response_model=TestRecommendationResponse)

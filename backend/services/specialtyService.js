@@ -139,6 +139,8 @@ const predictSpecialty = async (payload = {}) => {
 };
 
 module.exports = {
+  buildAlternativeSpecialists,
+  buildSpecialtyScores,
   predictSpecialty,
   routeToSupportedSpecialty,
 };

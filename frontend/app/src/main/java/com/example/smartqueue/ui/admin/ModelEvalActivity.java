@@ -34,11 +34,15 @@ public class ModelEvalActivity extends AppCompatActivity {
 
     private ApiService apiService;
 
-    private TextInputEditText etTestSymptoms, etTestAge;
+    private TextInputEditText etTestSymptoms, etTestAge, etTestChiefComplaint, etTestSex,
+            etTestMentalStatus, etTestTemperature, etTestPainScore, etTestSpo2,
+            etTestRespiratoryRate, etTestHeartRate, etTestSystolicBp, etTestDiastolicBp,
+            etTestGcs, etTestNews2;
     private MaterialButton btnRunTest, btnBack, btnRefreshHistory;
     private MaterialButton btnExampleCardio, btnExampleFever, btnExampleRash;
     private LinearLayout layoutTestResult, layoutTestScores, layoutEvalHistory, layoutNoHistory;
-    private TextView tvTestPrioritySummary, tvTestPriorityBreakdown;
+    private TextView tvTestPrioritySummary, tvTestPriorityBreakdown, tvTestSafetySummary,
+            tvTestQueueSummary, tvTestSuggestedTests;
     private TextView tvTestPrimarySpecialist, tvTestRoutedSpecialty, tvTestNormalizedSymptoms;
     private TextView tvTestFactors, tvTestDoctor, tvTestReasoning, tvTestModelSource, tvHistoryCount;
 
@@ -63,12 +67,27 @@ public class ModelEvalActivity extends AppCompatActivity {
         btnExampleRash = findViewById(R.id.btnExampleRash);
         etTestSymptoms = findViewById(R.id.etTestSymptoms);
         etTestAge = findViewById(R.id.etTestAge);
+        etTestChiefComplaint = findViewById(R.id.etTestChiefComplaint);
+        etTestSex = findViewById(R.id.etTestSex);
+        etTestMentalStatus = findViewById(R.id.etTestMentalStatus);
+        etTestTemperature = findViewById(R.id.etTestTemperature);
+        etTestPainScore = findViewById(R.id.etTestPainScore);
+        etTestSpo2 = findViewById(R.id.etTestSpo2);
+        etTestRespiratoryRate = findViewById(R.id.etTestRespiratoryRate);
+        etTestHeartRate = findViewById(R.id.etTestHeartRate);
+        etTestSystolicBp = findViewById(R.id.etTestSystolicBp);
+        etTestDiastolicBp = findViewById(R.id.etTestDiastolicBp);
+        etTestGcs = findViewById(R.id.etTestGcs);
+        etTestNews2 = findViewById(R.id.etTestNews2);
         layoutTestResult = findViewById(R.id.layoutTestResult);
         layoutTestScores = findViewById(R.id.layoutTestScores);
         layoutEvalHistory = findViewById(R.id.layoutEvalHistory);
         layoutNoHistory = findViewById(R.id.layoutNoHistory);
         tvTestPrioritySummary = findViewById(R.id.tvTestPrioritySummary);
         tvTestPriorityBreakdown = findViewById(R.id.tvTestPriorityBreakdown);
+        tvTestSafetySummary = findViewById(R.id.tvTestSafetySummary);
+        tvTestQueueSummary = findViewById(R.id.tvTestQueueSummary);
+        tvTestSuggestedTests = findViewById(R.id.tvTestSuggestedTests);
         tvTestPrimarySpecialist = findViewById(R.id.tvTestPrimarySpecialist);
         tvTestRoutedSpecialty = findViewById(R.id.tvTestRoutedSpecialty);
         tvTestNormalizedSymptoms = findViewById(R.id.tvTestNormalizedSymptoms);
@@ -88,13 +107,58 @@ public class ModelEvalActivity extends AppCompatActivity {
         btnRefreshHistory.setOnClickListener(v -> loadHistory());
 
         btnExampleCardio.setOnClickListener(v ->
-                applyExample("I feel pressure in my chest and I am short of breath", 67));
+                applyExample(new EvalScenario(
+                        "I feel pressure in my chest and I am short of breath",
+                        67,
+                        "M",
+                        "alert",
+                        "cardiac",
+                        38.7,
+                        8.0,
+                        91.0,
+                        26.0,
+                        118.0,
+                        92.0,
+                        58.0,
+                        15,
+                        7.0
+                )));
 
         btnExampleFever.setOnClickListener(v ->
-                applyExample("I have fever and cold for two days with body ache", 29));
+                applyExample(new EvalScenario(
+                        "I have fever and cold for two days with body ache",
+                        29,
+                        "F",
+                        "alert",
+                        "respiratory",
+                        39.1,
+                        4.0,
+                        92.0,
+                        24.0,
+                        110.0,
+                        104.0,
+                        68.0,
+                        15,
+                        5.0
+                )));
 
         btnExampleRash.setOnClickListener(v ->
-                applyExample("I have an itchy rash on my arms and neck", 34));
+                applyExample(new EvalScenario(
+                        "I have an itchy rash on my arms and neck",
+                        34,
+                        "F",
+                        "alert",
+                        "dermatological",
+                        36.8,
+                        2.0,
+                        98.0,
+                        16.0,
+                        82.0,
+                        118.0,
+                        76.0,
+                        15,
+                        1.0
+                )));
 
         btnRunTest.setOnClickListener(v -> {
             String symptoms = etTestSymptoms.getText() != null
@@ -104,21 +168,36 @@ public class ModelEvalActivity extends AppCompatActivity {
                 return;
             }
 
-            Integer age = parseAgeInput();
-            if (age == null) {
-                Toast.makeText(this, "Please enter a valid age", Toast.LENGTH_SHORT).show();
+            SymptomRequest request = buildAdminEvalRequest();
+            if (request == null) {
                 return;
             }
 
-            runTestPrediction(symptoms, age);
+            runTestPrediction(request);
         });
     }
 
-    private void applyExample(String symptoms, int age) {
-        etTestSymptoms.setText(symptoms);
-        etTestSymptoms.setSelection(symptoms.length());
-        etTestAge.setText(String.valueOf(age));
-        runTestPrediction(symptoms, age);
+    private void applyExample(EvalScenario scenario) {
+        etTestSymptoms.setText(scenario.symptoms);
+        etTestSymptoms.setSelection(scenario.symptoms.length());
+        etTestAge.setText(String.valueOf(scenario.age));
+        etTestSex.setText(scenario.sex);
+        etTestMentalStatus.setText(scenario.mentalStatus);
+        etTestChiefComplaint.setText(scenario.chiefComplaint);
+        etTestTemperature.setText(formatOptionalDouble(scenario.temperatureC));
+        etTestPainScore.setText(formatOptionalDouble(scenario.painScore));
+        etTestSpo2.setText(formatOptionalDouble(scenario.spo2));
+        etTestRespiratoryRate.setText(formatOptionalDouble(scenario.respiratoryRate));
+        etTestHeartRate.setText(formatOptionalDouble(scenario.heartRate));
+        etTestSystolicBp.setText(formatOptionalDouble(scenario.systolicBp));
+        etTestDiastolicBp.setText(formatOptionalDouble(scenario.diastolicBp));
+        etTestGcs.setText(scenario.gcsTotal != null ? String.valueOf(scenario.gcsTotal) : "");
+        etTestNews2.setText(formatOptionalDouble(scenario.news2Score));
+
+        SymptomRequest request = buildAdminEvalRequest();
+        if (request != null) {
+            runTestPrediction(request);
+        }
     }
 
     @Override
@@ -127,22 +206,162 @@ public class ModelEvalActivity extends AppCompatActivity {
         overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
     }
 
-    private Integer parseAgeInput() {
-        String ageText = etTestAge.getText() != null ? etTestAge.getText().toString().trim() : "";
-        if (TextUtils.isEmpty(ageText)) return null;
+    private SymptomRequest buildAdminEvalRequest() {
+        String symptoms = getTextValue(etTestSymptoms);
+        if (TextUtils.isEmpty(symptoms)) {
+            etTestSymptoms.setError("Required");
+            etTestSymptoms.requestFocus();
+            Toast.makeText(this, "Please enter symptoms to test", Toast.LENGTH_SHORT).show();
+            return null;
+        }
+
+        Integer age = parseRequiredInteger(etTestAge, "Age", 0, 130);
+        if (age == null) {
+            return null;
+        }
+
+        Integer gcsTotal = parseOptionalInteger(etTestGcs, "GCS total", 0, 15);
+        if (gcsTotal == null && !TextUtils.isEmpty(getTextValue(etTestGcs))) {
+            return null;
+        }
+
+        Double temperature = parseOptionalDouble(etTestTemperature, "Temperature", 0, 50);
+        if (temperature == null && !TextUtils.isEmpty(getTextValue(etTestTemperature))) {
+            return null;
+        }
+
+        Double painScore = parseOptionalDouble(etTestPainScore, "Pain score", 0, 10);
+        if (painScore == null && !TextUtils.isEmpty(getTextValue(etTestPainScore))) {
+            return null;
+        }
+
+        Double spo2 = parseOptionalDouble(etTestSpo2, "SpO2", 0, 100);
+        if (spo2 == null && !TextUtils.isEmpty(getTextValue(etTestSpo2))) {
+            return null;
+        }
+
+        Double respiratoryRate = parseOptionalDouble(etTestRespiratoryRate, "Respiratory rate", 0, 80);
+        if (respiratoryRate == null && !TextUtils.isEmpty(getTextValue(etTestRespiratoryRate))) {
+            return null;
+        }
+
+        Double heartRate = parseOptionalDouble(etTestHeartRate, "Heart rate", 0, 250);
+        if (heartRate == null && !TextUtils.isEmpty(getTextValue(etTestHeartRate))) {
+            return null;
+        }
+
+        Double systolicBp = parseOptionalDouble(etTestSystolicBp, "Systolic BP", 0, 300);
+        if (systolicBp == null && !TextUtils.isEmpty(getTextValue(etTestSystolicBp))) {
+            return null;
+        }
+
+        Double diastolicBp = parseOptionalDouble(etTestDiastolicBp, "Diastolic BP", 0, 200);
+        if (diastolicBp == null && !TextUtils.isEmpty(getTextValue(etTestDiastolicBp))) {
+            return null;
+        }
+
+        Double news2 = parseOptionalDouble(etTestNews2, "NEWS2 score", 0, 25);
+        if (news2 == null && !TextUtils.isEmpty(getTextValue(etTestNews2))) {
+            return null;
+        }
+
+        return new SymptomRequest(symptoms, age)
+                .setChiefComplaintSystem(emptyToNull(getTextValue(etTestChiefComplaint)))
+                .setSex(emptyToNull(getTextValue(etTestSex)))
+                .setMentalStatusTriage(emptyToNull(getTextValue(etTestMentalStatus)))
+                .setTemperatureC(temperature)
+                .setPainScore(painScore)
+                .setSpo2(spo2)
+                .setRespiratoryRate(respiratoryRate)
+                .setHeartRate(heartRate)
+                .setSystolicBp(systolicBp)
+                .setDiastolicBp(diastolicBp)
+                .setGcsTotal(gcsTotal)
+                .setNews2Score(news2);
+    }
+
+    private String getTextValue(TextInputEditText field) {
+        return field.getText() != null ? field.getText().toString().trim() : "";
+    }
+
+    private String emptyToNull(String value) {
+        return TextUtils.isEmpty(value) ? null : value;
+    }
+
+    private Integer parseRequiredInteger(TextInputEditText field, String label, int min, int max) {
+        String value = getTextValue(field);
+        if (TextUtils.isEmpty(value)) {
+            field.setError("Required");
+            field.requestFocus();
+            Toast.makeText(this, label + " is required", Toast.LENGTH_SHORT).show();
+            return null;
+        }
+        return parseOptionalInteger(field, label, min, max);
+    }
+
+    private Integer parseOptionalInteger(TextInputEditText field, String label, int min, int max) {
+        String value = getTextValue(field);
+        if (TextUtils.isEmpty(value)) {
+            field.setError(null);
+            return null;
+        }
+
         try {
-            int age = Integer.parseInt(ageText);
-            return (age >= 0 && age <= 130) ? age : null;
+            int parsed = Integer.parseInt(value);
+            if (parsed < min || parsed > max) {
+                field.setError(label + " must be between " + min + " and " + max);
+                field.requestFocus();
+                Toast.makeText(this, label + " must be between " + min + " and " + max, Toast.LENGTH_SHORT).show();
+                return null;
+            }
+            field.setError(null);
+            return parsed;
         } catch (NumberFormatException e) {
+            field.setError("Invalid " + label);
+            field.requestFocus();
+            Toast.makeText(this, "Invalid " + label, Toast.LENGTH_SHORT).show();
             return null;
         }
     }
 
-    private void runTestPrediction(String symptoms, int age) {
+    private Double parseOptionalDouble(TextInputEditText field, String label, double min, double max) {
+        String value = getTextValue(field);
+        if (TextUtils.isEmpty(value)) {
+            field.setError(null);
+            return null;
+        }
+
+        try {
+            double parsed = Double.parseDouble(value);
+            if (parsed < min || parsed > max) {
+                field.setError(label + " must be between " + formatScore(min) + " and " + formatScore(max));
+                field.requestFocus();
+                Toast.makeText(
+                        this,
+                        label + " must be between " + formatScore(min) + " and " + formatScore(max),
+                        Toast.LENGTH_SHORT
+                ).show();
+                return null;
+            }
+            field.setError(null);
+            return parsed;
+        } catch (NumberFormatException e) {
+            field.setError("Invalid " + label);
+            field.requestFocus();
+            Toast.makeText(this, "Invalid " + label, Toast.LENGTH_SHORT).show();
+            return null;
+        }
+    }
+
+    private String formatOptionalDouble(Double value) {
+        return value == null ? "" : formatScore(value);
+    }
+
+    private void runTestPrediction(SymptomRequest request) {
         btnRunTest.setEnabled(false);
         btnRunTest.setText("Running...");
 
-        apiService.runAdminModelEval(new SymptomRequest(symptoms, age))
+        apiService.runAdminModelEval(request)
                 .enqueue(new Callback<SymptomPredictResponse>() {
                     @Override
                     public void onResponse(Call<SymptomPredictResponse> call,
@@ -175,10 +394,26 @@ public class ModelEvalActivity extends AppCompatActivity {
         tvTestPrioritySummary.setText(buildPrioritySummary(body));
         tvTestPriorityBreakdown.setText(buildPriorityBreakdown(
                 body.getPriorityComponents(),
+                body.getModelPriorityClass(),
+                body.getGuardrailedPriorityClass(),
                 body.getDerivedChiefComplaintSystem(),
                 body.getTriageSource(),
                 body.getTriageRecommendation(),
                 body.getPriorityDecisionTrace()
+        ));
+        tvTestSafetySummary.setText(buildPredictionSafetySummary(body.getSafetyMatches()));
+        tvTestQueueSummary.setText(buildQueueSummary(
+                body.getQueueSelectedRoute(),
+                body.getQueueRouteType(),
+                body.getQueueCurrentLength(),
+                body.getQueueAvailableDoctors(),
+                body.getQueueAvgWaitMinutes(),
+                body.getQueueRationale()
+        ));
+        tvTestSuggestedTests.setText(buildPredictionTestSummary(
+                body.getTestRecommendations(),
+                body.getTestSource(),
+                body.isTestLowConfidence()
         ));
 
         int confidencePct = (int) Math.round(body.getConfidence() * 100);
@@ -215,8 +450,10 @@ public class ModelEvalActivity extends AppCompatActivity {
                 : "—");
         tvTestReasoning.setText(body.getReasoning() != null ? body.getReasoning() : "—");
         tvTestModelSource.setText("Sources: " + buildModelSourceText(
+                body.getFlowSource(),
                 body.getModelSource(),
-                body.getTriageSource()
+                body.getTriageSource(),
+                body.getTestSource()
         ));
 
         layoutTestResult.setVisibility(View.VISIBLE);
@@ -263,13 +500,17 @@ public class ModelEvalActivity extends AppCompatActivity {
             TextView tvSource = card.findViewById(R.id.tvEvalSource);
             TextView tvConf = card.findViewById(R.id.tvEvalConfidence);
             TextView tvSymptoms = card.findViewById(R.id.tvEvalSymptoms);
+            TextView tvInputSnapshot = card.findViewById(R.id.tvEvalInputSnapshot);
             TextView tvNormalizedSymptoms = card.findViewById(R.id.tvEvalNormalizedSymptoms);
             TextView tvFactors = card.findViewById(R.id.tvEvalFactors);
             TextView tvPrioritySummary = card.findViewById(R.id.tvEvalPrioritySummary);
             TextView tvPriorityBreakdown = card.findViewById(R.id.tvEvalPriorityBreakdown);
+            TextView tvSafetySummary = card.findViewById(R.id.tvEvalSafetySummary);
             TextView tvRouteSummary = card.findViewById(R.id.tvEvalRouteSummary);
+            TextView tvQueueSummary = card.findViewById(R.id.tvEvalQueueSummary);
             LinearLayout lScores = card.findViewById(R.id.layoutEvalScores);
             TextView tvDoctor = card.findViewById(R.id.tvEvalDoctor);
+            TextView tvSuggestedTests = card.findViewById(R.id.tvEvalSuggestedTests);
             TextView tvReasoning = card.findViewById(R.id.tvEvalReasoning);
 
             String patientLabel = !TextUtils.isEmpty(entry.getPatientName())
@@ -280,8 +521,10 @@ public class ModelEvalActivity extends AppCompatActivity {
             tvPatient.setText(patientLabel);
             tvTime.setText(formatTimestamp(entry.getTimestamp()));
             tvSource.setText(buildModelSourceText(
+                    entry.getFlowSource(),
                     entry.getModelSource(),
-                    entry.getTriageSource()
+                    entry.getTriageSource(),
+                    entry.getTestSource()
             ));
 
             int confPct = (int) Math.round(entry.getConfidence() * 100);
@@ -293,6 +536,7 @@ public class ModelEvalActivity extends AppCompatActivity {
                     : R.drawable.badge_normal);
 
             tvSymptoms.setText(!TextUtils.isEmpty(entry.getSymptoms()) ? entry.getSymptoms() : "—");
+            tvInputSnapshot.setText(buildInputSnapshot(entry));
             tvNormalizedSymptoms.setText(!TextUtils.isEmpty(entry.getNormalizedSymptoms())
                     ? entry.getNormalizedSymptoms() : "—");
 
@@ -304,11 +548,14 @@ public class ModelEvalActivity extends AppCompatActivity {
             tvPrioritySummary.setText(buildPrioritySummary(entry));
             tvPriorityBreakdown.setText(buildPriorityBreakdown(
                     entry.getPriorityComponents(),
+                    entry.getModelPriorityClass(),
+                    entry.getGuardrailedPriorityClass(),
                     entry.getDerivedChiefComplaintSystem(),
                     entry.getTriageSource(),
                     entry.getTriageRecommendation(),
                     entry.getPriorityDecisionTrace()
             ));
+            tvSafetySummary.setText(buildHistorySafetySummary(entry.getSafetyMatches()));
 
             String routeSummary = "Clinical fit: "
                     + (!TextUtils.isEmpty(entry.getPrimarySpecialist()) ? entry.getPrimarySpecialist() : "General Practice")
@@ -318,6 +565,14 @@ public class ModelEvalActivity extends AppCompatActivity {
                 routeSummary += "  •  manual review recommended";
             }
             tvRouteSummary.setText(routeSummary);
+            tvQueueSummary.setText(buildQueueSummary(
+                    entry.getQueueSelectedRoute(),
+                    entry.getQueueRouteType(),
+                    entry.getQueueCurrentLength(),
+                    entry.getQueueAvailableDoctors(),
+                    entry.getQueueAvgWaitMinutes(),
+                    entry.getQueueRationale()
+            ));
 
             renderHistoryScores(entry.getSpecialtyScores(), lScores);
 
@@ -325,6 +580,11 @@ public class ModelEvalActivity extends AppCompatActivity {
             tvDoctor.setText(doc != null
                     ? doc.getName() + " (" + doc.getSpecialty() + ")"
                     : "—");
+            tvSuggestedTests.setText(buildHistoryTestSummary(
+                    entry.getTestRecommendations(),
+                    entry.getTestSource(),
+                    entry.isTestLowConfidence()
+            ));
             tvReasoning.setText(entry.getReasoning() != null ? entry.getReasoning() : "—");
 
             layoutEvalHistory.addView(card);
@@ -421,16 +681,22 @@ public class ModelEvalActivity extends AppCompatActivity {
         }
     }
 
-    private String buildModelSourceText(String specialtySource, String triageSource) {
+    private String buildModelSourceText(String flowSource, String specialtySource, String triageSource, String testSource) {
         ArrayList<String> parts = new ArrayList<>();
+        if (!TextUtils.isEmpty(flowSource)) {
+            parts.add(flowSource);
+        }
         if (!TextUtils.isEmpty(specialtySource)) {
             parts.add(specialtySource);
         }
         if (!TextUtils.isEmpty(triageSource)) {
             parts.add(triageSource);
         }
+        if (!TextUtils.isEmpty(testSource)) {
+            parts.add(testSource);
+        }
         if (parts.isEmpty()) {
-            return "specialty_hybrid_v1";
+            return "patient_flow_v1";
         }
         return TextUtils.join("  •  ", parts);
     }
@@ -444,8 +710,11 @@ public class ModelEvalActivity extends AppCompatActivity {
         if (!TextUtils.isEmpty(body.getPriorityLabel())) {
             parts.add(capitalize(body.getPriorityLabel()) + " priority");
         }
+        if (body.getModelPriorityClass() != null) {
+            parts.add("raw KTAS " + body.getModelPriorityClass());
+        }
         if (body.getTriagePriorityClass() != null) {
-            parts.add("KTAS " + body.getTriagePriorityClass());
+            parts.add("final KTAS " + body.getTriagePriorityClass());
         }
         if (body.getPriorityFinalScore() != null) {
             parts.add("score " + formatScore(body.getPriorityFinalScore()));
@@ -468,8 +737,11 @@ public class ModelEvalActivity extends AppCompatActivity {
         if (!TextUtils.isEmpty(entry.getPriorityLabel())) {
             parts.add(capitalize(entry.getPriorityLabel()) + " priority");
         }
+        if (entry.getModelPriorityClass() != null) {
+            parts.add("raw KTAS " + entry.getModelPriorityClass());
+        }
         if (entry.getTriagePriorityClass() != null) {
-            parts.add("KTAS " + entry.getTriagePriorityClass());
+            parts.add("final KTAS " + entry.getTriagePriorityClass());
         }
         if (entry.getPriorityFinalScore() != null) {
             parts.add("score " + formatScore(entry.getPriorityFinalScore()));
@@ -485,6 +757,8 @@ public class ModelEvalActivity extends AppCompatActivity {
 
     private String buildPriorityBreakdown(
             SymptomPredictResponse.PriorityComponents components,
+            Integer modelPriorityClass,
+            Integer finalPriorityClass,
             String derivedComplaint,
             String triageSource,
             String triageRecommendation,
@@ -497,9 +771,12 @@ public class ModelEvalActivity extends AppCompatActivity {
         if (components != null) {
             parts.add("age " + formatScore(components.getAge()));
             parts.add("triage " + formatScore(components.getTriage()));
-            if (components.getSymptomNlp() > 0) {
-                parts.add("symptom boost " + formatScore(components.getSymptomNlp()));
+            if (components.getClinicianOverride() > 0) {
+                parts.add("safety override +" + formatScore(components.getClinicianOverride()));
             }
+        }
+        if (modelPriorityClass != null && finalPriorityClass != null && !modelPriorityClass.equals(finalPriorityClass)) {
+            parts.add("raw " + modelPriorityClass + " → final " + finalPriorityClass);
         }
         if (!TextUtils.isEmpty(triageSource)) {
             parts.add(triageSource);
@@ -515,6 +792,8 @@ public class ModelEvalActivity extends AppCompatActivity {
 
     private String buildPriorityBreakdown(
             ModelEvalHistoryResponse.PriorityComponents components,
+            Integer modelPriorityClass,
+            Integer finalPriorityClass,
             String derivedComplaint,
             String triageSource,
             String triageRecommendation,
@@ -527,9 +806,12 @@ public class ModelEvalActivity extends AppCompatActivity {
         if (components != null) {
             parts.add("age " + formatScore(components.getAge()));
             parts.add("triage " + formatScore(components.getTriage()));
-            if (components.getSymptomNlp() > 0) {
-                parts.add("symptom boost " + formatScore(components.getSymptomNlp()));
+            if (components.getClinicianOverride() > 0) {
+                parts.add("safety override +" + formatScore(components.getClinicianOverride()));
             }
+        }
+        if (modelPriorityClass != null && finalPriorityClass != null && !modelPriorityClass.equals(finalPriorityClass)) {
+            parts.add("raw " + modelPriorityClass + " → final " + finalPriorityClass);
         }
         if (!TextUtils.isEmpty(triageSource)) {
             parts.add(triageSource);
@@ -543,6 +825,149 @@ public class ModelEvalActivity extends AppCompatActivity {
         return TextUtils.join("  •  ", parts);
     }
 
+    private String buildInputSnapshot(ModelEvalHistoryResponse.EvalEntry entry) {
+        ArrayList<String> parts = new ArrayList<>();
+        if (entry.getAge() != null) parts.add("age " + entry.getAge());
+        if (!TextUtils.isEmpty(entry.getSex())) parts.add("sex " + entry.getSex());
+        if (!TextUtils.isEmpty(entry.getChiefComplaintSystem())) parts.add("complaint " + entry.getChiefComplaintSystem());
+        if (!TextUtils.isEmpty(entry.getMentalStatusTriage())) parts.add("mental " + entry.getMentalStatusTriage());
+        if (entry.getTemperatureC() != null) parts.add("temp " + formatScore(entry.getTemperatureC()) + "°C");
+        if (entry.getPainScore() != null) parts.add("pain " + formatScore(entry.getPainScore()));
+        if (entry.getSpo2() != null) parts.add("SpO2 " + formatScore(entry.getSpo2()) + "%");
+        if (entry.getRespiratoryRate() != null) parts.add("RR " + formatScore(entry.getRespiratoryRate()));
+        if (entry.getHeartRate() != null) parts.add("HR " + formatScore(entry.getHeartRate()));
+        if (entry.getSystolicBp() != null || entry.getDiastolicBp() != null) {
+            parts.add("BP "
+                    + (entry.getSystolicBp() != null ? formatScore(entry.getSystolicBp()) : "—")
+                    + "/"
+                    + (entry.getDiastolicBp() != null ? formatScore(entry.getDiastolicBp()) : "—"));
+        }
+        if (entry.getGcsTotal() != null) parts.add("GCS " + entry.getGcsTotal());
+        if (entry.getNews2Score() != null) parts.add("NEWS2 " + formatScore(entry.getNews2Score()));
+
+        return parts.isEmpty() ? "Symptoms-only scenario" : TextUtils.join("  •  ", parts);
+    }
+
+    private String buildPredictionSafetySummary(List<SymptomPredictResponse.SafetyMatch> safetyMatches) {
+        if (safetyMatches == null || safetyMatches.isEmpty()) {
+            return "No hard safety override fired";
+        }
+
+        ArrayList<String> parts = new ArrayList<>();
+        for (SymptomPredictResponse.SafetyMatch match : safetyMatches) {
+            StringBuilder item = new StringBuilder(capitalize(match.getSeverity()));
+            if (!TextUtils.isEmpty(match.getRuleId())) {
+                item.append(": ").append(match.getRuleId().replace('_', ' '));
+            }
+            if (match.getForcedPriorityClass() != null) {
+                item.append(" → KTAS ").append(match.getForcedPriorityClass());
+            }
+            if (!TextUtils.isEmpty(match.getPreferredRoute())) {
+                item.append(" → ").append(match.getPreferredRoute());
+            }
+            parts.add(item.toString());
+        }
+        return TextUtils.join("\n", parts);
+    }
+
+    private String buildHistorySafetySummary(List<ModelEvalHistoryResponse.SafetyMatch> safetyMatches) {
+        if (safetyMatches == null || safetyMatches.isEmpty()) {
+            return "No hard safety override fired";
+        }
+
+        ArrayList<String> parts = new ArrayList<>();
+        for (ModelEvalHistoryResponse.SafetyMatch match : safetyMatches) {
+            StringBuilder item = new StringBuilder(capitalize(match.getSeverity()));
+            if (!TextUtils.isEmpty(match.getRuleId())) {
+                item.append(": ").append(match.getRuleId().replace('_', ' '));
+            }
+            if (match.getForcedPriorityClass() != null) {
+                item.append(" → KTAS ").append(match.getForcedPriorityClass());
+            }
+            if (!TextUtils.isEmpty(match.getPreferredRoute())) {
+                item.append(" → ").append(match.getPreferredRoute());
+            }
+            parts.add(item.toString());
+        }
+        return TextUtils.join("\n", parts);
+    }
+
+    private String buildQueueSummary(
+            String selectedRoute,
+            String routeType,
+            Integer queueLength,
+            Integer availableDoctors,
+            Double avgWaitMinutes,
+            String rationale
+    ) {
+        ArrayList<String> parts = new ArrayList<>();
+        if (!TextUtils.isEmpty(selectedRoute)) {
+            parts.add(selectedRoute);
+        }
+        if (!TextUtils.isEmpty(routeType)) {
+            parts.add(routeType.replace('_', ' '));
+        }
+        if (queueLength != null) {
+            parts.add("queue " + queueLength);
+        }
+        if (availableDoctors != null) {
+            parts.add("doctors " + availableDoctors);
+        }
+        if (avgWaitMinutes != null) {
+            parts.add("wait " + formatScore(avgWaitMinutes) + "m");
+        }
+
+        String summary = parts.isEmpty() ? "Queue routing unavailable" : TextUtils.join("  •  ", parts);
+        if (!TextUtils.isEmpty(rationale)) {
+            summary += "\n" + rationale;
+        }
+        return summary;
+    }
+
+    private String buildPredictionTestSummary(List<SymptomPredictResponse.TestRecommendation> recommendations,
+                                              String testSource,
+                                              boolean lowConfidence) {
+        if (recommendations == null || recommendations.isEmpty()) {
+            return "No test suggestions returned";
+        }
+
+        ArrayList<String> lines = new ArrayList<>();
+        for (int i = 0; i < recommendations.size() && i < 5; i++) {
+            SymptomPredictResponse.TestRecommendation recommendation = recommendations.get(i);
+            String line = recommendation.getUrgency() + " • " + recommendation.getTest();
+            if (!TextUtils.isEmpty(recommendation.getRationale())) {
+                line += " — " + recommendation.getRationale();
+            }
+            lines.add(line);
+        }
+        if (!TextUtils.isEmpty(testSource)) {
+            lines.add("source " + testSource + (lowConfidence ? " • low confidence" : ""));
+        }
+        return TextUtils.join("\n", lines);
+    }
+
+    private String buildHistoryTestSummary(List<ModelEvalHistoryResponse.TestRecommendation> recommendations,
+                                           String testSource,
+                                           boolean lowConfidence) {
+        if (recommendations == null || recommendations.isEmpty()) {
+            return "No test suggestions returned";
+        }
+
+        ArrayList<String> lines = new ArrayList<>();
+        for (int i = 0; i < recommendations.size() && i < 5; i++) {
+            ModelEvalHistoryResponse.TestRecommendation recommendation = recommendations.get(i);
+            String line = recommendation.getUrgency() + " • " + recommendation.getTest();
+            if (!TextUtils.isEmpty(recommendation.getRationale())) {
+                line += " — " + recommendation.getRationale();
+            }
+            lines.add(line);
+        }
+        if (!TextUtils.isEmpty(testSource)) {
+            lines.add("source " + testSource + (lowConfidence ? " • low confidence" : ""));
+        }
+        return TextUtils.join("\n", lines);
+    }
+
     private String formatScore(double value) {
         if (Math.abs(value - Math.rint(value)) < 0.05d) {
             return String.format(Locale.getDefault(), "%.0f", value);
@@ -553,5 +978,54 @@ public class ModelEvalActivity extends AppCompatActivity {
     private String capitalize(String value) {
         if (TextUtils.isEmpty(value)) return "";
         return value.substring(0, 1).toUpperCase(Locale.getDefault()) + value.substring(1);
+    }
+
+    private static class EvalScenario {
+        final String symptoms;
+        final int age;
+        final String sex;
+        final String mentalStatus;
+        final String chiefComplaint;
+        final Double temperatureC;
+        final Double painScore;
+        final Double spo2;
+        final Double respiratoryRate;
+        final Double heartRate;
+        final Double systolicBp;
+        final Double diastolicBp;
+        final Integer gcsTotal;
+        final Double news2Score;
+
+        EvalScenario(
+                String symptoms,
+                int age,
+                String sex,
+                String mentalStatus,
+                String chiefComplaint,
+                Double temperatureC,
+                Double painScore,
+                Double spo2,
+                Double respiratoryRate,
+                Double heartRate,
+                Double systolicBp,
+                Double diastolicBp,
+                Integer gcsTotal,
+                Double news2Score
+        ) {
+            this.symptoms = symptoms;
+            this.age = age;
+            this.sex = sex;
+            this.mentalStatus = mentalStatus;
+            this.chiefComplaint = chiefComplaint;
+            this.temperatureC = temperatureC;
+            this.painScore = painScore;
+            this.spo2 = spo2;
+            this.respiratoryRate = respiratoryRate;
+            this.heartRate = heartRate;
+            this.systolicBp = systolicBp;
+            this.diastolicBp = diastolicBp;
+            this.gcsTotal = gcsTotal;
+            this.news2Score = news2Score;
+        }
     }
 }

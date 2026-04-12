@@ -94,6 +94,24 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="Input Snapshot"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="2dp"/>
+
+        <TextView
+            android:id="@+id/tvEvalInputSnapshot"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="—"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="10dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="Normalized Symptoms"
             android:textSize="11sp"
             android:textStyle="bold"
@@ -159,6 +177,24 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:text="Safety Rules"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="2dp"/>
+
+        <TextView
+            android:id="@+id/tvEvalSafetySummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="—"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="10dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:text="Clinical Routing"
             android:textSize="11sp"
             android:textStyle="bold"
@@ -172,6 +208,24 @@
             android:text="—"
             android:textSize="13sp"
             android:textColor="@color/text_primary"
+            android:layout_marginBottom="10dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Queue Assignment"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="2dp"/>
+
+        <TextView
+            android:id="@+id/tvEvalQueueSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="—"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
             android:layout_marginBottom="10dp"/>
 
         <!-- Specialty Scores -->
@@ -224,6 +278,24 @@
                 android:textColor="@color/primary"
                 android:textStyle="bold"/>
         </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Suggested Tests"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="2dp"/>
+
+        <TextView
+            android:id="@+id/tvEvalSuggestedTests"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="—"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginBottom="8dp"/>
 
         <!-- Reasoning -->
         <TextView
