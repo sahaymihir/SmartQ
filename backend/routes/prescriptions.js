@@ -141,13 +141,12 @@ router.post('/upload', protect, adminOnly, upload.single('file'), async (req, re
       });
     }
 
-    // Persist the upload path and mark as draft-extracted
+    // Persist the upload path and mark as pending OCR extraction
     if (!token.prescription) token.prescription = {};
     token.prescription.ocrStatus = 'draft_extracted';
     token.prescription.source = 'ocr_extracted';
-    token.prescription.ocrExtractedText = req.file.path; // store path as reference
+    token.prescription.uploadedFilePath = req.file.path;
     token.prescription.needsReview = true;
-    token.set('_uploadedFilePath', req.file.path); // transient — not persisted
     await token.save();
 
     res.json({
@@ -182,7 +181,7 @@ router.post('/:tokenId/ocr-extract', protect, adminOnly, async (req, res) => {
       });
     }
 
-    const filePath = token.prescription?.ocrExtractedText;
+    const filePath = token.prescription?.uploadedFilePath;
     if (!filePath || !fs.existsSync(filePath)) {
       return res.status(400).json({
         success: false,

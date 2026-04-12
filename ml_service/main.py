@@ -273,7 +273,8 @@ def generate_test_recommendations(payload: TestRecommendationRequest) -> TestRec
     if complaint in _COMPLAINT_TESTS:
         recs.extend(_COMPLAINT_TESTS[complaint])
 
-    # High fever (>= 38.5 °C)
+    # High fever — WHO/CDC define fever as >= 38.0 °C; 38.5 °C is the clinically
+    # actionable threshold commonly used for empirical sepsis work-up initiation.
     if payload.temperature_c is not None and payload.temperature_c >= 38.5:
         recs.extend(_HIGH_FEVER_TESTS)
 

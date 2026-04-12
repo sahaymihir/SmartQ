@@ -53,18 +53,22 @@ const mapPriorityClassToScore = (priorityClass) => {
   return 5;
 };
 
+/**
+ * Normalise the symptom text from multimodal intake fields.
+ * Priority order: symptomsText (typed) → symptomsVoiceTranscript → legacy symptoms field.
+ */
+const getCanonicalSymptoms = (requestBody = {}) =>
+  requestBody.symptomsText ||
+  requestBody.symptomsVoiceTranscript ||
+  requestBody.symptoms ||
+  '';
+
 const buildTriagePayload = (patient, requestBody = {}) => {
   const payload = {
     age: patient.age,
   };
 
-  // Normalise the canonical 'symptoms' field: prefer symptomsText, then
-  // symptomsVoiceTranscript, then the legacy 'symptoms' field.
-  const canonicalSymptoms =
-    requestBody.symptomsText ||
-    requestBody.symptomsVoiceTranscript ||
-    requestBody.symptoms ||
-    '';
+  const canonicalSymptoms = getCanonicalSymptoms(requestBody);
   if (canonicalSymptoms) {
     payload.symptoms = canonicalSymptoms;
   }
@@ -93,11 +97,7 @@ const buildVisitSnapshot = (patient, requestBody = {}) => {
   }
 
   // Persist normalised canonical symptoms string in the snapshot.
-  const canonicalSymptoms =
-    requestBody.symptomsText ||
-    requestBody.symptomsVoiceTranscript ||
-    requestBody.symptoms ||
-    '';
+  const canonicalSymptoms = getCanonicalSymptoms(requestBody);
   if (canonicalSymptoms) {
     snapshot.symptoms = canonicalSymptoms;
   }
@@ -179,8 +179,7 @@ const buildDecisionTrace = ({
 
 const buildFallbackDecision = (patient, requestBody = {}) => {
   const ageBasedPriorityScore = getAgeBaselineScore(patient.age);
-  const symptomsText =
-    requestBody.symptomsText || requestBody.symptomsVoiceTranscript || requestBody.symptoms || '';
+  const symptomsText = getCanonicalSymptoms(requestBody);
   const components = buildPriorityComponents({
     ageBasedPriorityScore,
     mlPriorityScore: null,
@@ -241,8 +240,7 @@ const determineOverrideReason = ({
 const determineTriageDecision = async (patient, requestBody = {}) => {
   const fallback = buildFallbackDecision(patient, requestBody);
   const triagePayload = buildTriagePayload(patient, requestBody);
-  const symptomsText =
-    requestBody.symptomsText || requestBody.symptomsVoiceTranscript || requestBody.symptoms || '';
+  const symptomsText = getCanonicalSymptoms(requestBody);
 
   try {
     const response = await axios.post(

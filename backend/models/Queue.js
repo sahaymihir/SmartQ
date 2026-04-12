@@ -207,6 +207,10 @@ const tokenSchema = new mongoose.Schema({
       type: String,
       default: ''
     },
+    uploadedFilePath: {
+      type: String,
+      default: null
+    },
     needsReview: {
       type: Boolean,
       default: false
