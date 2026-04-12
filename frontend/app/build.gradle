@@ -16,6 +16,14 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildFeatures {
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.10"
+    }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -36,11 +44,25 @@ dependencies {
     implementation libs.constraintlayout
     implementation libs.cardview
     
-    // Biometric Auth
-    implementation 'androidx.biometric:biometric:1.1.0'
+    // Jetpack Compose — Material 3 + Animation-Heavy UI
+    implementation platform(libs.compose.bom)
+    implementation libs.compose.ui
+    implementation libs.compose.material3
+    implementation libs.compose.foundation
+    implementation libs.compose.animation
+    implementation libs.compose.runtime
+    implementation libs.compose.preview
+    debugImplementation libs.compose.tooling
+    implementation libs.lifecycle.runtime.compose
+    implementation libs.lifecycle.viewmodel.compose
 
-    // Lottie — Premium Animations
+    // Compose Navigation
+    implementation libs.navigation.compose
+    implementation libs.navigation.runtime
+
+    // Lottie — Premium Animations (both XML + Compose)
     implementation 'com.airbnb.android:lottie:6.4.0'
+    implementation libs.lottie.compose
     
     // Core Splash Screen for smooth launch transition
     implementation 'androidx.core:core-splashscreen:1.0.1'
@@ -60,6 +82,9 @@ dependencies {
     // Firebase — Cloud Messaging (for Push Notifications Week 3)
     implementation platform(libs.firebase.bom)
     implementation libs.firebase.messaging
+
+    // Biometric Auth
+    implementation 'androidx.biometric:biometric:1.1.0'
 
     // Testing
     testImplementation libs.junit
