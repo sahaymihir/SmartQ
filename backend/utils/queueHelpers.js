@@ -1,6 +1,8 @@
 const { Queue, Token } = require('../models/Queue');
 
 const ACTIVE_TOKEN_STATUSES = ['waiting', 'called', 'arrived'];
+const NORMAL_ROUTING_LANE = 'normal';
+const IMMEDIATE_REVIEW_LANE = 'immediate_review';
 const TRIAGE_PRIORITY_SCORES = {
   high: 10,
   medium: 7,
@@ -33,6 +35,132 @@ const getPriorityLabel = (priorityScore) => {
   return 'normal';
 };
 
+const getRoutingLane = (token = {}) =>
+  token.routingLane === IMMEDIATE_REVIEW_LANE ? IMMEDIATE_REVIEW_LANE : NORMAL_ROUTING_LANE;
+
+const isImmediateReviewToken = (token = {}) =>
+  getRoutingLane(token) === IMMEDIATE_REVIEW_LANE || Boolean(token.requiresImmediateReview);
+
+const getOperationalPriorityClass = (token = {}) => {
+  if (isImmediateReviewToken(token)) {
+    return 1;
+  }
+
+  const triageClass = Number(token.triagePriorityClass);
+  if (Number.isInteger(triageClass) && triageClass >= 1 && triageClass <= 5) {
+    return triageClass;
+  }
+
+  return 5;
+};
+
+const getOperationalPriorityScore = (token = {}) => {
+  const value = Number(token.priorityFinalScore ?? token.priorityScore ?? 0);
+  return Number.isFinite(value) ? value : 0;
+};
+
+const getTokenTime = (value) => {
+  const millis = new Date(value || 0).getTime();
+  return Number.isFinite(millis) ? millis : 0;
+};
+
+const compareTokensByUrgency = (left = {}, right = {}) => {
+  const classDiff = getOperationalPriorityClass(left) - getOperationalPriorityClass(right);
+  if (classDiff !== 0) {
+    return classDiff;
+  }
+
+  const scoreDiff = getOperationalPriorityScore(right) - getOperationalPriorityScore(left);
+  if (scoreDiff !== 0) {
+    return scoreDiff;
+  }
+
+  const joinedDiff = getTokenTime(left.joinedAt || left.createdAt) - getTokenTime(right.joinedAt || right.createdAt);
+  if (joinedDiff !== 0) {
+    return joinedDiff;
+  }
+
+  const createdDiff = getTokenTime(left.createdAt) - getTokenTime(right.createdAt);
+  if (createdDiff !== 0) {
+    return createdDiff;
+  }
+
+  return (Number(left.tokenNumber) || 0) - (Number(right.tokenNumber) || 0);
+};
+
+const sortWaitingTokensForCall = (tokens = []) => {
+  const waitingTokens = [...tokens];
+
+  waitingTokens.sort((left, right) => {
+    const laneDiff =
+      (isImmediateReviewToken(left) ? 0 : 1) -
+      (isImmediateReviewToken(right) ? 0 : 1);
+    if (laneDiff !== 0) {
+      return laneDiff;
+    }
+
+    if (isImmediateReviewToken(left) && isImmediateReviewToken(right)) {
+      return compareTokensByUrgency(left, right);
+    }
+
+    const positionDiff = (Number(left.position) || 0) - (Number(right.position) || 0);
+    if (positionDiff !== 0) {
+      return positionDiff;
+    }
+
+    return compareTokensByUrgency(left, right);
+  });
+
+  return waitingTokens;
+};
+
+const sortActiveQueueTokens = (tokens = []) => {
+  const activeTokens = [...tokens];
+  const statusRank = {
+    called: 0,
+    arrived: 1,
+    waiting: 2,
+  };
+
+  activeTokens.sort((left, right) => {
+    const leftStatus = statusRank[left.status] ?? 9;
+    const rightStatus = statusRank[right.status] ?? 9;
+    if (leftStatus !== rightStatus) {
+      return leftStatus - rightStatus;
+    }
+
+    if (left.status === 'waiting' && right.status === 'waiting') {
+      const laneDiff =
+        (isImmediateReviewToken(left) ? 0 : 1) -
+        (isImmediateReviewToken(right) ? 0 : 1);
+      if (laneDiff !== 0) {
+        return laneDiff;
+      }
+
+      if (isImmediateReviewToken(left) && isImmediateReviewToken(right)) {
+        return compareTokensByUrgency(left, right);
+      }
+
+      const positionDiff = (Number(left.position) || 0) - (Number(right.position) || 0);
+      if (positionDiff !== 0) {
+        return positionDiff;
+      }
+
+      return compareTokensByUrgency(left, right);
+    }
+
+    const calledDiff = getTokenTime(left.calledAt || left.updatedAt || left.joinedAt)
+      - getTokenTime(right.calledAt || right.updatedAt || right.joinedAt);
+    if (calledDiff !== 0) {
+      return calledDiff;
+    }
+
+    return compareTokensByUrgency(left, right);
+  });
+
+  return activeTokens;
+};
+
 const getTodayQueue = async (doctorId, dateString = getTodayDateString()) => {
   let queue = await Queue.findOne({ doctor: doctorId, date: dateString });
   if (!queue) {
@@ -45,8 +173,19 @@ const loadWaitingTokens = async (doctorId, dateString = getTodayDateString()) =>
   return Token.find({
     doctor: doctorId,
     status: 'waiting',
+    routingLane: { $ne: IMMEDIATE_REVIEW_LANE },
     createdAt: buildDayQuery(dateString),
   }).sort({ position: 1, joinedAt: 1, createdAt: 1 });
+};
+
+const getNextWaitingToken = async (doctorId, dateString = getTodayDateString()) => {
+  const tokens = await Token.find({
+    doctor: doctorId,
+    status: 'waiting',
+    createdAt: buildDayQuery(dateString),
+  });
+
+  return sortWaitingTokensForCall(tokens)[0] || null;
 };
 
 const persistWaitingOrder = async (tokens, avgConsultationMinutes) => {
@@ -107,7 +246,7 @@ const promoteTokenByPriority = async (
   const targetIndex = tokens.findIndex(
     (token) =>
       token._id.toString() !== tokenId.toString() &&
-      (token.priorityScore || 0) < (movingToken.priorityScore || 0)
+      compareTokensByUrgency(movingToken, token) < 0
   );
 
   if (targetIndex !== -1 && targetIndex < currentIndex) {
@@ -131,15 +270,24 @@ const diffMinutes = (startAt, endAt) => {
 
 module.exports = {
   ACTIVE_TOKEN_STATUSES,
+  IMMEDIATE_REVIEW_LANE,
+  NORMAL_ROUTING_LANE,
   TRIAGE_PRIORITY_SCORES,
   buildDayQuery,
+  compareTokensByUrgency,
   computeETA,
   diffMinutes,
   getDayBounds,
+  getNextWaitingToken,
   getPriorityLabel,
+  getRoutingLane,
   getTodayDateString,
   getTodayQueue,
+  getOperationalPriorityClass,
+  isImmediateReviewToken,
   persistWaitingOrder,
   promoteTokenByPriority,
   recomputeWaitingQueue,
+  sortActiveQueueTokens,
+  sortWaitingTokensForCall,
 };

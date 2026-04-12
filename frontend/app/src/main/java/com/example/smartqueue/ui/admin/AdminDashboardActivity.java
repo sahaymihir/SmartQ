@@ -2,6 +2,9 @@ package com.example.smartqueue.ui.admin;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -20,6 +23,7 @@ import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import retrofit2.Call;
@@ -28,7 +32,7 @@ import retrofit2.Response;
 
 public class AdminDashboardActivity extends AppCompatActivity {
 
-    private TextView tvAdminName, tvCurrentlyServing, tvPausedBadge;
+    private TextView tvAdminName, tvCurrentlyServing, tvPausedBadge, tvUrgentAlert;
     private TextView tvStatWaiting, tvStatDone, tvStatAvg, tvQueueLabel;
     private MaterialButton btnCallNext, btnPause, btnLogout, btnModelEval, btnSeedData;
     private LinearLayout layoutQueueList;
@@ -37,6 +41,9 @@ public class AdminDashboardActivity extends AppCompatActivity {
     private ApiService apiService;
     private boolean isPaused = false;
     private int consultationsDone = 0;
+    private final Handler queueRefreshHandler = new Handler(Looper.getMainLooper());
+    private Runnable queueRefreshRunnable;
+    private int lastImmediateReviewCount = 0;
 
     // The admin's own doctor ID — set after login
     // This is the MongoDB _id of the logged-in admin user
@@ -60,6 +67,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
         tvAdminName        = findViewById(R.id.tvAdminName);
         tvCurrentlyServing = findViewById(R.id.tvCurrentlyServing);
         tvPausedBadge      = findViewById(R.id.tvPausedBadge);
+        tvUrgentAlert      = findViewById(R.id.tvUrgentAlert);
         tvStatWaiting      = findViewById(R.id.tvStatWaiting);
         tvStatDone         = findViewById(R.id.tvStatDone);
         tvStatAvg          = findViewById(R.id.tvStatAvg);
@@ -169,6 +177,36 @@ public class AdminDashboardActivity extends AppCompatActivity {
         );
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        startQueueRefresh();
+    }
+
+    @Override
+    protected void onPause() {
+        stopQueueRefresh();
+        super.onPause();
+    }
+
+    private void startQueueRefresh() {
+        stopQueueRefresh();
+        queueRefreshRunnable = new Runnable() {
+            @Override
+            public void run() {
+                loadQueue();
+                queueRefreshHandler.postDelayed(this, 10000);
+            }
+        };
+        queueRefreshHandler.postDelayed(queueRefreshRunnable, 10000);
+    }
+
+    private void stopQueueRefresh() {
+        if (queueRefreshRunnable != null) {
+            queueRefreshHandler.removeCallbacks(queueRefreshRunnable);
+        }
+    }
+
     private void loadQueue() {
         apiService.getAdminQueue(doctorId).enqueue(new Callback<QueueResponse>() {
             @Override
@@ -176,12 +214,38 @@ public class AdminDashboardActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     QueueResponse body = response.body();
                     List<QueueResponse.QueueEntry> queue = body.getQueue();
+                    if (queue == null) {
+                        queue = new ArrayList<>();
+                    }
 
-                    tvStatWaiting.setText(String.valueOf(queue != null ? queue.size() : 0));
+                    isPaused = body.isPaused();
+                    btnPause.setText(isPaused ? "▶ Resume" : "⏸ Pause");
+                    tvPausedBadge.setVisibility(isPaused ? View.VISIBLE : View.GONE);
+
+                    int normalWaitingCount = 0;
+                    int immediateReviewCount = 0;
+                    QueueResponse.QueueEntry calledPatient = null;
+                    for (QueueResponse.QueueEntry entry : queue) {
+                        if ("called".equals(entry.getStatus()) && calledPatient == null) {
+                            calledPatient = entry;
+                        }
+                        if (!"waiting".equals(entry.getStatus())) continue;
+                        if (isImmediateReview(entry)) immediateReviewCount++;
+                        else normalWaitingCount++;
+                    }
+                    int totalWaitingCount = normalWaitingCount + immediateReviewCount;
+
+                    tvStatWaiting.setText(String.valueOf(totalWaitingCount));
                     tvStatAvg.setText(body.getAvgConsultationMinutes() + "m");
-                    tvQueueLabel.setText((queue != null ? queue.size() : 0) + " waiting");
+                    tvQueueLabel.setText(immediateReviewCount > 0
+                            ? normalWaitingCount + " waiting • " + immediateReviewCount + " immediate review"
+                            : totalWaitingCount + " waiting");
+                    tvCurrentlyServing.setText(calledPatient != null
+                            ? "Token #" + calledPatient.getTokenNumber() + " — " + calledPatient.getPatientName()
+                            : "No patient currently called");
+                    updateUrgentAlert(immediateReviewCount);
 
-                    if (queue != null) renderQueueList(queue);
+                    renderQueueList(queue);
                 }
             }
             @Override
@@ -217,17 +281,46 @@ public class AdminDashboardActivity extends AppCompatActivity {
             TextView tvEta      = row.findViewById(R.id.tvItemEta);
             MaterialButton btnNoShow = row.findViewById(R.id.btnItemNoShow);
 
-            tvPos.setText(String.valueOf(entry.getPosition()));
-            tvName.setText(entry.getPatientName());
-            int eta = entry.getEtaMinutes();
-            tvEta.setText(eta == 0 ? "Next up" : "~" + eta + " min");
+            boolean immediateReview = isImmediateReview(entry);
+            Integer ktasClass = entry.getTriagePriorityClass();
 
-            String priority = entry.getPriority();
-            tvPriority.setText(capitalize(priority));
-            switch (priority) {
-                case "high":   tvPriority.setBackgroundResource(R.drawable.badge_high); tvPos.setBackgroundResource(R.drawable.circle_priority_high); break;
-                case "medium": tvPriority.setBackgroundResource(R.drawable.badge_medium); tvPos.setBackgroundResource(R.drawable.circle_primary); break;
-                default:       tvPriority.setBackgroundResource(R.drawable.badge_normal); tvPos.setBackgroundResource(R.drawable.circle_primary); break;
+            tvPos.setText(immediateReview ? "!" : String.valueOf(Math.max(0, entry.getPosition())));
+            tvName.setText(entry.getPatientName());
+            tvEta.setText(buildQueueSubtitle(entry));
+
+            if (immediateReview) {
+                tvPriority.setText("IMMEDIATE");
+                tvPriority.setBackgroundResource(R.drawable.badge_immediate);
+                tvPos.setBackgroundResource(R.drawable.circle_priority_immediate);
+            } else if (ktasClass != null) {
+                tvPriority.setText("KTAS " + ktasClass);
+                if (ktasClass <= 2) {
+                    tvPriority.setBackgroundResource(R.drawable.badge_high);
+                    tvPos.setBackgroundResource(R.drawable.circle_priority_high);
+                } else if (ktasClass == 3) {
+                    tvPriority.setBackgroundResource(R.drawable.badge_medium);
+                    tvPos.setBackgroundResource(R.drawable.circle_primary);
+                } else {
+                    tvPriority.setBackgroundResource(R.drawable.badge_normal);
+                    tvPos.setBackgroundResource(R.drawable.circle_primary);
+                }
+            } else {
+                String priority = entry.getPriority();
+                tvPriority.setText(capitalize(priority));
+                switch (priority) {
+                    case "high":
+                        tvPriority.setBackgroundResource(R.drawable.badge_high);
+                        tvPos.setBackgroundResource(R.drawable.circle_priority_high);
+                        break;
+                    case "medium":
+                        tvPriority.setBackgroundResource(R.drawable.badge_medium);
+                        tvPos.setBackgroundResource(R.drawable.circle_primary);
+                        break;
+                    default:
+                        tvPriority.setBackgroundResource(R.drawable.badge_normal);
+                        tvPos.setBackgroundResource(R.drawable.circle_primary);
+                        break;
+                }
             }
 
             final String tokenId = entry.getTokenId();
@@ -256,6 +349,60 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
             layoutQueueList.addView(row);
         }
+    }
+
+    private boolean isImmediateReview(QueueResponse.QueueEntry entry) {
+        return entry != null && (entry.isImmediateReviewRequired()
+                || "immediate_review".equals(entry.getRoutingLane()));
+    }
+
+    private void updateUrgentAlert(int immediateReviewCount) {
+        if (immediateReviewCount > 0) {
+            tvUrgentAlert.setVisibility(View.VISIBLE);
+            tvUrgentAlert.setText(immediateReviewCount == 1
+                    ? "1 patient needs immediate review"
+                    : immediateReviewCount + " patients need immediate review");
+            if (immediateReviewCount > lastImmediateReviewCount) {
+                Toast.makeText(this, "Immediate review patient added to the queue", Toast.LENGTH_LONG).show();
+            }
+        } else {
+            tvUrgentAlert.setVisibility(View.GONE);
+        }
+        lastImmediateReviewCount = immediateReviewCount;
+    }
+
+    private String buildQueueSubtitle(QueueResponse.QueueEntry entry) {
+        ArrayList<String> parts = new ArrayList<>();
+
+        if (isImmediateReview(entry)) {
+            parts.add("Immediate review");
+        } else if ("called".equals(entry.getStatus())) {
+            parts.add("In consultation");
+        } else {
+            int eta = entry.getEtaMinutes();
+            parts.add(eta == 0 ? "Next up" : "~" + eta + " min");
+        }
+
+        if (entry.getTriagePriorityClass() != null) {
+            parts.add("KTAS " + entry.getTriagePriorityClass());
+        }
+        if (entry.isManualReviewRequired()) {
+            parts.add("Manual review");
+        }
+
+        String reason = prettifyReason(!TextUtils.isEmpty(entry.getEscalationReason())
+                ? entry.getEscalationReason()
+                : entry.getOverrideReason());
+        if (!TextUtils.isEmpty(reason) && isImmediateReview(entry)) {
+            parts.add(reason);
+        }
+
+        return TextUtils.join(" • ", parts);
+    }
+
+    private String prettifyReason(String reason) {
+        if (TextUtils.isEmpty(reason)) return "";
+        return capitalize(reason.replace('_', ' '));
     }
 
     private String capitalize(String s) {

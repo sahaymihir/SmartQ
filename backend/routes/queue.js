@@ -8,8 +8,10 @@ const {
   buildDayQuery,
   computeETA,
   diffMinutes,
+  IMMEDIATE_REVIEW_LANE,
   getTodayDateString,
   getTodayQueue,
+  isImmediateReviewToken,
   promoteTokenByPriority,
   recomputeWaitingQueue,
 } = require('../utils/queueHelpers');
@@ -29,15 +31,21 @@ const buildTokenResponse = (token) => ({
   priorityScore: token.priorityScore,
   aiConfidence: token.aiConfidence,
   triagePriorityClass: token.triagePriorityClass,
+  modelPriorityClass: token.modelPriorityClass,
   triageConfidence: token.triageConfidence,
   triageLowConfidence: token.triageLowConfidence,
   triageRecommendation: token.triageRecommendation,
   triageSource: token.triageSource,
   triageModelVersion: token.triageModelVersion,
   manualReviewRequired: token.manualReviewRequired,
+  routingLane: token.routingLane || 'normal',
+  requiresImmediateReview: Boolean(token.requiresImmediateReview),
+  escalationReason: token.escalationReason || '',
+  safetyMatches: token.safetyMatches || [],
   overrideReason: token.overrideReason,
   triage: {
     priorityClass: token.triagePriorityClass,
+    modelPriorityClass: token.modelPriorityClass,
     confidence: token.triageConfidence,
     lowConfidence: token.triageLowConfidence,
     recommendation: token.triageRecommendation,
@@ -45,6 +53,10 @@ const buildTokenResponse = (token) => ({
     modelVersion: token.triageModelVersion,
     overrideReason: token.overrideReason,
     manualReviewRequired: token.manualReviewRequired,
+    routingLane: token.routingLane || 'normal',
+    requiresImmediateReview: Boolean(token.requiresImmediateReview),
+    escalationReason: token.escalationReason || '',
+    safetyMatches: token.safetyMatches || [],
     allClassProbs: token.triageAllClassProbs || {},
   },
   priorityComponents: token.priorityComponents || {},
@@ -61,6 +73,14 @@ const buildTokenResponse = (token) => ({
     actualConsultMinutes: token.actualConsultMinutes,
   },
 });
+
+const buildJoinMessage = (token) => {
+  if (isImmediateReviewToken(token)) {
+    return `Token #${token.tokenNumber} issued. Immediate review required — please alert the triage desk now.`;
+  }
+
+  return `Token #${token.tokenNumber} issued. You are #${token.position} in queue.`;
+};
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/queue/join?doctorId=xxx
@@ -110,16 +130,19 @@ router.post('/join', protect, async (req, res) => {
     }
 
     const triageDecision = await determineTriageDecision(patient, req.body);
+    const routingLane = triageDecision.routingLane || 'normal';
 
     const waitingCount = await Token.countDocuments({
       doctor: doctorId,
       status: 'waiting',
+      routingLane: { $ne: IMMEDIATE_REVIEW_LANE },
       createdAt: buildDayQuery(today),
     });
 
-    const position = waitingCount + 1;
+    const position = routingLane === IMMEDIATE_REVIEW_LANE ? 0 : waitingCount + 1;
     const tokenNumber = queue.totalTokensIssued + 1;
-    const predictedWaitMinutes = computeETA(position, queue.avgConsultationMinutes);
+    const predictedWaitMinutes =
+      routingLane === IMMEDIATE_REVIEW_LANE ? 0 : computeETA(position, queue.avgConsultationMinutes);
     const joinedAt = new Date();
 
     const token = await Token.create({
@@ -141,6 +164,7 @@ router.post('/join', protect, async (req, res) => {
       aiConfidence: triageDecision.aiConfidence,
       ageBasedPriorityScore: triageDecision.ageBasedPriorityScore,
       mlPriorityScore: triageDecision.mlPriorityScore,
+      modelPriorityClass: triageDecision.modelPriorityClass,
       triagePriorityClass: triageDecision.triagePriorityClass,
       triageConfidence: triageDecision.triageConfidence,
       triageLowConfidence: triageDecision.triageLowConfidence,
@@ -150,6 +174,10 @@ router.post('/join', protect, async (req, res) => {
       triageSource: triageDecision.triageSource,
       overrideReason: triageDecision.overrideReason,
       manualReviewRequired: triageDecision.manualReviewRequired,
+      routingLane,
+      requiresImmediateReview: Boolean(triageDecision.requiresImmediateReview),
+      escalationReason: triageDecision.escalationReason || '',
+      safetyMatches: triageDecision.safetyMatches || [],
       priorityComponents: triageDecision.priorityComponents,
       priorityFinalScore: triageDecision.priorityFinalScore,
       priorityDecisionTrace: triageDecision.priorityDecisionTrace,
@@ -162,13 +190,15 @@ router.post('/join', protect, async (req, res) => {
     queue.totalTokensIssued = tokenNumber;
     await queue.save();
 
-    await promoteTokenByPriority(doctorId, token._id, queue.avgConsultationMinutes, today);
+    if (routingLane !== IMMEDIATE_REVIEW_LANE) {
+      await promoteTokenByPriority(doctorId, token._id, queue.avgConsultationMinutes, today);
+    }
     const updatedToken = await Token.findById(token._id);
 
     res.status(201).json({
       success: true,
       ...buildTokenResponse(updatedToken),
-      message: `Token #${tokenNumber} issued. You are #${updatedToken.position} in queue.`
+      message: buildJoinMessage(updatedToken),
     });
 
   } catch (err) {
@@ -199,7 +229,7 @@ router.get('/status', protect, async (req, res) => {
     }
 
     const queue = await getTodayQueue(token.doctor._id);
-    const liveETA = token.status === 'waiting'
+    const liveETA = token.status === 'waiting' && !isImmediateReviewToken(token)
       ? computeETA(token.position, queue.avgConsultationMinutes)
       : 0;
 
@@ -237,6 +267,13 @@ router.post('/snooze', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'No active waiting token found' });
     }
 
+    if (isImmediateReviewToken(token)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Immediate review cases cannot snooze in the queue',
+      });
+    }
+
     if (token.snoozeCount >= 2) {
       return res.status(400).json({
         success: false,
@@ -247,6 +284,7 @@ router.post('/snooze', protect, async (req, res) => {
     const totalWaiting = await Token.countDocuments({
       doctor: token.doctor,
       status: 'waiting',
+      routingLane: { $ne: IMMEDIATE_REVIEW_LANE },
       createdAt: buildDayQuery(today),
     });
 

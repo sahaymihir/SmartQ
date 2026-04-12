@@ -17,6 +17,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 
 import com.example.smartqueue.R;
+import com.example.smartqueue.models.request.JoinQueueRequest;
 import com.example.smartqueue.models.request.SymptomRequest;
 import com.example.smartqueue.models.response.DoctorsResponse;
 import com.example.smartqueue.models.response.QueueResponse;
@@ -160,7 +161,8 @@ public class PatientHomeActivity extends AppCompatActivity {
             btnJoinQueue.setEnabled(false);
             btnJoinQueue.setText("Joining...");
 
-            apiService.joinQueue(selectedDoctorId).enqueue(new Callback<TokenResponse>() {
+            JoinQueueRequest joinRequest = buildJoinQueueRequest();
+            apiService.joinQueue(selectedDoctorId, joinRequest).enqueue(new Callback<TokenResponse>() {
                 @Override
                 public void onResponse(Call<TokenResponse> call, Response<TokenResponse> response) {
                     if (response.code() == 401) { handleUnauthorized(); return; }
@@ -169,11 +171,13 @@ public class PatientHomeActivity extends AppCompatActivity {
                         isInQueue = true;
                         showInQueueState();
                         updateQueueUI(body.getPosition(), body.getTokenNumber(),
-                                body.getEtaMinutes(), "waiting", false, 0);
+                                body.getEtaMinutes(), "waiting", false, 0,
+                                isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
                         tvDoctorName.setText(selectedDoctorName);
                         startPolling();
                         Toast.makeText(PatientHomeActivity.this,
-                                "Token #" + body.getTokenNumber() + " issued!", Toast.LENGTH_SHORT).show();
+                                body.getMessage() != null ? body.getMessage() : "Token #" + body.getTokenNumber() + " issued!",
+                                Toast.LENGTH_SHORT).show();
                     } else {
                         btnJoinQueue.setEnabled(true);
                         btnJoinQueue.setText("Join Queue");
@@ -427,6 +431,12 @@ public class PatientHomeActivity extends AppCompatActivity {
                 });
     }
 
+    private JoinQueueRequest buildJoinQueueRequest() {
+        String symptoms = etSymptoms.getText() != null
+                ? etSymptoms.getText().toString().trim() : "";
+        return new JoinQueueRequest(symptoms);
+    }
+
     private void checkExistingToken() {
         apiService.getQueueStatus().enqueue(new Callback<QueueResponse>() {
             @Override
@@ -437,7 +447,8 @@ public class PatientHomeActivity extends AppCompatActivity {
                     isInQueue = true;
                     showInQueueState();
                     updateQueueUI(body.getPosition(), body.getTokenNumber(),
-                            body.getEtaMinutes(), body.getStatus(), body.isCheckedIn(), 0);
+                            body.getEtaMinutes(), body.getStatus(), body.isCheckedIn(), 0,
+                            isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
                     if (body.getDoctorName() != null) tvDoctorName.setText(body.getDoctorName());
                     if ("called".equals(body.getStatus())) showCalledState();
                     else startPolling();
@@ -482,7 +493,8 @@ public class PatientHomeActivity extends AppCompatActivity {
                         showCalledState();
                     } else {
                         updateQueueUI(body.getPosition(), body.getTokenNumber(),
-                                body.getEtaMinutes(), body.getStatus(), body.isCheckedIn(), 0);
+                                body.getEtaMinutes(), body.getStatus(), body.isCheckedIn(), 0,
+                                isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
                     }
                 }
             }
@@ -506,13 +518,29 @@ public class PatientHomeActivity extends AppCompatActivity {
     }
 
     private void updateQueueUI(int position, int token, int eta,
-                                String status, boolean checkedIn, int snoozeCount) {
+                                String status, boolean checkedIn, int snoozeCount, boolean immediateReview) {
         tvTokenNumber.setText("#" + token);
-        tvPosition.setText(String.valueOf(position));
-        tvETA.setText(eta == 0 ? "Next up!" : "~" + eta + " min");
-        tvQueueStatus.setText(formatStatus(status));
+        if (immediateReview) {
+            tvPosition.setText("ER");
+            tvETA.setText("Immediate review");
+            tvQueueStatus.setText("Immediate review");
+            btnSnooze.setEnabled(false);
+            cardSnooze.setAlpha(0.6f);
+            tvSnoozeCount.setText("Emergency cases cannot use snooze");
+        } else {
+            tvPosition.setText(String.valueOf(position));
+            tvETA.setText(eta == 0 ? "Next up!" : "~" + eta + " min");
+            tvQueueStatus.setText(formatStatus(status));
+            boolean canSnooze = "waiting".equals(status);
+            btnSnooze.setEnabled(canSnooze);
+            cardSnooze.setAlpha(canSnooze ? 1f : 0.6f);
+            tvSnoozeCount.setText("Push back 2 spots (" + snoozeCount + "/2 used)");
+        }
         updateCheckinUI(checkedIn);
-        tvSnoozeCount.setText("Push back 2 spots (" + snoozeCount + "/2 used)");
+    }
+
+    private boolean isImmediateReview(String routingLane, boolean required) {
+        return required || "immediate_review".equals(routingLane);
     }
 
     private void updateCheckinUI(boolean isCheckedIn) {
@@ -551,6 +579,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         switch (status) {
             case "waiting":   return "Waiting";
             case "called":    return "Called!";
+            case "arrived":
             case "checkedin": return "Arrived";
             default:          return "Waiting";
         }

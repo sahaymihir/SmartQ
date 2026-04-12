@@ -33,10 +33,30 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.ViewHolder> 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         QueueResponse.QueueEntry entry = queueList.get(position);
-        holder.tvTokenNum.setText("#" + entry.getTokenNumber());
+        boolean immediateReview = entry.isImmediateReviewRequired()
+                || "immediate_review".equals(entry.getRoutingLane());
+
+        holder.tvTokenNum.setText(immediateReview ? "ER" : "#" + entry.getTokenNumber());
         holder.tvPatientName.setText(entry.getPatientName());
-        holder.tvPatientInfo.setText("Position: " + entry.getPosition() + " | Priority: " + entry.getPriority());
-        holder.tvStatus.setText(entry.getStatus());
+
+        StringBuilder info = new StringBuilder();
+        if (immediateReview) {
+            info.append("Immediate review");
+        } else {
+            info.append("Position: ").append(entry.getPosition());
+        }
+        if (entry.getTriagePriorityClass() != null) {
+            info.append(" | KTAS ").append(entry.getTriagePriorityClass());
+        } else {
+            info.append(" | Priority: ").append(entry.getPriority());
+        }
+        if (entry.isManualReviewRequired()) {
+            info.append(" | Manual review");
+        }
+        holder.tvPatientInfo.setText(info.toString());
+        holder.tvStatus.setText(immediateReview && "waiting".equals(entry.getStatus())
+                ? "IMMEDIATE"
+                : entry.getStatus());
     }
 
     @Override

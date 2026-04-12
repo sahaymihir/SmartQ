@@ -7,7 +7,16 @@ const predictionHistory = require('../store/predictionStore');
 const { mapPriorityClassToScore } = require('../services/triageService');
 const { runPatientFlow } = require('../services/patientFlowService');
 const { routeToSupportedSpecialty } = require('../services/specialtyService');
-const { ACTIVE_TOKEN_STATUSES, getPriorityLabel } = require('../utils/queueHelpers');
+const {
+  ACTIVE_TOKEN_STATUSES,
+  buildDayQuery,
+  getNextWaitingToken,
+  getPriorityLabel,
+  getTodayQueue,
+  isImmediateReviewToken,
+  recomputeWaitingQueue,
+  sortActiveQueueTokens,
+} = require('../utils/queueHelpers');
 
 const today = () => new Date().toISOString().split('T')[0];
 
@@ -25,17 +34,19 @@ router.get('/queue', async (req, res) => {
     const tokens = await Token.find({
       doctor: doctorId,
       status: { $in: ['waiting', 'called', 'arrived'] },
-      createdAt: { $gte: new Date(today()) }
+      createdAt: buildDayQuery(today())
     })
-    .populate('patient', 'name age phone')
-    .sort({ position: 1 });
+    .populate('patient', 'name age phone');
+
+    const orderedTokens = sortActiveQueueTokens(tokens);
 
     const queue = await Queue.findOne({ doctor: doctorId, date: today() });
 
     res.json({
       success: true,
-      queue: tokens.map(t => ({
+      queue: orderedTokens.map(t => ({
         tokenId: t._id,
+        patientId: t.patient?._id,
         tokenNumber: t.tokenNumber,
         patientName: t.patient.name,
         patientAge: t.patient.age,
@@ -44,7 +55,15 @@ router.get('/queue', async (req, res) => {
         etaMinutes: t.etaMinutes,
         priority: t.priority,
         status: t.status,
-        checkedIn: t.checkedIn
+        checkedIn: t.checkedIn,
+        triagePriorityClass: t.triagePriorityClass,
+        modelPriorityClass: t.modelPriorityClass,
+        priorityFinalScore: t.priorityFinalScore,
+        manualReviewRequired: t.manualReviewRequired,
+        routingLane: t.routingLane || 'normal',
+        requiresImmediateReview: Boolean(t.requiresImmediateReview),
+        escalationReason: t.escalationReason || t.overrideReason || '',
+        overrideReason: t.overrideReason || '',
       })),
       avgConsultationMinutes: queue?.avgConsultationMinutes || 8,
       isPaused: queue?.isPaused || false,
@@ -69,7 +88,7 @@ router.post('/next', async (req, res) => {
     const currentToken = await Token.findOne({
       doctor: doctorId,
       status: 'called',
-      createdAt: { $gte: new Date(today()) }
+      createdAt: buildDayQuery(today())
     });
 
     if (currentToken) {
@@ -87,37 +106,35 @@ router.post('/next', async (req, res) => {
       }
     }
 
-    // Get next waiting patient (lowest position)
-    const nextToken = await Token.findOne({
-      doctor: doctorId,
-      status: 'waiting',
-      createdAt: { $gte: new Date(today()) }
-    }).sort({ position: 1 }).populate('patient', 'name');
+    const queue = await getTodayQueue(doctorId, today());
+
+    // Immediate-review tokens are called before the normal waiting lane.
+    const nextToken = await getNextWaitingToken(doctorId, today());
+    if (nextToken) {
+      await nextToken.populate('patient', 'name');
+    }
 
     if (!nextToken) {
       return res.json({ success: true, message: 'Queue is empty — no more patients' });
     }
 
     nextToken.status = 'called';
+    nextToken.calledAt = new Date();
+    nextToken.consultationStartedAt = new Date();
     await nextToken.save();
 
-    // Shift everyone else up by 1
-    await Token.updateMany(
-      {
-        doctor: doctorId,
-        status: 'waiting',
-        position: { $gt: 1 },
-        createdAt: { $gte: new Date(today()) }
-      },
-      { $inc: { position: -1 } }
-    );
+    await recomputeWaitingQueue(doctorId, queue.avgConsultationMinutes, today());
 
     res.json({
       success: true,
-      message: `Now calling Token #${nextToken.tokenNumber} — ${nextToken.patient.name}`,
+      message: isImmediateReviewToken(nextToken)
+        ? `Immediate review: Token #${nextToken.tokenNumber} — ${nextToken.patient.name}`
+        : `Now calling Token #${nextToken.tokenNumber} — ${nextToken.patient.name}`,
       calledToken: {
         tokenNumber: nextToken.tokenNumber,
-        patientName: nextToken.patient.name
+        patientName: nextToken.patient.name,
+        routingLane: nextToken.routingLane || 'normal',
+        requiresImmediateReview: Boolean(nextToken.requiresImmediateReview),
       }
     });
 
@@ -140,20 +157,11 @@ router.post('/noshow', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Token not found' });
     }
 
-    const removedPosition = token.position;
     token.status = 'no_show';
     await token.save();
 
-    // Shift everyone behind up by 1
-    await Token.updateMany(
-      {
-        doctor: token.doctor,
-        status: 'waiting',
-        position: { $gt: removedPosition },
-        createdAt: { $gte: new Date(today()) }
-      },
-      { $inc: { position: -1 } }
-    );
+    const queue = await getTodayQueue(token.doctor, today());
+    await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, today());
 
     res.json({ success: true, message: 'Patient marked as no-show' });
 

@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { getPriorityLabel } = require('../utils/queueHelpers');
+const { runPatientFlow } = require('./patientFlowService');
 
 const TRIAGE_API_URL = process.env.TRIAGE_API_URL || 'http://localhost:8000';
 const TRIAGE_MODEL_VERSION = process.env.TRIAGE_MODEL_VERSION || 'v3';
@@ -100,6 +101,31 @@ const buildVisitSnapshot = (patient, requestBody = {}) => {
   return snapshot;
 };
 
+const buildPatientFlowPayload = (patient, requestBody = {}) => {
+  const symptoms = getCanonicalSymptoms(requestBody);
+  if (!symptoms) {
+    return null;
+  }
+
+  return {
+    symptoms,
+    age: patient.age,
+    sex: requestBody.sex,
+    mental_status_triage: requestBody.mental_status_triage,
+    chief_complaint_system: requestBody.chief_complaint_system,
+    language: requestBody.language || requestBody.intakeLanguage,
+    temperature_c: requestBody.temperature_c,
+    pain_score: requestBody.pain_score,
+    spo2: requestBody.spo2,
+    respiratory_rate: requestBody.respiratory_rate,
+    heart_rate: requestBody.heart_rate,
+    systolic_bp: requestBody.systolic_bp,
+    diastolic_bp: requestBody.diastolic_bp,
+    gcs_total: requestBody.gcs_total,
+    news2_score: requestBody.news2_score,
+  };
+};
+
 const getAgeBaselineScore = (age) => (Number(age) >= 60 ? 10 : 5);
 
 // ─── Composite priority helpers ───────────────────────────────
@@ -188,6 +214,7 @@ const buildFallbackDecision = (patient, requestBody = {}) => {
   return {
     ageBasedPriorityScore,
     mlPriorityScore: null,
+    modelPriorityClass: null,
     priorityScore: priorityFinalScore,
     priorityLabel: getPriorityLabel(priorityFinalScore),
     triagePriorityClass: null,
@@ -202,6 +229,10 @@ const buildFallbackDecision = (patient, requestBody = {}) => {
     overrideReason,
     manualReviewRequired: false,
     aiConfidence: 0,
+    routingLane: 'normal',
+    requiresImmediateReview: false,
+    escalationReason: '',
+    safetyMatches: [],
     priorityComponents: components,
     priorityFinalScore,
     priorityDecisionTrace: buildDecisionTrace({
@@ -210,6 +241,107 @@ const buildFallbackDecision = (patient, requestBody = {}) => {
       triageSource: 'age_rule_fallback',
       overrideReason,
       triageLowConfidence: false,
+    }),
+  };
+};
+
+const shouldUseImmediateReviewLane = (priorityClass, safetyMatches = []) => {
+  if (priorityClass === 1) {
+    return true;
+  }
+
+  return safetyMatches.some((match) => {
+    const severity = String(match?.severity || '').toLowerCase();
+    return Number(match?.forcedPriorityClass) === 1 || severity === 'critical';
+  });
+};
+
+const buildEscalationReason = (priorityClass, safetyMatches = []) => {
+  const strongestMatch = safetyMatches.find((match) => {
+    const severity = String(match?.severity || '').toLowerCase();
+    return Number(match?.forcedPriorityClass) === 1 || severity === 'critical';
+  });
+
+  if (strongestMatch?.ruleId) {
+    return strongestMatch.ruleId;
+  }
+
+  if (priorityClass === 1) {
+    return 'ktas_1_immediate_review';
+  }
+
+  return '';
+};
+
+const buildPatientFlowDecision = (patient, requestBody = {}, flow = {}) => {
+  const symptomsText = getCanonicalSymptoms(requestBody);
+  const ageBasedPriorityScore = getAgeBaselineScore(patient.age);
+  const safetyMatches = Array.isArray(flow.safety) ? flow.safety : [];
+  const operationalPriorityClass =
+    flow.priority?.guardrailedPriorityClass != null
+      ? Number(flow.priority.guardrailedPriorityClass)
+      : null;
+  const rawModelPriorityClass =
+    flow.priority?.modelPriorityClass != null
+      ? Number(flow.priority.modelPriorityClass)
+      : null;
+  const mlPriorityScore = mapPriorityClassToScore(operationalPriorityClass);
+  const baseScore = Math.max(ageBasedPriorityScore, mlPriorityScore);
+  const triageLowConfidence = Boolean(flow.priority?.lowConfidence);
+  const requiresImmediateReview = shouldUseImmediateReviewLane(operationalPriorityClass, safetyMatches);
+  const escalationReason = requiresImmediateReview
+    ? buildEscalationReason(operationalPriorityClass, safetyMatches)
+    : '';
+  const overrideReason = safetyMatches.length > 0
+    ? `safety_${escalationReason || 'guardrail'}`
+    : determineOverrideReason({
+        ageBasedPriorityScore,
+        mlPriorityScore,
+        triagePriorityClass: operationalPriorityClass,
+        triageLowConfidence,
+      });
+
+  const components = buildPriorityComponents({
+    ageBasedPriorityScore,
+    mlPriorityScore,
+    symptomsText,
+    ocrFlags: 0,
+    clinicianOverride: 0,
+  });
+  const priorityFinalScore = computePriorityFinalScore(components, baseScore);
+  const triageSource = flow.priority?.source || flow.flowSource || 'patient_flow_v1';
+
+  return {
+    ageBasedPriorityScore,
+    mlPriorityScore,
+    modelPriorityClass: rawModelPriorityClass,
+    priorityScore: priorityFinalScore,
+    priorityLabel: getPriorityLabel(priorityFinalScore),
+    triagePriorityClass: operationalPriorityClass,
+    triageConfidence: Number(flow.priority?.modelConfidence || 0),
+    triageLowConfidence,
+    triageRecommendation:
+      flow.priority?.guardrailedRecommendation ||
+      flow.priority?.modelRecommendation ||
+      '',
+    triageAllClassProbs: flow.priority?.allClassProbs || {},
+    triageModelVersion: flow.flowSource || TRIAGE_MODEL_VERSION,
+    triageSource,
+    overrideReason,
+    manualReviewRequired: triageLowConfidence,
+    aiConfidence: Number(flow.priority?.modelConfidence || 0),
+    routingLane: requiresImmediateReview ? 'immediate_review' : 'normal',
+    requiresImmediateReview,
+    escalationReason,
+    safetyMatches,
+    priorityComponents: components,
+    priorityFinalScore,
+    priorityDecisionTrace: buildDecisionTrace({
+      priorityFinalScore,
+      components,
+      triageSource,
+      overrideReason,
+      triageLowConfidence,
     }),
   };
 };
@@ -236,6 +368,18 @@ const determineTriageDecision = async (patient, requestBody = {}) => {
   const fallback = buildFallbackDecision(patient, requestBody);
   const triagePayload = buildTriagePayload(patient, requestBody);
   const symptomsText = getCanonicalSymptoms(requestBody);
+  const patientFlowPayload = buildPatientFlowPayload(patient, requestBody);
+
+  if (patientFlowPayload) {
+    try {
+      const flow = await runPatientFlow(patientFlowPayload);
+      if (flow?.priority?.guardrailedPriorityClass != null) {
+        return buildPatientFlowDecision(patient, requestBody, flow);
+      }
+    } catch (error) {
+      console.warn('⚠️  Patient flow unavailable, falling back to triage-only scoring:', error.message);
+    }
+  }
 
   try {
     const response = await axios.post(
@@ -259,6 +403,8 @@ const determineTriageDecision = async (patient, requestBody = {}) => {
       triagePriorityClass: data.priority_class,
       triageLowConfidence,
     });
+    const requiresImmediateReview = data.priority_class === 1;
+    const escalationReason = requiresImmediateReview ? 'ktas_1_immediate_review' : '';
 
     const components = buildPriorityComponents({
       ageBasedPriorityScore,
@@ -273,6 +419,7 @@ const determineTriageDecision = async (patient, requestBody = {}) => {
     return {
       ageBasedPriorityScore,
       mlPriorityScore,
+      modelPriorityClass: data.priority_class,
       priorityScore: priorityFinalScore,
       priorityLabel: getPriorityLabel(priorityFinalScore),
       triagePriorityClass: data.priority_class,
@@ -285,6 +432,10 @@ const determineTriageDecision = async (patient, requestBody = {}) => {
       overrideReason,
       manualReviewRequired: triageLowConfidence,
       aiConfidence: Number(data.confidence || 0),
+      routingLane: requiresImmediateReview ? 'immediate_review' : 'normal',
+      requiresImmediateReview,
+      escalationReason,
+      safetyMatches: [],
       priorityComponents: components,
       priorityFinalScore,
       priorityDecisionTrace: buildDecisionTrace({

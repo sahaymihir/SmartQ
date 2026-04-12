@@ -1,6 +1,7 @@
 package com.example.smartqueue.network;
 
 import com.example.smartqueue.models.request.LoginRequest;
+import com.example.smartqueue.models.request.JoinQueueRequest;
 import com.example.smartqueue.models.request.RegisterRequest;
 import com.example.smartqueue.models.request.PrescriptionRequest;
 import com.example.smartqueue.models.request.SymptomRequest;
@@ -27,7 +28,7 @@ public interface ApiService {
     Call<MessageResponse> registerDeviceToken(@Body com.example.smartqueue.models.request.NotificationRegistrationRequest body);
 
     @POST("queue/join")
-    Call<TokenResponse> joinQueue(@Query("doctorId") String doctorId);
+    Call<TokenResponse> joinQueue(@Query("doctorId") String doctorId, @Body JoinQueueRequest body);
 
     @GET("queue/status")
     Call<QueueResponse> getQueueStatus();

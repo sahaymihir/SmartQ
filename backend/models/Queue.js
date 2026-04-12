@@ -79,6 +79,12 @@ const tokenSchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  modelPriorityClass: {
+    type: Number,
+    min: 1,
+    max: 5,
+    default: null
+  },
   triagePriorityClass: {
     type: Number,
     min: 1,
@@ -116,6 +122,23 @@ const tokenSchema = new mongoose.Schema({
   manualReviewRequired: {
     type: Boolean,
     default: false
+  },
+  routingLane: {
+    type: String,
+    enum: ['normal', 'immediate_review'],
+    default: 'normal'
+  },
+  requiresImmediateReview: {
+    type: Boolean,
+    default: false
+  },
+  escalationReason: {
+    type: String,
+    default: ''
+  },
+  safetyMatches: {
+    type: mongoose.Schema.Types.Mixed,
+    default: () => []
   },
   // Composite priority breakdown (SmartQ v3 — visit-level decision trace)
   priorityComponents: {
