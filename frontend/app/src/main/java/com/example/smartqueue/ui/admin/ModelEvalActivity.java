@@ -65,6 +65,7 @@ public class ModelEvalActivity extends AppCompatActivity {
     private TextView tvTestFactors, tvTestDoctor, tvTestReasoning, tvTestModelSource, tvHistoryCount,
             tvTestConfidenceLabel, tvTestManualReviewFlag;
     private final List<DoctorsResponse.Doctor> doctorsDirectory = new ArrayList<>();
+    private SymptomPredictResponse lastShownResult;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -508,6 +509,7 @@ public class ModelEvalActivity extends AppCompatActivity {
     }
 
     private void showTestResult(SymptomPredictResponse body) {
+        lastShownResult = body;
         // ── 🟦 PATIENT SUMMARY ──────────────────────────────────────────
         tvTestNormalizedSymptoms.setText(!TextUtils.isEmpty(body.getNormalizedSymptoms())
                 ? body.getNormalizedSymptoms() : "—");
@@ -610,6 +612,10 @@ public class ModelEvalActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null
                         && response.body().isSuccess() && response.body().getDoctors() != null) {
                     doctorsDirectory.addAll(response.body().getDoctors());
+                    if (lastShownResult != null) {
+                        showTestResult(lastShownResult);
+                    }
+                    loadHistory();
                 }
             }
 
