@@ -1,5 +1,6 @@
 package com.example.smartqueue.ui.auth.compose
 
+import android.util.Patterns
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -267,8 +268,8 @@ fun RegisterScreen(
         // Validation states
         val isPasswordMatch = password == confirmPassword && password.isNotEmpty()
         val isPasswordStrong = password.length >= 8
-        val isEmailValid = email.contains("@")
-        val isPhoneValid = phone.length >= 10
+        val isEmailValid = Patterns.EMAIL_ADDRESS.matcher(email.trim()).matches()
+        val isPhoneValid = phone.length == 10
         val age = ageText.toIntOrNull() ?: 0
         val isAgeValid = age in 1..120
 
@@ -392,7 +393,7 @@ fun RegisterScreen(
                     ) {
                         AuthInputField(
                             value = phone,
-                            onValueChange = { phone = it.filter { c -> c.isDigit() }.take(12) },
+                            onValueChange = { phone = it.filter { c -> c.isDigit() }.take(10) },
                             label = "Phone",
                             placeholder = "10-digit number",
                             keyboardType = KeyboardType.Phone,

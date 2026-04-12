@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputFilter;
 import android.text.TextUtils;
 import android.util.Patterns;
 import android.view.View;
@@ -70,6 +71,7 @@ public class RegisterActivity extends AppCompatActivity {
         btnGoToLogin = findViewById(R.id.btnGoToLogin);
         progressBar = findViewById(R.id.progressBar);
         tvError     = findViewById(R.id.tvError);
+        etPhone.setFilters(new InputFilter[]{ new InputFilter.LengthFilter(10) });
     }
 
     private void setupClickListeners() {
@@ -123,7 +125,7 @@ public class RegisterActivity extends AppCompatActivity {
         else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             tilEmail.setError("Invalid email"); valid = false;
         }
-        if (TextUtils.isEmpty(phone) || phone.length() < 10) {
+        if (TextUtils.isEmpty(phone) || phone.length() != 10 || !TextUtils.isDigitsOnly(phone)) {
             tilPhone.setError("Enter valid 10-digit number"); valid = false;
         }
 

@@ -3,6 +3,13 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { protect } = require('../middleware/authMiddleware');
+const {
+  buildDuplicateFieldMessage,
+  isValidEmail,
+  isValidPhone,
+  normalizeEmail,
+  normalizePhone,
+} = require('../utils/userValidation');
 
 // ─── Helper: generate JWT ──────────────────────────────────
 const generateToken = (userId) => {
@@ -11,26 +18,6 @@ const generateToken = (userId) => {
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
-};
-
-const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
-
-const buildDuplicateFieldMessage = (err) => {
-  const duplicateField = Object.keys(err?.keyPattern || {})[0]
-    || Object.keys(err?.keyValue || {})[0]
-    || 'field';
-
-  if (duplicateField === 'email') {
-    return 'Email already registered. Please login.';
-  }
-  if (duplicateField === 'phone') {
-    return 'Phone number already registered. Please login.';
-  }
-  if (duplicateField === 'staffId') {
-    return 'Staff ID collision detected. Please try again.';
-  }
-
-  return `${duplicateField} already exists.`;
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -46,10 +33,26 @@ router.post('/register', async (req, res) => {
     const normalizedEmail = normalizeEmail(email);
 
     // Basic validation
-    if (!name || !normalizedEmail || !password || !phone || !age) {
+    const normalizedPhone = normalizePhone(phone);
+
+    if (!name || !normalizedEmail || !password || !normalizedPhone || !age) {
       return res.status(400).json({
         success: false,
         message: 'All fields are required'
+      });
+    }
+
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email must be in a valid format like name@example.com'
+      });
+    }
+
+    if (!isValidPhone(normalizedPhone)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number must be exactly 10 digits'
       });
     }
 
@@ -77,7 +80,7 @@ router.post('/register', async (req, res) => {
       name,
       email: normalizedEmail,
       password,
-      phone: String(phone).trim(),
+      phone: normalizedPhone,
       age: parseInt(age, 10),
       role: 'patient'
     });

@@ -15,6 +15,13 @@ const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
 const { protect, superuserOrAdmin } = require('../middleware/authMiddleware');
 const User = require('../models/User');
+const {
+  buildDuplicateFieldMessage,
+  isValidEmail,
+  isValidPhone,
+  normalizeEmail,
+  normalizePhone,
+} = require('../utils/userValidation');
 
 // All routes require login + admin or superuser role
 router.use(protect, superuserOrAdmin);
@@ -121,8 +128,10 @@ router.get('/', readLimiter, async (req, res) => {
 router.post('/', writeLimiter, async (req, res) => {
   try {
     const { name, email, password, phone, age, role, specialty } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedPhone = normalizePhone(phone);
 
-    if (!name || !email || !password || !phone || !age || !role) {
+    if (!name || !normalizedEmail || !password || !normalizedPhone || !age || !role) {
       return res.status(400).json({ success: false, message: 'name, email, password, phone, age, and role are required.' });
     }
 
@@ -150,16 +159,24 @@ router.post('/', writeLimiter, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
     }
 
-    const existing = await User.findOne({ email: String(email).toLowerCase() });
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({ success: false, message: 'Email must be in a valid format like name@example.com' });
+    }
+
+    if (!isValidPhone(normalizedPhone)) {
+      return res.status(400).json({ success: false, message: 'Phone number must be exactly 10 digits.' });
+    }
+
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       return res.status(409).json({ success: false, message: 'Email already registered.' });
     }
 
     const userData = {
       name:     String(name).trim(),
-      email:    String(email).toLowerCase().trim(),
+      email:    normalizedEmail,
       password: String(password),
-      phone:    String(phone).trim(),
+      phone:    normalizedPhone,
       age:      parsedAge,
       role:     normalizedRole,
     };
@@ -182,7 +199,7 @@ router.post('/', writeLimiter, async (req, res) => {
       return res.status(400).json({ success: false, message: messages.join(', ') });
     }
     if (err.code === 11000) {
-      return res.status(409).json({ success: false, message: 'Email already registered.' });
+      return res.status(409).json({ success: false, message: buildDuplicateFieldMessage(err) });
     }
     res.status(500).json({ success: false, message: 'Server error' });
   }

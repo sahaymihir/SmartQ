@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const {
+  isValidEmail,
+  isValidPhone,
+  normalizeEmail,
+  normalizePhone,
+} = require('../utils/userValidation');
 
 /**
  * User Schema
@@ -21,7 +27,12 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Email is required'],
     unique: true,
     lowercase: true,
-    trim: true
+    trim: true,
+    set: normalizeEmail,
+    validate: {
+      validator: isValidEmail,
+      message: 'Email must be in a valid format like name@example.com',
+    }
   },
   password: {
     type: String,
@@ -31,7 +42,12 @@ const userSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: [true, 'Phone is required'],
-    trim: true
+    trim: true,
+    set: normalizePhone,
+    validate: {
+      validator: isValidPhone,
+      message: 'Phone number must be exactly 10 digits',
+    }
   },
   age: {
     type: Number,
@@ -61,7 +77,7 @@ const userSchema = new mongoose.Schema({
     unique: true,
     sparse: true,     // allows many nulls (patients have no staffId)
     trim: true,
-    default: null
+    default: undefined
   },
   // Computed priority score — higher = more urgent
   // Seniors (60+): base score 10, others: base score 5
@@ -84,7 +100,12 @@ const STAFF_ID_PREFIXES = {
 
 // ─── Generate staffId for clinical staff on first save ─────
 userSchema.pre('save', async function (next) {
-  if (this.isNew && !this.staffId && STAFF_ID_PREFIXES[this.role]) {
+  if (!STAFF_ID_PREFIXES[this.role]) {
+    this.staffId = undefined;
+    return next();
+  }
+
+  if (this.isNew && !this.staffId) {
     const prefix = STAFF_ID_PREFIXES[this.role];
     const count = await this.constructor.countDocuments({ role: this.role });
     this.staffId = `${prefix}-${String(count + 1).padStart(4, '0')}`;

@@ -2,6 +2,7 @@ package com.example.smartqueue.ui.admin;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.InputFilter;
 import android.text.TextUtils;
 import android.util.Patterns;
 import android.view.LayoutInflater;
@@ -302,6 +303,7 @@ public class UserManagementActivity extends AppCompatActivity {
         Spinner spinnerRole          = dialogView.findViewById(R.id.spinnerRole);
         TextInputLayout tilSpecialty = dialogView.findViewById(R.id.tilDuSpecialty);
         TextInputEditText etSpecialty = dialogView.findViewById(R.id.etDuSpecialty);
+        etPhone.setFilters(new InputFilter[]{ new InputFilter.LengthFilter(10) });
 
         // Populate role spinner based on current user's permission level
         List<String> roles = new ArrayList<>();
@@ -348,6 +350,10 @@ public class UserManagementActivity extends AppCompatActivity {
                     }
                     if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
                         Toast.makeText(this, "Invalid email.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (phone.length() != 10 || !TextUtils.isDigitsOnly(phone)) {
+                        Toast.makeText(this, "Phone number must be exactly 10 digits.", Toast.LENGTH_SHORT).show();
                         return;
                     }
                     int age;
