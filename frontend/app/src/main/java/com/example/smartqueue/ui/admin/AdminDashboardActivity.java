@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.smartqueue.R;
 import com.example.smartqueue.models.response.MessageResponse;
+import com.example.smartqueue.models.response.MlOpsLogsResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
@@ -23,8 +24,12 @@ import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -34,8 +39,9 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
     private TextView tvAdminName, tvCurrentlyServing, tvPausedBadge, tvUrgentAlert;
     private TextView tvStatWaiting, tvStatDone, tvStatAvg, tvQueueLabel;
-    private MaterialButton btnCallNext, btnPause, btnLogout, btnModelEval, btnSeedData;
-    private LinearLayout layoutQueueList;
+    private TextView tvMlOpsStatus, tvMlOpsSummary, tvMlOpsLastEvent, tvMlOpsLastUpdated, tvMlOpsEmpty;
+    private MaterialButton btnCallNext, btnPause, btnLogout, btnModelEval, btnSeedData, btnRefreshMlOps;
+    private LinearLayout layoutQueueList, layoutMlOpsLogs;
 
     private SessionManager sessionManager;
     private ApiService apiService;
@@ -44,6 +50,13 @@ public class AdminDashboardActivity extends AppCompatActivity {
     private final Handler queueRefreshHandler = new Handler(Looper.getMainLooper());
     private Runnable queueRefreshRunnable;
     private int lastImmediateReviewCount = 0;
+    private long lastMlOpsRefreshAtMs = 0L;
+
+    private static final long ML_OPS_REFRESH_INTERVAL_MS = 30_000L;
+    private static final SimpleDateFormat API_TIMESTAMP_FORMAT =
+            new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.US);
+    private static final SimpleDateFormat DISPLAY_TIME_FORMAT =
+            new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
 
     // The admin's own doctor ID — set after login
     // This is the MongoDB _id of the logged-in admin user
@@ -61,6 +74,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
         bindViews();
         setupClickListeners();
         loadQueue();
+        loadMlOpsLogs(true);
     }
 
     private void bindViews() {
@@ -80,6 +94,13 @@ public class AdminDashboardActivity extends AppCompatActivity {
         tvAdminName.setText(sessionManager.getName());
         btnModelEval   = findViewById(R.id.btnModelEval);
         btnSeedData    = findViewById(R.id.btnSeedData);
+        btnRefreshMlOps = findViewById(R.id.btnRefreshMlOps);
+        tvMlOpsStatus = findViewById(R.id.tvMlOpsStatus);
+        tvMlOpsSummary = findViewById(R.id.tvMlOpsSummary);
+        tvMlOpsLastEvent = findViewById(R.id.tvMlOpsLastEvent);
+        tvMlOpsLastUpdated = findViewById(R.id.tvMlOpsLastUpdated);
+        tvMlOpsEmpty = findViewById(R.id.tvMlOpsEmpty);
+        layoutMlOpsLogs = findViewById(R.id.layoutMlOpsLogs);
     }
 
     private void setupClickListeners() {
@@ -175,6 +196,8 @@ public class AdminDashboardActivity extends AppCompatActivity {
                         .setNegativeButton("Cancel", null)
                         .show()
         );
+
+        btnRefreshMlOps.setOnClickListener(v -> loadMlOpsLogs(true));
     }
 
     @Override
@@ -246,6 +269,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
                     updateUrgentAlert(immediateReviewCount);
 
                     renderQueueList(queue);
+                    loadMlOpsLogs(false);
                 }
             }
             @Override
@@ -408,5 +432,139 @@ public class AdminDashboardActivity extends AppCompatActivity {
     private String capitalize(String s) {
         if (s == null || s.isEmpty()) return s;
         return s.substring(0, 1).toUpperCase() + s.substring(1);
+    }
+
+    private void loadMlOpsLogs(boolean force) {
+        long now = System.currentTimeMillis();
+        if (!force && (now - lastMlOpsRefreshAtMs) < ML_OPS_REFRESH_INTERVAL_MS) {
+            return;
+        }
+        lastMlOpsRefreshAtMs = now;
+
+        btnRefreshMlOps.setEnabled(false);
+        if (force) {
+            btnRefreshMlOps.setText("Refreshing...");
+        }
+
+        apiService.getMlOpsLogs(8).enqueue(new Callback<MlOpsLogsResponse>() {
+            @Override
+            public void onResponse(Call<MlOpsLogsResponse> call, Response<MlOpsLogsResponse> response) {
+                btnRefreshMlOps.setEnabled(true);
+                btnRefreshMlOps.setText("Refresh");
+
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    renderMlOpsDiagnostics(response.body());
+                } else if (force) {
+                    Toast.makeText(AdminDashboardActivity.this,
+                            "Could not load ML diagnostics", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<MlOpsLogsResponse> call, Throwable t) {
+                btnRefreshMlOps.setEnabled(true);
+                btnRefreshMlOps.setText("Refresh");
+                if (force) {
+                    Toast.makeText(AdminDashboardActivity.this,
+                            "Network error while loading ML diagnostics", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    private void renderMlOpsDiagnostics(MlOpsLogsResponse body) {
+        MlOpsLogsResponse.Summary summary = body.getSummary();
+        List<MlOpsLogsResponse.LogEntry> logs = body.getLogs();
+        if (logs == null) {
+            logs = new ArrayList<>();
+        }
+
+        int total = summary != null ? summary.getTotalRequests() : 0;
+        int success = summary != null ? summary.getSuccessfulRequests() : 0;
+        int failed = summary != null ? summary.getFailedRequests() : 0;
+        int retries = summary != null ? summary.getRetryEvents() : 0;
+        int recovered = summary != null ? summary.getRetryRecoveredRequests() : 0;
+        double successRate = summary != null ? summary.getSuccessRate() : 0;
+
+        tvMlOpsSummary.setText(String.format(
+                Locale.getDefault(),
+                "Requests: %d | Success: %d | Failed: %d | Retry events: %d | Recovered: %d | Success rate: %.1f%%",
+                total,
+                success,
+                failed,
+                retries,
+                recovered,
+                successRate
+        ));
+
+        if (total == 0) {
+            tvMlOpsStatus.setText("No traffic yet");
+            tvMlOpsStatus.setBackgroundResource(R.drawable.badge_normal);
+        } else if (failed == 0) {
+            tvMlOpsStatus.setText("Healthy");
+            tvMlOpsStatus.setBackgroundResource(R.drawable.badge_normal);
+        } else if (recovered > 0) {
+            tvMlOpsStatus.setText("Recovered with retries");
+            tvMlOpsStatus.setBackgroundResource(R.drawable.badge_medium);
+        } else {
+            tvMlOpsStatus.setText("Degraded");
+            tvMlOpsStatus.setBackgroundResource(R.drawable.badge_high);
+        }
+
+        if (!logs.isEmpty()) {
+            tvMlOpsLastEvent.setText("Last event: " + buildLogLine(logs.get(0)));
+        } else {
+            tvMlOpsLastEvent.setText("Last event: -");
+        }
+        tvMlOpsLastUpdated.setText("Updated at " + DISPLAY_TIME_FORMAT.format(new Date()));
+
+        layoutMlOpsLogs.removeAllViews();
+        tvMlOpsEmpty.setVisibility(logs.isEmpty() ? View.VISIBLE : View.GONE);
+        for (MlOpsLogsResponse.LogEntry log : logs) {
+            TextView eventText = new TextView(this);
+            eventText.setText(buildLogLine(log));
+            eventText.setTextSize(12f);
+            eventText.setPadding(0, 0, 0, 8);
+            eventText.setTextColor(getResources().getColor(
+                    "failure".equals(log.getResult()) ? R.color.priority_high : R.color.text_secondary
+            ));
+            layoutMlOpsLogs.addView(eventText);
+        }
+    }
+
+    private String buildLogLine(MlOpsLogsResponse.LogEntry log) {
+        StringBuilder line = new StringBuilder();
+        line.append(formatTimestamp(log.getTimestamp()));
+        line.append(" • ");
+        line.append(capitalize(String.valueOf(log.getOperation()).replace('_', ' ')));
+
+        if (log.getStatus() != null) {
+            line.append(" • status ").append(log.getStatus());
+        }
+
+        line.append(" • attempt ").append(log.getAttempt()).append("/").append(log.getMaxAttempts());
+
+        if (log.isWillRetry()) {
+            line.append(" • retry");
+        }
+        if (log.getLatencyMs() != null) {
+            line.append(" • ").append(log.getLatencyMs()).append("ms");
+        }
+        if ("failure".equals(log.getResult()) && !TextUtils.isEmpty(log.getErrorMessage())) {
+            line.append(" • ").append(log.getErrorMessage());
+        }
+
+        return line.toString();
+    }
+
+    private String formatTimestamp(String timestamp) {
+        if (TextUtils.isEmpty(timestamp)) return "--:--:--";
+        try {
+            Date parsed = API_TIMESTAMP_FORMAT.parse(timestamp);
+            if (parsed == null) return "--:--:--";
+            return DISPLAY_TIME_FORMAT.format(parsed);
+        } catch (ParseException e) {
+            return "--:--:--";
+        }
     }
 }

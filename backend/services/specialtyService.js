@@ -100,6 +100,8 @@ const predictSpecialty = async (payload = {}) => {
       timeout: SPECIALTY_TIMEOUT_MS,
       retries: Number(process.env.SPECIALTY_RETRY_COUNT || 2),
       initialDelayMs: Number(process.env.SPECIALTY_RETRY_DELAY_MS || 500),
+      operation: 'specialty_predict',
+      source: 'specialtyService',
     });
 
     const data = response.data || {};

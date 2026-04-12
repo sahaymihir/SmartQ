@@ -98,6 +98,8 @@ const runPatientFlow = async (payload = {}) => {
       timeout: FLOW_TIMEOUT_MS,
       retries: Number(process.env.PATIENT_FLOW_RETRY_COUNT || 2),
       initialDelayMs: Number(process.env.PATIENT_FLOW_RETRY_DELAY_MS || 500),
+      operation: 'patient_flow',
+      source: 'patientFlowService',
     });
 
     const data = response.data || {};

@@ -391,6 +391,8 @@ const determineTriageDecision = async (patient, requestBody = {}) => {
         timeout: TRIAGE_TIMEOUT_MS,
         retries: Number(process.env.TRIAGE_RETRY_COUNT || 2),
         initialDelayMs: Number(process.env.TRIAGE_RETRY_DELAY_MS || 500),
+        operation: 'triage_predict',
+        source: 'triageService',
       }
     );
 

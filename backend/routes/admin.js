@@ -4,6 +4,7 @@ const { protect, adminOnly } = require('../middleware/authMiddleware');
 const { Token, Queue } = require('../models/Queue');
 const User = require('../models/User');
 const predictionHistory = require('../store/predictionStore');
+const { getMlOpsLogs, getMlOpsSummary } = require('../store/mlOpsLogStore');
 const { mapPriorityClassToScore } = require('../services/triageService');
 const { runPatientFlow } = require('../services/patientFlowService');
 const { routeToSupportedSpecialty } = require('../services/specialtyService');
@@ -560,6 +561,19 @@ router.post('/model-eval-run', async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.get('/model-eval-history', async (req, res) => {
   res.json({ success: true, history: predictionHistory });
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/admin/ml-ops-logs?limit=20
+// Returns recent ML request lifecycle logs and aggregate reliability stats
+// ─────────────────────────────────────────────────────────────
+router.get('/ml-ops-logs', async (req, res) => {
+  const limit = Number(req.query.limit || 20);
+  res.json({
+    success: true,
+    summary: getMlOpsSummary(),
+    logs: getMlOpsLogs(limit),
+  });
 });
 
 // ─────────────────────────────────────────────────────────────

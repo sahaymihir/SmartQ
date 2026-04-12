@@ -8,6 +8,7 @@ import com.example.smartqueue.models.request.SymptomRequest;
 import com.example.smartqueue.models.response.AuthResponse;
 import com.example.smartqueue.models.response.DoctorsResponse;
 import com.example.smartqueue.models.response.ModelEvalHistoryResponse;
+import com.example.smartqueue.models.response.MlOpsLogsResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.models.response.SymptomPredictResponse;
 import com.example.smartqueue.models.response.TokenResponse;
@@ -66,6 +67,9 @@ public interface ApiService {
 
     @GET("admin/model-eval-history")
     Call<ModelEvalHistoryResponse> getModelEvalHistory();
+
+    @GET("admin/ml-ops-logs")
+    Call<MlOpsLogsResponse> getMlOpsLogs(@Query("limit") int limit);
 
     @POST("admin/model-eval-run")
     Call<SymptomPredictResponse> runAdminModelEval(@Body SymptomRequest body);
