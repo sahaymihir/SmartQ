@@ -135,6 +135,24 @@
                 android:layout_height="wrap_content"
                 android:text="—"
                 android:textSize="12sp"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="6dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Estimated wait time"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="2dp"/>
+
+            <TextView
+                android:id="@+id/tvEvalPatientWait"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="—"
+                android:textSize="12sp"
                 android:textColor="@color/text_primary"/>
         </LinearLayout>
 
@@ -157,6 +175,34 @@
                 android:textStyle="bold"
                 android:textColor="#2E7D32"
                 android:layout_marginBottom="8dp"/>
+
+            <LinearLayout
+                android:id="@+id/layoutEvalSafetyAlertBlock"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#33C62828"
+                android:padding="8dp"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚠ Safety Override Alert"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="#C62828"
+                    android:layout_marginBottom="3dp"/>
+
+                <TextView
+                    android:id="@+id/tvEvalSafetyAlert"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="—"
+                    android:textSize="11sp"
+                    android:textColor="#B71C1C"/>
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -219,6 +265,15 @@
                 android:layout_height="wrap_content"
                 android:text="—"
                 android:textSize="11sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="6dp"/>
+
+            <TextView
+                android:id="@+id/tvEvalQueueRationale"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="—"
+                android:textSize="11sp"
                 android:textColor="@color/text_secondary"/>
         </LinearLayout>
 
@@ -257,6 +312,35 @@
                 android:text="—"
                 android:textSize="12sp"
                 android:textColor="@color/text_primary"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:id="@+id/tvEvalConfidenceLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="—"
+                android:textSize="11sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:id="@+id/tvEvalManualReviewFlag"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="⚠ Manual review recommended"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#C62828"
+                android:layout_marginBottom="6dp"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/tvEvalAssignedQueue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="—"
+                android:textSize="11sp"
+                android:textColor="@color/primary"
                 android:layout_marginBottom="8dp"/>
 
             <TextView
