@@ -2,6 +2,11 @@ package com.example.smartqueue.ui.patient;
 
 import android.content.Intent;
 import android.content.ActivityNotFoundException;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -20,6 +25,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 
 import com.example.smartqueue.R;
 import com.example.smartqueue.models.request.JoinQueueRequest;
@@ -54,6 +62,9 @@ public class PatientHomeActivity extends AppCompatActivity {
 
     private static final long QUEUE_POLL_INTERVAL_MS = 10_000L;
     private static final long HISTORY_POLL_INTERVAL_MS = 30_000L;
+    private static final String QUEUE_ALERT_CHANNEL_ID = "smartq_queue_alerts";
+    private static final int NEXT_IN_LINE_NOTIFICATION_ID = 1201;
+    private static final int CALLED_NOTIFICATION_ID = 1202;
 
     // Views
     private TextView tvGreeting, tvPatientName;
@@ -108,6 +119,9 @@ public class PatientHomeActivity extends AppCompatActivity {
     private Handler historyPollHandler = new Handler(Looper.getMainLooper());
     private Runnable historyPollRunnable;
     private boolean isInQueue = false;
+    private int activeTokenNumber = -1;
+    private boolean nextInLineNotificationSent = false;
+    private boolean calledNotificationSent = false;
     private ActivityResultLauncher<Intent> speechInputLauncher;
 
     @Override
@@ -146,6 +160,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         apiService = ApiClient.getInstance().create(ApiService.class);
 
         bindViews();
+        ensureQueueAlertChannel();
         setupGreeting();
         setupClickListeners();
         loadDoctors();
@@ -289,12 +304,15 @@ public class PatientHomeActivity extends AppCompatActivity {
                     if (response.code() == 401) { handleUnauthorized(); return; }
                     if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                         TokenResponse body = response.body();
+                        resetQueueAlertFlags();
+                        activeTokenNumber = body.getTokenNumber();
                         isInQueue = true;
                         showInQueueState();
                         updateQueueUI(body.getPosition(), body.getTokenNumber(),
                                 body.getEtaMinutes(), "waiting", false, body.getSnoozeCount(),
                                 isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
                         tvDoctorName.setText(selectedDoctorName);
+                        maybeNotifyQueueEvents(body.getTokenNumber(), "waiting", body.getPosition(), selectedDoctorName);
                         startPolling();
                         updateSuggestedTestsCard("waiting", body.isNurseTriaged(), body.getTestRecommendations());
                         Toast.makeText(PatientHomeActivity.this,
@@ -619,6 +637,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     QueueResponse body = response.body();
                     isInQueue = true;
+                    maybeNotifyQueueEvents(body.getTokenNumber(), body.getStatus(), body.getPosition(), body.getDoctorName());
                     showInQueueState();
                     updateQueueUI(body.getPosition(), body.getTokenNumber(),
                             body.getEtaMinutes(), body.getStatus(), body.isCheckedIn(), body.getSnoozeCount(),
@@ -698,6 +717,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     QueueResponse body = response.body();
                     isInQueue = true;
+                    maybeNotifyQueueEvents(body.getTokenNumber(), body.getStatus(), body.getPosition(), body.getDoctorName());
                     if (body.getDoctorName() != null) tvDoctorName.setText(body.getDoctorName());
                     if ("called".equals(body.getStatus())) {
                         stopPolling();
@@ -741,6 +761,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         setLeaveQueueLoading(false);
         setCalledRefreshLoading(false);
         cardTestRecs.setVisibility(View.GONE);
+        resetQueueAlertFlags();
         loadConsultationHistory(false);
         if (showToast) {
             Toast.makeText(this, "No active queue token found.", Toast.LENGTH_SHORT).show();
@@ -774,6 +795,104 @@ public class PatientHomeActivity extends AppCompatActivity {
             startActivity(intent);
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
             finish();
+        }
+    }
+
+    private void ensureQueueAlertChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return;
+        }
+        NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        if (notificationManager == null) {
+            return;
+        }
+        NotificationChannel existing = notificationManager.getNotificationChannel(QUEUE_ALERT_CHANNEL_ID);
+        if (existing != null) {
+            return;
+        }
+
+        NotificationChannel channel = new NotificationChannel(
+                QUEUE_ALERT_CHANNEL_ID,
+                "Queue Alerts",
+                NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription("Alerts when you are next in line or called by doctor");
+        notificationManager.createNotificationChannel(channel);
+    }
+
+    private void resetQueueAlertFlags() {
+        activeTokenNumber = -1;
+        nextInLineNotificationSent = false;
+        calledNotificationSent = false;
+    }
+
+    private void maybeNotifyQueueEvents(int tokenNumber, String status, int position, String doctorName) {
+        if (tokenNumber <= 0) {
+            return;
+        }
+
+        if (activeTokenNumber != tokenNumber) {
+            activeTokenNumber = tokenNumber;
+            nextInLineNotificationSent = false;
+            calledNotificationSent = false;
+        }
+
+        boolean waitingStatus = "waiting".equals(status) || "waiting_doctor".equals(status);
+        if (!nextInLineNotificationSent && waitingStatus && position <= 1) {
+            postQueueNotification(
+                    NEXT_IN_LINE_NOTIFICATION_ID,
+                    "You are next in line",
+                    "Please stay ready. Your turn is coming up now.",
+                    doctorName
+            );
+            nextInLineNotificationSent = true;
+        }
+
+        if (!calledNotificationSent && "called".equals(status)) {
+            postQueueNotification(
+                    CALLED_NOTIFICATION_ID,
+                    "Doctor has called you",
+                    "Proceed to the consultation area now.",
+                    doctorName
+            );
+            calledNotificationSent = true;
+            nextInLineNotificationSent = true;
+        }
+    }
+
+    private void postQueueNotification(int notificationId, String title, String message, String doctorName) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        Intent launchIntent = new Intent(this, PatientHomeActivity.class);
+        launchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this,
+                notificationId,
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        String content = doctorName != null && !doctorName.trim().isEmpty()
+                ? message + " Assigned doctor: " + doctorName
+                : message;
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, QUEUE_ALERT_CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(title)
+                .setContentText(content)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(content))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent);
+
+        try {
+            NotificationManagerCompat.from(this).notify(notificationId, builder.build());
+        } catch (SecurityException ignored) {
+            // Notification permission can be denied at runtime; ignore gracefully.
         }
     }
 
@@ -854,22 +973,32 @@ public class PatientHomeActivity extends AppCompatActivity {
     }
 
     private void confirmLogout() {
-        new AlertDialog.Builder(this)
-                .setTitle("Logout")
-                .setMessage("Are you sure you want to logout?")
-                .setPositiveButton("Logout", (dialog, which) -> {
-                    stopPolling();
-                    stopHistoryPolling();
-                    sessionManager.clearSession();
-                    ApiClient.setAuthToken(null);
-                    Intent intent = new Intent(this, LoginActivity.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                    startActivity(intent);
-                    overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
-                    finish();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_logout_confirmation, null, false);
+        MaterialButton btnCancel = dialogView.findViewById(R.id.btnDialogCancel);
+        MaterialButton btnLogout = dialogView.findViewById(R.id.btnDialogLogout);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnLogout.setOnClickListener(v -> {
+            dialog.dismiss();
+            stopPolling();
+            stopHistoryPolling();
+            sessionManager.clearSession();
+            ApiClient.setAuthToken(null);
+            Intent intent = new Intent(this, LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+            finish();
+        });
+
+        dialog.show();
     }
 
     private void loadConsultationHistory(boolean openPickerAfterLoad) {
