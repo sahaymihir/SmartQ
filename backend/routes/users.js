@@ -21,6 +21,10 @@ router.use(protect, superuserOrAdmin);
 
 // Roles that admins (non-superuser) are allowed to manage
 const ADMIN_MANAGEABLE_ROLES = ['doctor', 'nurse', 'patient'];
+const ALL_ROLES = ['patient', 'doctor', 'nurse', 'admin', 'superuser'];
+
+// Helper: escape special regex characters in user-supplied strings
+const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Rate limit for write operations to prevent abuse
 const writeLimiter = rateLimit({
@@ -29,16 +33,37 @@ const writeLimiter = rateLimit({
   message: { success: false, message: 'Too many requests, please try again later.' },
 });
 
+// Rate limit for read operations
+const readLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: { success: false, message: 'Too many requests, please try again later.' },
+});
+
 // ─────────────────────────────────────────────────────────────
 // GET /api/users?role=&search=&page=&limit=
 // List users — superuser sees all; admin sees non-superuser users
 // ─────────────────────────────────────────────────────────────
-router.get('/', async (req, res) => {
+router.get('/', readLimiter, async (req, res) => {
   try {
-    const { role, search } = req.query;
     const page  = Math.max(1, parseInt(req.query.page  || '1'));
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '50')));
     const skip  = (page - 1) * limit;
+
+    // Validate and sanitize the role query parameter
+    const rawRole = req.query.role;
+    let roleFilter = null;
+    if (rawRole) {
+      const normalized = String(rawRole).toLowerCase();
+      if (!ALL_ROLES.includes(normalized)) {
+        return res.status(400).json({ success: false, message: `Invalid role filter: ${rawRole}` });
+      }
+      roleFilter = normalized;
+    }
+
+    // Sanitize search to prevent regex injection
+    const rawSearch = req.query.search;
+    const safeSearch = rawSearch ? escapeRegex(rawSearch).slice(0, 200) : null;
 
     // Build the base filter
     const filter = {};
@@ -46,23 +71,23 @@ router.get('/', async (req, res) => {
     // Admins cannot see superuser accounts
     if (req.user.role !== 'superuser') {
       filter.role = { $in: ADMIN_MANAGEABLE_ROLES };
-    } else if (role) {
-      filter.role = role;
+    } else if (roleFilter) {
+      filter.role = roleFilter;
     }
 
     // If admin provides a specific role filter, ensure it is in the allowed list
-    if (req.user.role !== 'superuser' && role) {
-      if (!ADMIN_MANAGEABLE_ROLES.includes(role)) {
+    if (req.user.role !== 'superuser' && roleFilter) {
+      if (!ADMIN_MANAGEABLE_ROLES.includes(roleFilter)) {
         return res.status(403).json({ success: false, message: 'You cannot list users with that role.' });
       }
-      filter.role = role;
+      filter.role = roleFilter;
     }
 
-    if (search) {
+    if (safeSearch) {
       filter.$or = [
-        { name:    { $regex: search, $options: 'i' } },
-        { email:   { $regex: search, $options: 'i' } },
-        { staffId: { $regex: search, $options: 'i' } },
+        { name:    { $regex: safeSearch, $options: 'i' } },
+        { email:   { $regex: safeSearch, $options: 'i' } },
+        { staffId: { $regex: safeSearch, $options: 'i' } },
       ];
     }
 
