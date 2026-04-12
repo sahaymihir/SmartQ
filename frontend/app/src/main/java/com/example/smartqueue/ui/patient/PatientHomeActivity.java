@@ -1,9 +1,11 @@
 package com.example.smartqueue.ui.patient;
 
 import android.content.Intent;
+import android.content.ActivityNotFoundException;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.speech.RecognizerIntent;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -16,6 +18,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 
 import com.example.smartqueue.R;
 import com.example.smartqueue.models.request.JoinQueueRequest;
@@ -40,6 +44,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -59,7 +64,7 @@ public class PatientHomeActivity extends AppCompatActivity {
 
     // New doctor-selection views
     private TextInputEditText etSymptoms, etDoctorSearch;
-    private MaterialButton btnFindDoctor;
+    private MaterialButton btnFindDoctor, btnVoiceInput;
     private LinearLayout layoutAiResult, layoutDoctorList;
     private TextView tvAiPickTitle, tvAiPickMeta, tvAiPickReasoning, tvSelectedDoctor, tvDoctorListLoading;
 
@@ -95,6 +100,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     private Handler pollHandler = new Handler(Looper.getMainLooper());
     private Runnable pollRunnable;
     private boolean isInQueue = false;
+    private ActivityResultLauncher<Intent> speechInputLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,11 +109,31 @@ public class PatientHomeActivity extends AppCompatActivity {
 
         sessionManager = new SessionManager(this);
         String role = RoleNavigationHelper.normalizeRole(sessionManager.getRole());
-        if ("admin".equals(role) || "superuser".equals(role) || "doctor".equals(role)) {
+        if ("admin".equals(role) || "superuser".equals(role) || "doctor".equals(role) || "nurse".equals(role)) {
             startActivity(RoleNavigationHelper.createClearedHomeIntent(this, sessionManager.getRole()));
             finish();
             return;
         }
+        speechInputLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() != RESULT_OK || result.getData() == null) {
+                        return;
+                    }
+                    ArrayList<String> matches = result.getData().getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                    if (matches == null || matches.isEmpty()) {
+                        return;
+                    }
+                    String transcript = matches.get(0);
+                    String existing = etSymptoms.getText() != null ? etSymptoms.getText().toString().trim() : "";
+                    if (existing.isEmpty()) {
+                        etSymptoms.setText(transcript);
+                    } else {
+                        etSymptoms.setText(existing + ", " + transcript);
+                    }
+                    etSymptoms.setSelection(etSymptoms.getText() != null ? etSymptoms.getText().length() : 0);
+                }
+        );
         ApiClient.setAuthToken(sessionManager.getToken());
         apiService = ApiClient.getInstance().create(ApiService.class);
 
@@ -148,6 +174,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         etSymptoms          = findViewById(R.id.etSymptoms);
         etDoctorSearch      = findViewById(R.id.etDoctorSearch);
         btnFindDoctor       = findViewById(R.id.btnFindDoctor);
+        btnVoiceInput       = findViewById(R.id.btnVoiceInput);
         layoutAiResult      = findViewById(R.id.layoutAiResult);
         layoutDoctorList    = findViewById(R.id.layoutDoctorList);
         tvAiPickTitle       = findViewById(R.id.tvAiPickTitle);
@@ -218,6 +245,8 @@ public class PatientHomeActivity extends AppCompatActivity {
             }
             predictDoctor(symptoms);
         });
+
+        btnVoiceInput.setOnClickListener(v -> startVoiceInput());
 
         // Doctor list search filter
         etDoctorSearch.addTextChangedListener(new TextWatcher() {
@@ -583,6 +612,18 @@ public class PatientHomeActivity extends AppCompatActivity {
         String symptoms = etSymptoms.getText() != null
                 ? etSymptoms.getText().toString().trim() : "";
         return new JoinQueueRequest(symptoms, selectedVisitType, followUpTokenId, "en");
+    }
+
+    private void startVoiceInput() {
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak your symptoms");
+        try {
+            speechInputLauncher.launch(intent);
+        } catch (ActivityNotFoundException ex) {
+            Toast.makeText(this, "Speech recognition is not available on this device", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void checkExistingToken() {
