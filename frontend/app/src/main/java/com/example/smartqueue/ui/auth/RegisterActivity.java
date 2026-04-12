@@ -172,7 +172,7 @@ public class RegisterActivity extends AppCompatActivity {
                     ApiClient.setAuthToken(body.getToken());
                     navigateToHome(user.getRole());
                 } else {
-                    showError("Registration failed. Email might already exist on server.");
+                    showError(extractErrorMessage(response));
                 }
             }
 
@@ -212,5 +212,22 @@ public class RegisterActivity extends AppCompatActivity {
                 .withEndAction(() -> tvError.animate().translationX(8).setDuration(50)
                         .withEndAction(() -> tvError.animate().translationX(0).setDuration(50).start()).start()).start();
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+    }
+
+    private String extractErrorMessage(Response<AuthResponse> response) {
+        try {
+            if (response != null && response.errorBody() != null) {
+                String raw = response.errorBody().string();
+                if (!TextUtils.isEmpty(raw)) {
+                    com.google.gson.Gson gson = new com.google.gson.Gson();
+                    AuthResponse error = gson.fromJson(raw, AuthResponse.class);
+                    if (error != null && !TextUtils.isEmpty(error.getMessage())) {
+                        return error.getMessage();
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return "Registration failed. Please try again.";
     }
 }

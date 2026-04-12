@@ -13,6 +13,26 @@ const generateToken = (userId) => {
   );
 };
 
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+
+const buildDuplicateFieldMessage = (err) => {
+  const duplicateField = Object.keys(err?.keyPattern || {})[0]
+    || Object.keys(err?.keyValue || {})[0]
+    || 'field';
+
+  if (duplicateField === 'email') {
+    return 'Email already registered. Please login.';
+  }
+  if (duplicateField === 'phone') {
+    return 'Phone number already registered. Please login.';
+  }
+  if (duplicateField === 'staffId') {
+    return 'Staff ID collision detected. Please try again.';
+  }
+
+  return `${duplicateField} already exists.`;
+};
+
 // ─────────────────────────────────────────────────────────────
 // POST /api/auth/register
 // Body: { name, email, password, phone, age }
@@ -23,9 +43,10 @@ const generateToken = (userId) => {
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, phone, age, role } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
     // Basic validation
-    if (!name || !email || !password || !phone || !age) {
+    if (!name || !normalizedEmail || !password || !phone || !age) {
       return res.status(400).json({
         success: false,
         message: 'All fields are required'
@@ -43,7 +64,7 @@ router.post('/register', async (req, res) => {
     }
 
     // Check if email already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -54,10 +75,10 @@ router.post('/register', async (req, res) => {
     // Create patient account
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password,
-      phone,
-      age: parseInt(age),
+      phone: String(phone).trim(),
+      age: parseInt(age, 10),
       role: 'patient'
     });
 
@@ -87,6 +108,13 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, message: messages.join(', ') });
     }
 
+    if (err && err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: buildDuplicateFieldMessage(err),
+      });
+    }
+
     res.status(500).json({ success: false, message: 'Server error during registration' });
   }
 });
@@ -98,8 +126,9 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = normalizeEmail(email);
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       return res.status(400).json({
         success: false,
         message: 'Email and password are required'
@@ -107,7 +136,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Find user — explicitly select password (hidden by default)
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password');
     if (!user) {
       return res.status(401).json({
         success: false,
