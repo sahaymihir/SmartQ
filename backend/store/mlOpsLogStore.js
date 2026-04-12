@@ -36,6 +36,10 @@ const addMlOpsLog = (entry = {}) => {
 
 const getMlOpsLogs = (limit) => mlOpsLogs.slice(0, clampLimit(limit));
 
+const clearMlOpsLogs = () => {
+  mlOpsLogs.length = 0;
+};
+
 const getMlOpsSummary = () => {
   if (!mlOpsLogs.length) {
     return {
@@ -83,6 +87,7 @@ const getMlOpsSummary = () => {
 
 module.exports = {
   addMlOpsLog,
+  clearMlOpsLogs,
   getMlOpsLogs,
   getMlOpsSummary,
 };

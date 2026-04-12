@@ -8,6 +8,7 @@ const predictionHistory = require('../store/predictionStore');
 const { getMlOpsLogs, getMlOpsSummary } = require('../store/mlOpsLogStore');
 const { mapPriorityClassToScore } = require('../services/triageService');
 const { runPatientFlow } = require('../services/patientFlowService');
+const { resetAndSeedDemoData } = require('../services/demoSeedService');
 const { routeToSupportedSpecialty } = require('../services/specialtyService');
 const {
   ACTIVE_TOKEN_STATUSES,
@@ -675,83 +676,27 @@ router.get('/ml-ops-logs', async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/admin/seed
-// Creates demo doctors, nurses, patients, and a default
-// superuser for demo/testing.
+// Completely resets demo data, then recreates a realistic
+// SmartQ dataset for classroom/demo use.
 // Restricted to superuser accounts only.
-// Safe to call multiple times — skips existing emails.
 // ─────────────────────────────────────────────────────────────
 router.post('/seed', requireSeedAccess, async (req, res) => {
-  const dummySuperuser = [
-    { name: 'Super Admin', email: 'superadmin@smartq.in', password: 'super@1234', phone: '+91-9000000000', age: 40, role: 'superuser' },
-  ];
+  try {
+    const result = await resetAndSeedDemoData();
 
-  const dummyDoctors = [
-    { name: 'Dr. Ananya Krishnamurthy', email: 'ananya@smartq.in', password: 'doc@1234', phone: '+91-9876543201', age: 38, role: 'doctor', specialty: 'Cardiology' },
-    { name: 'Dr. Rajesh Patel', email: 'rajesh@smartq.in', password: 'doc@1234', phone: '+91-9876543202', age: 45, role: 'doctor', specialty: 'Orthopaedics' },
-    { name: 'Dr. Sunita Sharma', email: 'sunita@smartq.in', password: 'doc@1234', phone: '+91-9876543203', age: 42, role: 'doctor', specialty: 'Neurology' },
-    { name: 'Dr. Vikram Nair', email: 'vikram@smartq.in', password: 'doc@1234', phone: '+91-9876543204', age: 50, role: 'doctor', specialty: 'General OPD' },
-    { name: 'Dr. Priya Menon', email: 'priya@smartq.in', password: 'doc@1234', phone: '+91-9876543205', age: 36, role: 'doctor', specialty: 'Dermatology' },
-    { name: 'Dr. Anil Gupta', email: 'anil@smartq.in', password: 'doc@1234', phone: '+91-9876543206', age: 48, role: 'doctor', specialty: 'Gastroenterology' },
-    { name: 'Dr. Kavita Reddy', email: 'kavita@smartq.in', password: 'doc@1234', phone: '+91-9876543207', age: 40, role: 'doctor', specialty: 'Paediatrics' },
-    { name: 'Dr. Mohan Iyer', email: 'mohan@smartq.in', password: 'doc@1234', phone: '+91-9876543208', age: 55, role: 'doctor', specialty: 'Pulmonology' }
-  ];
-
-  const dummyNurses = [
-    { name: 'Nurse Radha Pillai',     email: 'radha@smartq.in',   password: 'nurse@1234', phone: '+91-9770000001', age: 29, role: 'nurse' },
-    { name: 'Nurse Anita Desai',      email: 'anita.n@smartq.in', password: 'nurse@1234', phone: '+91-9770000002', age: 34, role: 'nurse' },
-    { name: 'Nurse Suresh Babu',      email: 'suresh.n@smartq.in',password: 'nurse@1234', phone: '+91-9770000003', age: 31, role: 'nurse' },
-    { name: 'Nurse Lakshmi Venkat',   email: 'lakshmi@smartq.in', password: 'nurse@1234', phone: '+91-9770000004', age: 27, role: 'nurse' },
-    { name: 'Nurse Preethi Nambiar',  email: 'preethi@smartq.in', password: 'nurse@1234', phone: '+91-9770000005', age: 32, role: 'nurse' },
-  ];
-
-  const dummyPatients = [
-    { name: 'Arjun Singh',    email: 'arjun@patient.in',    password: 'patient@1234', phone: '+91-9811111111', age: 35, role: 'patient' },
-    { name: 'Priya Sharma',   email: 'priya.p@patient.in',  password: 'patient@1234', phone: '+91-9822222222', age: 28, role: 'patient' },
-    { name: 'Ravi Kumar',     email: 'ravi@patient.in',     password: 'patient@1234', phone: '+91-9833333333', age: 52, role: 'patient' },
-    { name: 'Sunita Devi',    email: 'sunita.d@patient.in', password: 'patient@1234', phone: '+91-9844444444', age: 43, role: 'patient' },
-    { name: 'Rahul Mehta',    email: 'rahul@patient.in',    password: 'patient@1234', phone: '+91-9855555555', age: 67, role: 'patient' },
-    { name: 'Deepa Nair',     email: 'deepa@patient.in',    password: 'patient@1234', phone: '+91-9866666666', age: 31, role: 'patient' },
-    { name: 'Sanjay Patel',   email: 'sanjay@patient.in',   password: 'patient@1234', phone: '+91-9877777777', age: 58, role: 'patient' },
-    { name: 'Kavitha Reddy',  email: 'kavitha@patient.in',  password: 'patient@1234', phone: '+91-9888888888', age: 24, role: 'patient' },
-    { name: 'Anil Verma',     email: 'anil.v@patient.in',   password: 'patient@1234', phone: '+91-9899999999', age: 71, role: 'patient' },
-    { name: 'Meena Rao',      email: 'meena@patient.in',    password: 'patient@1234', phone: '+91-9800000001', age: 39, role: 'patient' },
-    { name: 'Vikram Joshi',   email: 'vikram.j@patient.in', password: 'patient@1234', phone: '+91-9800000002', age: 46, role: 'patient' },
-    { name: 'Pooja Iyer',     email: 'pooja@patient.in',    password: 'patient@1234', phone: '+91-9800000003', age: 22, role: 'patient' },
-    { name: 'Naresh Bhat',    email: 'naresh@patient.in',   password: 'patient@1234', phone: '+91-9800000004', age: 60, role: 'patient' },
-    { name: 'Geeta Mishra',   email: 'geeta@patient.in',    password: 'patient@1234', phone: '+91-9800000005', age: 48, role: 'patient' },
-    { name: 'Imran Khan',     email: 'imran@patient.in',    password: 'patient@1234', phone: '+91-9800000006', age: 33, role: 'patient' },
-  ];
-
-  let superusersCreated = 0, doctorsCreated = 0, nursesCreated = 0, patientsCreated = 0, skipped = 0;
-
-  for (const data of [...dummySuperuser, ...dummyDoctors, ...dummyNurses, ...dummyPatients]) {
-    try {
-      await User.create(data);
-      if (data.role === 'superuser')    superusersCreated++;
-      else if (data.role === 'doctor')  doctorsCreated++;
-      else if (data.role === 'nurse')   nursesCreated++;
-      else                              patientsCreated++;
-    } catch (err) {
-      if (err.code === 11000) skipped++; // duplicate email — skip silently
-      else throw err;
-    }
+    res.json({
+      success: true,
+      message: result.message,
+      ...result.counts,
+      credentials: result.credentials,
+    });
+  } catch (err) {
+    console.error('Demo seed error:', err);
+    res.status(500).json({
+      success: false,
+      message: err.message || 'Failed to reset and seed demo data.',
+    });
   }
-
-  res.json({
-    success: true,
-    message: `Seed complete. Created: ${superusersCreated} superusers, ${doctorsCreated} doctors, ${nursesCreated} nurses, ${patientsCreated} patients. Skipped: ${skipped} duplicates.`,
-    superusersCreated,
-    doctorsCreated,
-    nursesCreated,
-    patientsCreated,
-    skipped,
-    credentials: {
-      superuser: { email: 'superadmin@smartq.in', password: 'super@1234' },
-      doctor: { email: 'ananya@smartq.in', password: 'doc@1234' },
-      nurse: { email: 'radha@smartq.in', password: 'nurse@1234' },
-      patient: { email: 'arjun@patient.in', password: 'patient@1234' },
-    }
-  });
 });
 
 module.exports = router;

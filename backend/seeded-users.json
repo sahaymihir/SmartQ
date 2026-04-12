@@ -1,244 +1,390 @@
 {
-  "description": "Seeded demo users for SmartQ backend",
+  "description": "Production-like SmartQ demo users for the reset-and-seed flow",
   "users": [
     {
-      "name": "Super Admin",
+      "name": "SmartQ Superadmin",
       "email": "superadmin@smartq.in",
-      "password": "super@1234",
-      "phone": "+91-9000000000",
-      "age": 40,
+      "password": "Super@123",
+      "phone": "9001000000",
+      "age": 41,
       "role": "superuser"
     },
     {
+      "name": "Aisha Thomas",
+      "email": "aisha.admin@smartq.in",
+      "password": "Admin@123",
+      "phone": "9101000001",
+      "age": 34,
+      "role": "admin"
+    },
+    {
+      "name": "Nikhil Rao",
+      "email": "nikhil.admin@smartq.in",
+      "password": "Admin@123",
+      "phone": "9101000002",
+      "age": 38,
+      "role": "admin"
+    },
+    {
+      "name": "Meera Kulkarni",
+      "email": "meera.admin@smartq.in",
+      "password": "Admin@123",
+      "phone": "9101000003",
+      "age": 32,
+      "role": "admin"
+    },
+    {
+      "name": "Harish Menon",
+      "email": "harish.admin@smartq.in",
+      "password": "Admin@123",
+      "phone": "9101000004",
+      "age": 45,
+      "role": "admin"
+    },
+    {
       "name": "Dr. Ananya Krishnamurthy",
-      "email": "ananya@smartq.in",
-      "password": "doc@1234",
-      "phone": "+91-9876543201",
+      "email": "dr.ananya@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000001",
       "age": 38,
       "role": "doctor",
       "specialty": "Cardiology"
     },
     {
       "name": "Dr. Rajesh Patel",
-      "email": "rajesh@smartq.in",
-      "password": "doc@1234",
-      "phone": "+91-9876543202",
+      "email": "dr.rajesh@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000002",
       "age": 45,
       "role": "doctor",
       "specialty": "Orthopaedics"
     },
     {
       "name": "Dr. Sunita Sharma",
-      "email": "sunita@smartq.in",
-      "password": "doc@1234",
-      "phone": "+91-9876543203",
+      "email": "dr.sunita@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000003",
       "age": 42,
       "role": "doctor",
       "specialty": "Neurology"
     },
     {
       "name": "Dr. Vikram Nair",
-      "email": "vikram@smartq.in",
-      "password": "doc@1234",
-      "phone": "+91-9876543204",
+      "email": "dr.vikram@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000004",
       "age": 50,
       "role": "doctor",
       "specialty": "General OPD"
     },
     {
       "name": "Dr. Priya Menon",
-      "email": "priya@smartq.in",
-      "password": "doc@1234",
-      "phone": "+91-9876543205",
+      "email": "dr.priya@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000005",
       "age": 36,
       "role": "doctor",
       "specialty": "Dermatology"
     },
     {
       "name": "Dr. Anil Gupta",
-      "email": "anil@smartq.in",
-      "password": "doc@1234",
-      "phone": "+91-9876543206",
+      "email": "dr.anil@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000006",
       "age": 48,
       "role": "doctor",
       "specialty": "Gastroenterology"
     },
     {
       "name": "Dr. Kavita Reddy",
-      "email": "kavita@smartq.in",
-      "password": "doc@1234",
-      "phone": "+91-9876543207",
+      "email": "dr.kavita@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000007",
       "age": 40,
       "role": "doctor",
       "specialty": "Paediatrics"
     },
     {
       "name": "Dr. Mohan Iyer",
-      "email": "mohan@smartq.in",
-      "password": "doc@1234",
-      "phone": "+91-9876543208",
+      "email": "dr.mohan@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000008",
       "age": 55,
       "role": "doctor",
       "specialty": "Pulmonology"
     },
     {
+      "name": "Dr. Farah Siddiqui",
+      "email": "dr.farah@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000009",
+      "age": 39,
+      "role": "doctor",
+      "specialty": "General OPD"
+    },
+    {
+      "name": "Dr. Arvind Narang",
+      "email": "dr.arvind@smartq.in",
+      "password": "Doctor@123",
+      "phone": "9201000010",
+      "age": 47,
+      "role": "doctor",
+      "specialty": "Cardiology"
+    },
+    {
       "name": "Nurse Radha Pillai",
-      "email": "radha@smartq.in",
-      "password": "nurse@1234",
-      "phone": "+91-9770000001",
+      "email": "radha.nurse@smartq.in",
+      "password": "Nurse@123",
+      "phone": "9301000001",
       "age": 29,
       "role": "nurse"
     },
     {
       "name": "Nurse Anita Desai",
-      "email": "anita.n@smartq.in",
-      "password": "nurse@1234",
-      "phone": "+91-9770000002",
+      "email": "anita.nurse@smartq.in",
+      "password": "Nurse@123",
+      "phone": "9301000002",
       "age": 34,
       "role": "nurse"
     },
     {
       "name": "Nurse Suresh Babu",
-      "email": "suresh.n@smartq.in",
-      "password": "nurse@1234",
-      "phone": "+91-9770000003",
+      "email": "suresh.nurse@smartq.in",
+      "password": "Nurse@123",
+      "phone": "9301000003",
       "age": 31,
       "role": "nurse"
     },
     {
       "name": "Nurse Lakshmi Venkat",
-      "email": "lakshmi@smartq.in",
-      "password": "nurse@1234",
-      "phone": "+91-9770000004",
+      "email": "lakshmi.nurse@smartq.in",
+      "password": "Nurse@123",
+      "phone": "9301000004",
       "age": 27,
       "role": "nurse"
     },
     {
       "name": "Nurse Preethi Nambiar",
-      "email": "preethi@smartq.in",
-      "password": "nurse@1234",
-      "phone": "+91-9770000005",
+      "email": "preethi.nurse@smartq.in",
+      "password": "Nurse@123",
+      "phone": "9301000005",
       "age": 32,
       "role": "nurse"
     },
     {
-      "name": "Arjun Singh",
-      "email": "arjun@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9811111111",
-      "age": 35,
+      "name": "Nurse Josephine D'Souza",
+      "email": "josephine.nurse@smartq.in",
+      "password": "Nurse@123",
+      "phone": "9301000006",
+      "age": 37,
+      "role": "nurse"
+    },
+    {
+      "name": "Aarav Mehta",
+      "email": "aarav.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000001",
+      "age": 42,
       "role": "patient"
     },
     {
       "name": "Priya Sharma",
-      "email": "priya.p@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9822222222",
+      "email": "priya.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000002",
       "age": 28,
       "role": "patient"
     },
     {
       "name": "Ravi Kumar",
-      "email": "ravi@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9833333333",
+      "email": "ravi.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000003",
       "age": 52,
       "role": "patient"
     },
     {
       "name": "Sunita Devi",
-      "email": "sunita.d@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9844444444",
+      "email": "sunita.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000004",
       "age": 43,
       "role": "patient"
     },
     {
       "name": "Rahul Mehta",
-      "email": "rahul@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9855555555",
+      "email": "rahul.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000005",
       "age": 67,
       "role": "patient"
     },
     {
       "name": "Deepa Nair",
-      "email": "deepa@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9866666666",
+      "email": "deepa.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000006",
       "age": 31,
       "role": "patient"
     },
     {
       "name": "Sanjay Patel",
-      "email": "sanjay@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9877777777",
+      "email": "sanjay.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000007",
       "age": 58,
       "role": "patient"
     },
     {
       "name": "Kavitha Reddy",
-      "email": "kavitha@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9888888888",
+      "email": "kavitha.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000008",
       "age": 24,
       "role": "patient"
     },
     {
       "name": "Anil Verma",
-      "email": "anil.v@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9899999999",
+      "email": "anil.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000009",
       "age": 71,
       "role": "patient"
     },
     {
       "name": "Meena Rao",
-      "email": "meena@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9800000001",
+      "email": "meena.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000010",
       "age": 39,
       "role": "patient"
     },
     {
       "name": "Vikram Joshi",
-      "email": "vikram.j@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9800000002",
+      "email": "vikram.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000011",
       "age": 46,
       "role": "patient"
     },
     {
       "name": "Pooja Iyer",
-      "email": "pooja@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9800000003",
+      "email": "pooja.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000012",
       "age": 22,
       "role": "patient"
     },
     {
       "name": "Naresh Bhat",
-      "email": "naresh@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9800000004",
+      "email": "naresh.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000013",
       "age": 60,
       "role": "patient"
     },
     {
       "name": "Geeta Mishra",
-      "email": "geeta@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9800000005",
+      "email": "geeta.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000014",
       "age": 48,
       "role": "patient"
     },
     {
       "name": "Imran Khan",
-      "email": "imran@patient.in",
-      "password": "patient@1234",
-      "phone": "+91-9800000006",
+      "email": "imran.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000015",
       "age": 33,
+      "role": "patient"
+    },
+    {
+      "name": "Sneha Thomas",
+      "email": "sneha.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000016",
+      "age": 27,
+      "role": "patient"
+    },
+    {
+      "name": "Kiran Shetty",
+      "email": "kiran.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000017",
+      "age": 54,
+      "role": "patient"
+    },
+    {
+      "name": "Fatima Ali",
+      "email": "fatima.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000018",
+      "age": 36,
+      "role": "patient"
+    },
+    {
+      "name": "Manoj Das",
+      "email": "manoj.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000019",
+      "age": 62,
+      "role": "patient"
+    },
+    {
+      "name": "Ritu Kapoor",
+      "email": "ritu.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000020",
+      "age": 41,
+      "role": "patient"
+    },
+    {
+      "name": "Aarohi Nair",
+      "email": "aarohi.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000021",
+      "age": 8,
+      "role": "patient"
+    },
+    {
+      "name": "Ishan Kapoor",
+      "email": "ishan.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000022",
+      "age": 12,
+      "role": "patient"
+    },
+    {
+      "name": "Harsha Gowda",
+      "email": "harsha.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000023",
+      "age": 57,
+      "role": "patient"
+    },
+    {
+      "name": "Leela Krishnan",
+      "email": "leela.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000024",
+      "age": 65,
+      "role": "patient"
+    },
+    {
+      "name": "Aditi Sen",
+      "email": "aditi.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000025",
+      "age": 19,
+      "role": "patient"
+    },
+    {
+      "name": "Naveen Prasad",
+      "email": "naveen.patient@smartq.in",
+      "password": "Patient@123",
+      "phone": "9401000026",
+      "age": 44,
       "role": "patient"
     }
   ]

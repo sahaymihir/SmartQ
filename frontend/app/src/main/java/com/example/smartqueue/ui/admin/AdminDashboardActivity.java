@@ -208,9 +208,9 @@ public class AdminDashboardActivity extends AppCompatActivity {
         if (isSuperuser) {
             btnSeedData.setOnClickListener(v ->
                     new AlertDialog.Builder(this)
-                            .setTitle("Seed Demo Data")
-                            .setMessage("This will create 1 superuser, 8 doctors, 5 nurses, and 15 patient accounts. Existing accounts will be skipped. Continue?")
-                            .setPositiveButton("Seed", (d, w) -> {
+                            .setTitle("Reset & Seed Demo Data")
+                            .setMessage("This will clear the current SmartQ database and recreate a full demo dataset: 1 superadmin, 4 admins, 10 doctors, 6 nurses, 26 patients, live queues, completed visits, prescriptions, and model-eval history. Continue?")
+                            .setPositiveButton("Reset & Seed", (d, w) -> {
                                 btnSeedData.setEnabled(false);
                                 apiService.seedDummyData().enqueue(new Callback<MessageResponse>() {
                                     @Override
