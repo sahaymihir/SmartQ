@@ -1,10 +1,12 @@
 package com.example.smartqueue.network;
 
 import com.example.smartqueue.models.request.LoginRequest;
+import com.example.smartqueue.models.request.NotificationRegistrationRequest;
 import com.example.smartqueue.models.request.RegisterRequest;
 import com.example.smartqueue.models.request.PrescriptionRequest;
 import com.example.smartqueue.models.request.JoinQueueRequest;
 import com.example.smartqueue.models.response.AuthResponse;
+import com.example.smartqueue.models.response.ConsultationHistoryResponse;
 import com.example.smartqueue.models.response.DoctorListResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.models.response.TokenResponse;
@@ -39,6 +41,14 @@ public interface ApiService {
     @POST("queue/leave")
     Call<MessageResponse> leaveQueue();
 
+    /** Fetch the current patient's completed consultation history. */
+    @GET("queue/history")
+    Call<ConsultationHistoryResponse> getConsultationHistory();
+
+    /** Fetch the current patient's completed consultation history (paginated). */
+    @GET("queue/history")
+    Call<ConsultationHistoryResponse> getConsultationHistory(@Query("limit") int limit);
+
     // ── DOCTOR / ADMIN ENDPOINTS ──────────────────────
 
     @GET("admin/queue")
@@ -55,4 +65,14 @@ public interface ApiService {
 
     @POST("admin/prescription")
     Call<MessageResponse> savePrescription(@Body PrescriptionRequest body);
+
+    // ── NOTIFICATION ENDPOINTS ────────────────────────
+
+    /** Register or refresh the FCM device token for the current user. */
+    @POST("notifications/register-device")
+    Call<MessageResponse> registerDeviceToken(@Body NotificationRegistrationRequest body);
+
+    /** Unregister the FCM device token (e.g. on logout or permission revoked). */
+    @DELETE("notifications/register-device")
+    Call<MessageResponse> unregisterDeviceToken();
 }

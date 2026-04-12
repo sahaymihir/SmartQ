@@ -48,6 +48,11 @@ const userSchema = new mongoose.Schema({
   priorityScore: {
     type: Number,
     default: 5
+  },
+  // Firebase Cloud Messaging device token for push notifications
+  fcmToken: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

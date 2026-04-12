@@ -14,6 +14,8 @@ if (missingEnvVars.length > 0) {
 const authRoutes = require('./routes/auth');
 const queueRoutes = require('./routes/queue');
 const adminRoutes = require('./routes/admin');
+const notificationRoutes = require('./routes/notifications');
+const prescriptionRoutes = require('./routes/prescriptions');
 
 const app = express();
 
@@ -28,8 +30,10 @@ app.get('/', (req, res) => {
 
 // ─── Routes ───────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
-app.use('/api/queue', queueRoutes);   // protected — Week 2
-app.use('/api/admin', adminRoutes);   // protected — Week 3
+app.use('/api/queue', queueRoutes);            // protected — patient queue lifecycle
+app.use('/api/admin', adminRoutes);            // protected — doctor/admin operations
+app.use('/api/notifications', notificationRoutes); // protected — FCM device registration
+app.use('/api/prescriptions', prescriptionRoutes); // protected — OCR prescription pipeline
 
 // ─── Global Error Handler ─────────────────────────────────
 app.use((err, req, res, next) => {

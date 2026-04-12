@@ -55,6 +55,16 @@ const tokenSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // Voice transcription of patient's spoken symptom description
+  symptomsVoiceTranscript: {
+    type: String,
+    default: ''
+  },
+  // Language used during intake (e.g. "en", "hi", "ta")
+  intakeLanguage: {
+    type: String,
+    default: 'en'
+  },
   // AI model confidence percentage
   aiConfidence: {
     type: Number,
@@ -106,6 +116,19 @@ const tokenSchema = new mongoose.Schema({
   manualReviewRequired: {
     type: Boolean,
     default: false
+  },
+  // Composite priority breakdown (SmartQ v3 — visit-level decision trace)
+  priorityComponents: {
+    type: mongoose.Schema.Types.Mixed,
+    default: () => ({})
+  },
+  priorityFinalScore: {
+    type: Number,
+    default: null
+  },
+  priorityDecisionTrace: {
+    type: String,
+    default: ''
   },
   visitSnapshot: {
     type: mongoose.Schema.Types.Mixed,
@@ -164,6 +187,33 @@ const tokenSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       default: null
+    },
+    // OCR provenance fields
+    source: {
+      type: String,
+      enum: ['doctor_typed', 'ocr_extracted', 'ocr_confirmed'],
+      default: 'doctor_typed'
+    },
+    ocrStatus: {
+      type: String,
+      enum: ['none', 'draft_extracted', 'doctor_confirmed', 'rejected'],
+      default: 'none'
+    },
+    ocrConfidence: {
+      type: Number,
+      default: null
+    },
+    ocrExtractedText: {
+      type: String,
+      default: ''
+    },
+    uploadedFilePath: {
+      type: String,
+      default: null
+    },
+    needsReview: {
+      type: Boolean,
+      default: false
     }
   },
   // Snooze tracking
