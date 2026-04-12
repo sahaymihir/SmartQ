@@ -22,9 +22,7 @@ import com.example.smartqueue.models.request.RegisterRequest;
 import com.example.smartqueue.models.response.AuthResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
-import com.example.smartqueue.ui.admin.AdminDashboardActivity;
-import com.example.smartqueue.ui.doctor.DoctorHomeActivity;
-import com.example.smartqueue.ui.patient.PatientHomeActivity;
+import com.example.smartqueue.utils.RoleNavigationHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -187,17 +185,7 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void navigateToHome(String role) {
-        Intent intent;
-        if ("admin".equals(role) || "superuser".equals(role)) {
-            intent = new Intent(this, AdminDashboardActivity.class);
-        } else if ("doctor".equals(role)) {
-            intent = new Intent(this, DoctorHomeActivity.class);
-        } else if ("nurse".equals(role)) {
-            intent = new Intent(this, AdminDashboardActivity.class);
-        } else {
-            intent = new Intent(this, PatientHomeActivity.class);
-        }
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        Intent intent = RoleNavigationHelper.createClearedHomeIntent(this, role);
         startActivity(intent);
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         finish();

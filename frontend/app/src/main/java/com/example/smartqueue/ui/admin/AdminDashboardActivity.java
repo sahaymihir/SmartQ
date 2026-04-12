@@ -22,6 +22,7 @@ import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
 import com.example.smartqueue.ui.admin.UserManagementActivity;
 import com.example.smartqueue.ui.auth.LoginActivity;
+import com.example.smartqueue.utils.RoleNavigationHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 
@@ -47,6 +48,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
     private SessionManager sessionManager;
     private ApiService apiService;
     private boolean isPaused = false;
+    private boolean isSuperuser = false;
     private int consultationsDone = 0;
     private final Handler queueRefreshHandler = new Handler(Looper.getMainLooper());
     private Runnable queueRefreshRunnable;
@@ -69,6 +71,13 @@ public class AdminDashboardActivity extends AppCompatActivity {
         setContentView(R.layout.activity_admin_dashboard);
 
         sessionManager = new SessionManager(this);
+        if (!sessionManager.hasAdminAccess()) {
+            startActivity(RoleNavigationHelper.createClearedHomeIntent(this, sessionManager.getRole()));
+            finish();
+            return;
+        }
+        isSuperuser = sessionManager.isSuperuser();
+        ApiClient.setAuthToken(sessionManager.getToken());
         apiService = ApiClient.getInstance().create(ApiService.class);
         doctorId = sessionManager.getUserId(); // admin's own _id is their doctorId
 
@@ -103,6 +112,8 @@ public class AdminDashboardActivity extends AppCompatActivity {
         tvMlOpsLastUpdated = findViewById(R.id.tvMlOpsLastUpdated);
         tvMlOpsEmpty = findViewById(R.id.tvMlOpsEmpty);
         layoutMlOpsLogs = findViewById(R.id.layoutMlOpsLogs);
+
+        btnSeedData.setVisibility(isSuperuser ? View.VISIBLE : View.GONE);
     }
 
     private void setupClickListeners() {
@@ -173,31 +184,38 @@ public class AdminDashboardActivity extends AppCompatActivity {
         });
 
         // ── Seed Dummy Data ───────────────────────────────
-        btnSeedData.setOnClickListener(v ->
-                new AlertDialog.Builder(this)
-                        .setTitle("Seed Demo Data")
-                        .setMessage("This will create 8 Indian doctors and 12 Indian patient accounts. Existing accounts will be skipped. Continue?")
-                        .setPositiveButton("Seed", (d, w) -> {
-                            btnSeedData.setEnabled(false);
-                            apiService.seedDummyData().enqueue(new Callback<MessageResponse>() {
-                                @Override
-                                public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
-                                    btnSeedData.setEnabled(true);
-                                    if (response.isSuccessful() && response.body() != null) {
-                                        Toast.makeText(AdminDashboardActivity.this,
-                                                response.body().getMessage(), Toast.LENGTH_LONG).show();
+        if (isSuperuser) {
+            btnSeedData.setOnClickListener(v ->
+                    new AlertDialog.Builder(this)
+                            .setTitle("Seed Demo Data")
+                            .setMessage("This will create 1 superuser, 8 doctors, 5 nurses, and 15 patient accounts. Existing accounts will be skipped. Continue?")
+                            .setPositiveButton("Seed", (d, w) -> {
+                                btnSeedData.setEnabled(false);
+                                apiService.seedDummyData().enqueue(new Callback<MessageResponse>() {
+                                    @Override
+                                    public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
+                                        btnSeedData.setEnabled(true);
+                                        if (response.isSuccessful() && response.body() != null) {
+                                            Toast.makeText(AdminDashboardActivity.this,
+                                                    response.body().getMessage(), Toast.LENGTH_LONG).show();
+                                        } else {
+                                            String message = (response.body() != null && !TextUtils.isEmpty(response.body().getMessage()))
+                                                    ? response.body().getMessage()
+                                                    : "Seed failed. Superuser access required.";
+                                            Toast.makeText(AdminDashboardActivity.this, message, Toast.LENGTH_LONG).show();
+                                        }
                                     }
-                                }
-                                @Override
-                                public void onFailure(Call<MessageResponse> call, Throwable t) {
-                                    btnSeedData.setEnabled(true);
-                                    Toast.makeText(AdminDashboardActivity.this, "Network error", Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                        })
-                        .setNegativeButton("Cancel", null)
-                        .show()
-        );
+                                    @Override
+                                    public void onFailure(Call<MessageResponse> call, Throwable t) {
+                                        btnSeedData.setEnabled(true);
+                                        Toast.makeText(AdminDashboardActivity.this, "Network error", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            })
+                            .setNegativeButton("Cancel", null)
+                            .show()
+            );
+        }
 
         btnRefreshMlOps.setOnClickListener(v -> loadMlOpsLogs(true));
 

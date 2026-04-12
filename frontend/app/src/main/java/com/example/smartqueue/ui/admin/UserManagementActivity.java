@@ -24,6 +24,7 @@ import com.example.smartqueue.models.response.MessageResponse;
 import com.example.smartqueue.models.response.UserListResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
+import com.example.smartqueue.utils.RoleNavigationHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
@@ -48,6 +49,8 @@ import retrofit2.Response;
  */
 public class UserManagementActivity extends AppCompatActivity {
 
+    private static final String ELEVATED_ROLE_FILTER = "__elevated__";
+
     private ChipGroup chipGroupFilter;
     private Chip chipAll, chipDoctors, chipNurses, chipPatients, chipAdmins;
     private LinearLayout layoutUserList;
@@ -68,6 +71,12 @@ public class UserManagementActivity extends AppCompatActivity {
         setContentView(R.layout.activity_user_management);
 
         sessionManager = new SessionManager(this);
+        if (!sessionManager.hasAdminAccess()) {
+            startActivity(RoleNavigationHelper.createClearedHomeIntent(this, sessionManager.getRole()));
+            finish();
+            return;
+        }
+        ApiClient.setAuthToken(sessionManager.getToken());
         apiService = ApiClient.getInstance().create(ApiService.class);
         isSuperuser = sessionManager.isSuperuser();
 
@@ -92,6 +101,9 @@ public class UserManagementActivity extends AppCompatActivity {
 
         // Only superusers can see admin accounts
         chipAdmins.setVisibility(isSuperuser ? View.VISIBLE : View.GONE);
+        if (isSuperuser) {
+            chipAdmins.setText("Admins & Superusers");
+        }
 
         tvTitle.setText(isSuperuser ? "User Management (Superuser)" : "User Management");
     }
@@ -112,7 +124,7 @@ public class UserManagementActivity extends AppCompatActivity {
             else if (id == R.id.chipDoctors)  currentRoleFilter = "doctor";
             else if (id == R.id.chipNurses)   currentRoleFilter = "nurse";
             else if (id == R.id.chipPatients) currentRoleFilter = "patient";
-            else if (id == R.id.chipAdmins)   currentRoleFilter = "admin";
+            else if (id == R.id.chipAdmins)   currentRoleFilter = ELEVATED_ROLE_FILTER;
             loadUsers(currentRoleFilter);
         });
     }
@@ -124,7 +136,8 @@ public class UserManagementActivity extends AppCompatActivity {
         tvEmpty.setVisibility(View.GONE);
         layoutUserList.removeAllViews();
 
-        String filterParam = TextUtils.isEmpty(roleFilter) ? null : roleFilter;
+        String filterParam = TextUtils.isEmpty(roleFilter) || ELEVATED_ROLE_FILTER.equals(roleFilter)
+                ? null : roleFilter;
 
         apiService.listUsers(filterParam, null, 1, 100).enqueue(
                 new Callback<UserListResponse>() {
@@ -135,6 +148,9 @@ public class UserManagementActivity extends AppCompatActivity {
                         if (response.isSuccessful() && response.body() != null
                                 && response.body().isSuccess()) {
                             List<UserListResponse.UserEntry> users = response.body().getUsers();
+                            if (ELEVATED_ROLE_FILTER.equals(roleFilter)) {
+                                users = filterElevatedUsers(users);
+                            }
                             if (users == null || users.isEmpty()) {
                                 tvEmpty.setVisibility(View.VISIBLE);
                             } else {
@@ -420,6 +436,20 @@ public class UserManagementActivity extends AppCompatActivity {
             case "superuser": return 0xFFC62828;
             default:          return 0xFF607D8B;
         }
+    }
+
+    private List<UserListResponse.UserEntry> filterElevatedUsers(List<UserListResponse.UserEntry> users) {
+        List<UserListResponse.UserEntry> filtered = new ArrayList<>();
+        if (users == null) return filtered;
+
+        for (UserListResponse.UserEntry user : users) {
+            if (user == null || user.getRole() == null) continue;
+            String role = user.getRole().toLowerCase();
+            if ("admin".equals(role) || "superuser".equals(role)) {
+                filtered.add(user);
+            }
+        }
+        return filtered;
     }
 
     private LinearLayout.LayoutParams weightedLP(int weight) {

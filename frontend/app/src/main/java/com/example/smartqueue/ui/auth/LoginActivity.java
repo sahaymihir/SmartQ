@@ -9,6 +9,7 @@ import android.util.Patterns;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.CheckBox;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -23,9 +24,7 @@ import com.example.smartqueue.models.request.LoginRequest;
 import com.example.smartqueue.models.response.AuthResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
-import com.example.smartqueue.ui.admin.AdminDashboardActivity;
-import com.example.smartqueue.ui.doctor.DoctorHomeActivity;
-import com.example.smartqueue.ui.patient.PatientHomeActivity;
+import com.example.smartqueue.utils.RoleNavigationHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -46,6 +45,7 @@ public class LoginActivity extends AppCompatActivity {
     private TextView tvError;
     private View biometricContainer;
     private View btnBiometric;
+    private CheckBox cbKeepSession;
     private SessionManager sessionManager;
     private ApiService apiService;
 
@@ -59,11 +59,15 @@ public class LoginActivity extends AppCompatActivity {
 
         bindViews();
 
-        if (sessionManager.isLoggedIn()) {
+        cbKeepSession.setChecked(sessionManager.shouldKeepSessionActive());
+
+        if (sessionManager.hasRestorableSession()) {
             ApiClient.setAuthToken(sessionManager.getToken());
-            // Show biometric container and trigger prompt
             biometricContainer.setVisibility(View.VISIBLE);
             showBiometricPrompt();
+        } else if (sessionManager.isLoggedIn()) {
+            sessionManager.clearSession();
+            ApiClient.setAuthToken(null);
         }
 
         setupClickListeners();
@@ -113,6 +117,7 @@ public class LoginActivity extends AppCompatActivity {
         tvError             = findViewById(R.id.tvError);
         biometricContainer  = findViewById(R.id.biometricContainer);
         btnBiometric        = findViewById(R.id.btnBiometric);
+        cbKeepSession       = findViewById(R.id.cbKeepSession);
     }
 
     private void setupClickListeners() {
@@ -214,7 +219,8 @@ public class LoginActivity extends AppCompatActivity {
                                     user.getRole(),
                                     user.getAge(),
                                     user.getStaffId(),
-                                    user.getSpecialty());
+                                    user.getSpecialty(),
+                                    cbKeepSession.isChecked());
                             ApiClient.setAuthToken(body.getToken());
                             navigateToHome(user.getRole());
                         } else {
@@ -231,15 +237,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void navigateToHome(String role) {
-        Intent intent;
-        if ("admin".equals(role) || "superuser".equals(role)) {
-            intent = new Intent(this, AdminDashboardActivity.class);
-        } else if ("doctor".equals(role)) {
-            intent = new Intent(this, DoctorHomeActivity.class);
-        } else {
-            intent = new Intent(this, PatientHomeActivity.class);
-        }
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        Intent intent = RoleNavigationHelper.createClearedHomeIntent(this, role);
         startActivity(intent);
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         finish();

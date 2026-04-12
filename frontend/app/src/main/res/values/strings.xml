@@ -70,12 +70,10 @@
     <string name="no_users_found">No users found.</string>
     <string name="register_patient_only_note">This form registers a Patient account. Doctors, nurses, and admins are added by the hospital administrator from the management panel.</string>
 
-</resources>
+    <!-- Errors -->
     <string name="error_invalid_email">Enter a valid medical identifier</string>
     <string name="error_short_password">Security key must be at least 6 characters</string>
     <string name="error_network">Network error. Please try again.</string>
-
-    <!-- Errors -->
     <string name="error_empty_fields">Please fill all fields</string>
     <string name="clinical_footer">SmartQ Clinical OS // v2.4.0</string>
     <string name="infrastructure_status">Infrastructure Status</string>

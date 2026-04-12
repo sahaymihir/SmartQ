@@ -518,7 +518,7 @@ class ComposeMainActivity : ComponentActivity() {
 
     private fun navigateByRole(navController: NavController, role: String) {
         val destination = when (role.lowercase()) {
-            "admin" -> Screen.AdminDashboard.route
+            "admin", "superuser" -> Screen.AdminDashboard.route
             "doctor" -> Screen.DoctorHome.route
             else -> Screen.PatientHome.route
         }

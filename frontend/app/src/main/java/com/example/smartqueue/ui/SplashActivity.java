@@ -18,8 +18,7 @@ import com.example.smartqueue.R;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.ui.admin.AdminDashboardActivity;
 import com.example.smartqueue.ui.auth.LoginActivity;
-import com.example.smartqueue.ui.doctor.DoctorHomeActivity;
-import com.example.smartqueue.ui.patient.PatientHomeActivity;
+import com.example.smartqueue.utils.RoleNavigationHelper;
 import com.example.smartqueue.utils.SessionManager;
 
 /**
@@ -44,17 +43,14 @@ public class SplashActivity extends AppCompatActivity {
 
             Intent intent;
             if (session.isLoggedIn()) {
-                ApiClient.setAuthToken(session.getToken());
-
-                String role = session.getRole();
-                if ("admin".equals(role)) {
-                    intent = new Intent(this, AdminDashboardActivity.class);
-                } else if ("doctor".equals(role)) {
-                    intent = new Intent(this, DoctorHomeActivity.class);
+                if (session.hasRestorableSession()) {
+                    ApiClient.setAuthToken(session.getToken());
+                    intent = RoleNavigationHelper.createClearedHomeIntent(this, session.getRole());
                 } else {
-                    intent = new Intent(this, PatientHomeActivity.class);
+                    session.clearSession();
+                    ApiClient.setAuthToken(null);
+                    intent = new Intent(this, LoginActivity.class);
                 }
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             } else {
                 intent = new Intent(this, LoginActivity.class);
             }

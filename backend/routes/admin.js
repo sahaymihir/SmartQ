@@ -20,8 +20,19 @@ const {
 } = require('../utils/queueHelpers');
 
 const today = () => new Date().toISOString().split('T')[0];
+const requireSeedAccess = (req, res, next) => {
+  return protect(req, res, () => {
+    if (req.user && req.user.role === 'superuser') {
+      return next();
+    }
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Superuser only.',
+    });
+  });
+};
 
-// All admin routes require login + admin role
+// All admin routes require login + admin/doctor role.
 router.use(protect, adminOnly);
 
 // ─────────────────────────────────────────────────────────────
@@ -578,11 +589,12 @@ router.get('/ml-ops-logs', async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/admin/seed
-// Creates Indian dummy doctors, nurses, patients and a default
+// Creates demo doctors, nurses, patients, and a default
 // superuser for demo/testing.
+// Restricted to superuser accounts only.
 // Safe to call multiple times — skips existing emails.
 // ─────────────────────────────────────────────────────────────
-router.post('/seed', async (req, res) => {
+router.post('/seed', requireSeedAccess, async (req, res) => {
   const dummySuperuser = [
     { name: 'Super Admin', email: 'superadmin@smartq.in', password: 'super@1234', phone: '+91-9000000000', age: 40, role: 'superuser' },
   ];

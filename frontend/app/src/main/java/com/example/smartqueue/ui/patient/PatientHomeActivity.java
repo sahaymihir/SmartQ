@@ -29,6 +29,7 @@ import com.example.smartqueue.models.response.TokenResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
 import com.example.smartqueue.ui.auth.LoginActivity;
+import com.example.smartqueue.utils.RoleNavigationHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -93,6 +94,13 @@ public class PatientHomeActivity extends AppCompatActivity {
         setContentView(R.layout.activity_patient_home);
 
         sessionManager = new SessionManager(this);
+        String role = RoleNavigationHelper.normalizeRole(sessionManager.getRole());
+        if ("admin".equals(role) || "superuser".equals(role) || "doctor".equals(role)) {
+            startActivity(RoleNavigationHelper.createClearedHomeIntent(this, sessionManager.getRole()));
+            finish();
+            return;
+        }
+        ApiClient.setAuthToken(sessionManager.getToken());
         apiService = ApiClient.getInstance().create(ApiService.class);
 
         bindViews();

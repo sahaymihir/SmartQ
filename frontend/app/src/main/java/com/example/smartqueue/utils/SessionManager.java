@@ -17,6 +17,7 @@ public class SessionManager {
     private static final String KEY_AGE = "age";
     private static final String KEY_STAFF_ID = "staffId";
     private static final String KEY_SPECIALTY = "specialty";
+    private static final String KEY_KEEP_SESSION_ACTIVE = "keepSessionActive";
     private static final String KEY_IS_LOGGED_IN = "isLoggedIn";
 
     private SharedPreferences prefs;
@@ -30,13 +31,21 @@ public class SessionManager {
     /** Call after successful login or register */
     public void saveSession(String token, String userId, String name,
                             String email, String role, int age) {
-        saveSession(token, userId, name, email, role, age, null, null);
+        saveSession(token, userId, name, email, role, age, null, null, true);
     }
 
     /** Extended save including staffId and specialty for clinical staff. */
     public void saveSession(String token, String userId, String name,
                             String email, String role, int age,
                             String staffId, String specialty) {
+        saveSession(token, userId, name, email, role, age, staffId, specialty, true);
+    }
+
+    /** Extended save including session-persistence preference. */
+    public void saveSession(String token, String userId, String name,
+                            String email, String role, int age,
+                            String staffId, String specialty,
+                            boolean keepSessionActive) {
         editor.putString(KEY_TOKEN, token);
         editor.putString(KEY_USER_ID, userId);
         editor.putString(KEY_NAME, name);
@@ -45,6 +54,7 @@ public class SessionManager {
         editor.putInt(KEY_AGE, age);
         editor.putString(KEY_STAFF_ID, staffId != null ? staffId : "");
         editor.putString(KEY_SPECIALTY, specialty != null ? specialty : "");
+        editor.putBoolean(KEY_KEEP_SESSION_ACTIVE, keepSessionActive);
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
         editor.apply();
     }
@@ -85,6 +95,14 @@ public class SessionManager {
     /** Returns the doctor's specialty or empty string for non-doctors. */
     public String getSpecialty() {
         return prefs.getString(KEY_SPECIALTY, "");
+    }
+
+    public boolean shouldKeepSessionActive() {
+        return prefs.getBoolean(KEY_KEEP_SESSION_ACTIVE, true);
+    }
+
+    public boolean hasRestorableSession() {
+        return isLoggedIn() && shouldKeepSessionActive() && getToken() != null;
     }
 
     public boolean isAdmin() {

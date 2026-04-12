@@ -15,7 +15,7 @@ import com.example.smartqueue.models.request.NotificationRegistrationRequest;
 import com.example.smartqueue.models.response.MessageResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
-import com.example.smartqueue.ui.patient.PatientHomeActivity;
+import com.example.smartqueue.utils.RoleNavigationHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
@@ -96,8 +96,8 @@ public class SmartQFirebaseService extends FirebaseMessagingService {
 
         createNotificationChannel(manager);
 
-        // Tapping the notification opens PatientHomeActivity
-        Intent intent = new Intent(this, PatientHomeActivity.class);
+        SessionManager sessionManager = new SessionManager(getApplicationContext());
+        Intent intent = RoleNavigationHelper.createHomeIntent(this, sessionManager.getRole());
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 this, 0, intent,
