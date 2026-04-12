@@ -77,9 +77,10 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.ViewHolder> 
                 : formatStatus(status));
 
         boolean canPrescribe = "called".equals(status) || "arrived".equals(status);
-        holder.btnPrescription.setVisibility(canPrescribe ? View.VISIBLE : View.GONE);
+        holder.btnPrescription.setVisibility(canPrescribe ? View.VISIBLE : View.INVISIBLE);
+        holder.btnPrescription.setEnabled(canPrescribe);
         holder.btnPrescription.setOnClickListener(v -> {
-            if (listener != null) listener.onPrescription(entry);
+            if (canPrescribe && listener != null) listener.onPrescription(entry);
         });
         holder.btnNoShow.setOnClickListener(v -> {
             if (listener != null) listener.onNoShow(entry);
@@ -117,6 +118,6 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.ViewHolder> 
         if ("waiting_doctor".equals(status)) {
             return "Waiting for doctor";
         }
-        return status;
+        return status.substring(0, 1).toUpperCase() + status.substring(1);
     }
 }

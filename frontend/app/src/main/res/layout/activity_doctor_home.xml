@@ -85,6 +85,7 @@
                 android:layout_marginBottom="8dp">
 
                 <TextView
+                    android:id="@+id/tvDoctorGreeting"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Morning Rounds,"
@@ -95,32 +96,16 @@
                     android:letterSpacing="0"
                     android:lineSpacingMultiplier="0.9"/>
 
-                <LinearLayout
+                <TextView
+                    android:id="@+id/tvDoctorName"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Dr. "
-                        android:textSize="36sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/primary"
-                        android:fontFamily="sans-serif-black"
-                        android:letterSpacing="0"/>
-
-                    <TextView
-                        android:id="@+id/tvDoctorName"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Aris."
-                        android:textSize="36sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/primary"
-                        android:fontFamily="sans-serif-black"
-                        android:letterSpacing="0"/>
-                </LinearLayout>
+                    android:text="Dr. Aris"
+                    android:textSize="36sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/primary"
+                    android:fontFamily="sans-serif-black"
+                    android:letterSpacing="0"/>
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -294,6 +279,17 @@
                             android:text="Token #--"
                             android:textSize="12sp"
                             android:textColor="@color/on_surface_variant"/>
+
+                        <TextView
+                            android:id="@+id/tvViewHistory"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="View previous visits"
+                            android:textColor="@color/primary"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:visibility="gone"/>
                     </LinearLayout>
 
                     <com.google.android.material.button.MaterialButton

@@ -19,7 +19,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.smartqueue.R;
 import com.example.smartqueue.models.response.MessageResponse;
-import com.example.smartqueue.models.response.ConsultationHistoryResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
@@ -32,6 +31,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 import retrofit2.Call;
@@ -40,7 +40,7 @@ import retrofit2.Response;
 
 public class DoctorHomeActivity extends AppCompatActivity {
 
-    private TextView tvDoctorName, tvCurrentPatientName, tvCurrentPatientToken;
+    private TextView tvDoctorGreeting, tvDoctorName, tvCurrentPatientName, tvCurrentPatientToken, tvViewHistory;
     private TextView tvQueueSize, tvQueueSummary, tvQueueEmpty;
     private SwitchMaterial switchAvailability;
     private MaterialButton btnCallNext, btnPrescribe, btnLogout;
@@ -99,8 +99,10 @@ public class DoctorHomeActivity extends AppCompatActivity {
 
     private void initViews() {
         tvDoctorName = findViewById(R.id.tvDoctorName);
+        tvDoctorGreeting = findViewById(R.id.tvDoctorGreeting);
         tvCurrentPatientName = findViewById(R.id.tvCurrentPatientName);
         tvCurrentPatientToken = findViewById(R.id.tvCurrentPatientToken);
+        tvViewHistory = findViewById(R.id.tvViewHistory);
         tvQueueSize = findViewById(R.id.tvQueueSize);
         tvQueueSummary = findViewById(R.id.tvQueueSummary);
         tvQueueEmpty = findViewById(R.id.tvQueueEmpty);
@@ -111,7 +113,8 @@ public class DoctorHomeActivity extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         btnLogout = findViewById(R.id.btnLogout);
 
-        tvDoctorName.setText(sessionManager.getName());
+        tvDoctorName.setText(formatDoctorDisplayName(sessionManager.getName()));
+        tvDoctorGreeting.setText(resolveRoundsGreeting());
     }
 
     private void setupRecyclerView() {
@@ -155,8 +158,9 @@ public class DoctorHomeActivity extends AppCompatActivity {
 
         btnPrescribe.setOnClickListener(v -> openPrescriptionEditor(currentTokenId));
 
-        tvCurrentPatientName.setOnClickListener(v -> showCurrentPatientHistory());
-        tvCurrentPatientToken.setOnClickListener(v -> showCurrentPatientHistory());
+        tvCurrentPatientName.setOnClickListener(v -> openCurrentPatientHistoryActivity());
+        tvCurrentPatientToken.setOnClickListener(v -> openCurrentPatientHistoryActivity());
+        tvViewHistory.setOnClickListener(v -> openCurrentPatientHistoryActivity());
 
         switchAvailability.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (suppressAvailabilityCallback) {
@@ -274,6 +278,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
             currentTokenId = calledPatient.getTokenId();
             currentPatientId = calledPatient.getPatientId();
             btnPrescribe.setVisibility(View.VISIBLE);
+            tvViewHistory.setVisibility(View.VISIBLE);
         } else {
             resetCurrentPatientUI();
         }
@@ -307,6 +312,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
         currentTokenId = null;
         currentPatientId = null;
         btnPrescribe.setVisibility(View.GONE);
+        tvViewHistory.setVisibility(View.GONE);
     }
 
     private void callNextPatient() {
@@ -449,64 +455,16 @@ public class DoctorHomeActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    private void showCurrentPatientHistory() {
+    private void openCurrentPatientHistoryActivity() {
         if (TextUtils.isEmpty(currentPatientId)) {
             Toast.makeText(this, "No active patient selected", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        apiService.getPatientHistory(currentPatientId, 20).enqueue(new Callback<ConsultationHistoryResponse>() {
-            @Override
-            public void onResponse(Call<ConsultationHistoryResponse> call,
-                                   Response<ConsultationHistoryResponse> response) {
-                if (response.code() == 401) { handleUnauthorized(); return; }
-
-                if (!response.isSuccessful() || response.body() == null || !response.body().isSuccess()) {
-                    MessageResponse error = ApiErrorParser.parseMessage(response);
-                    Toast.makeText(DoctorHomeActivity.this,
-                            error != null && !TextUtils.isEmpty(error.getMessage())
-                                    ? error.getMessage()
-                                    : "Could not load patient history",
-                            Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                List<ConsultationHistoryResponse.Consultation> history = response.body().getHistory();
-                if (history == null || history.isEmpty()) {
-                    Toast.makeText(DoctorHomeActivity.this,
-                            "No previous completed visits for this patient",
-                            Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                CharSequence[] options = new CharSequence[history.size()];
-                for (int i = 0; i < history.size(); i++) {
-                    ConsultationHistoryResponse.Consultation item = history.get(i);
-                    String date = formatHistoryDate(item.getDate());
-                    String doctor = textOrDefault(item.getDoctorName(), "Doctor");
-                    String preview = !TextUtils.isEmpty(item.getConclusionPreview())
-                            ? item.getConclusionPreview()
-                            : (!TextUtils.isEmpty(item.getDiagnosis()) ? item.getDiagnosis() : "View prescription details");
-                    options[i] = date + " • " + doctor + "\n" + preview;
-                }
-
-                new AlertDialog.Builder(DoctorHomeActivity.this)
-                        .setTitle("Previous Visits")
-                        .setItems(options, (dialog, which) -> {
-                            ConsultationHistoryResponse.Consultation selected = history.get(which);
-                            openPrescriptionScreen(selected.getTokenId(), true);
-                        })
-                        .setNegativeButton("Close", null)
-                        .show();
-            }
-
-            @Override
-            public void onFailure(Call<ConsultationHistoryResponse> call, Throwable t) {
-                Toast.makeText(DoctorHomeActivity.this,
-                        "Network error while loading visit history",
-                        Toast.LENGTH_SHORT).show();
-            }
-        });
+        Intent intent = new Intent(this, DoctorVisitHistoryActivity.class);
+        intent.putExtra(DoctorVisitHistoryActivity.EXTRA_PATIENT_ID, currentPatientId);
+        intent.putExtra(DoctorVisitHistoryActivity.EXTRA_PATIENT_NAME, tvCurrentPatientName.getText().toString());
+        startActivity(intent);
     }
 
     private void openPrescriptionScreen(String tokenId, boolean readOnly) {
@@ -520,12 +478,17 @@ public class DoctorHomeActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    private String formatHistoryDate(String rawDate) {
-        if (TextUtils.isEmpty(rawDate)) {
-            return "Visit";
-        }
-        int separator = rawDate.indexOf('T');
-        return separator > 0 ? rawDate.substring(0, separator) : rawDate;
+    private String resolveRoundsGreeting() {
+        int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
+        if (hour < 12) return "Morning Rounds,";
+        if (hour < 17) return "Afternoon Rounds,";
+        return "Evening Rounds,";
+    }
+
+    private String formatDoctorDisplayName(String rawName) {
+        String name = textOrDefault(rawName, "Doctor");
+        String cleaned = name.replaceFirst("(?i)^dr\\.?\\s*", "").trim();
+        return "Dr. " + cleaned;
     }
 
     private void updateAvailabilitySwitch(boolean available) {
