@@ -418,7 +418,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         if (doctorPickerAdapter == null) {
             doctorPickerAdapter = new ArrayAdapter<>(
                     this,
-                    android.R.layout.simple_dropdown_item_1line,
+                R.layout.list_item_doctor_dropdown,
                     doctorPickerOptions
             );
             dropdownDoctorPicker.setAdapter(doctorPickerAdapter);
@@ -626,29 +626,35 @@ public class PatientHomeActivity extends AppCompatActivity {
             String doctorId,
             String doctorName
     ) {
-        final TextInputEditText input = new TextInputEditText(this);
-        input.setHint("Describe current symptoms");
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_follow_up_symptoms, null, false);
+        TextInputEditText input = dialogView.findViewById(R.id.etFollowUpSymptoms);
+        MaterialButton btnCancel = dialogView.findViewById(R.id.btnDialogCancel);
+        MaterialButton btnJoin = dialogView.findViewById(R.id.btnDialogJoin);
+
         input.setText(!isBlank(consultation.getSymptomsSummary())
                 ? consultation.getSymptomsSummary()
                 : textOrDefault(consultation.getSymptoms(), ""));
-        int padding = Math.round(16 * getResources().getDisplayMetrics().density);
-        input.setPadding(padding, padding, padding, padding);
 
-        new AlertDialog.Builder(this)
-                .setTitle("Follow-up symptoms")
-                .setMessage("Please share current symptoms before joining follow-up queue.")
-                .setView(input)
-                .setPositiveButton("Join Follow-up", (dialog, which) -> {
-                    String promptedSymptoms = input.getText() != null ? input.getText().toString().trim() : "";
-                    if (promptedSymptoms.isEmpty()) {
-                        Toast.makeText(this, "Symptoms are required for follow-up.", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    etSymptoms.setText(promptedSymptoms);
-                    joinQueueWithContext(doctorId, doctorName, promptedSymptoms, "follow_up", consultation.getTokenId());
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(dialogView)
+                .create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnJoin.setOnClickListener(v -> {
+            String promptedSymptoms = input.getText() != null ? input.getText().toString().trim() : "";
+            if (promptedSymptoms.isEmpty()) {
+                Toast.makeText(this, "Symptoms are required for follow-up.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            dialog.dismiss();
+            etSymptoms.setText(promptedSymptoms);
+            joinQueueWithContext(doctorId, doctorName, promptedSymptoms, "follow_up", consultation.getTokenId());
+        });
+
+        dialog.show();
     }
 
     private DoctorsResponse.Doctor resolveFollowUpDoctor(ConsultationHistoryResponse.Consultation consultation) {

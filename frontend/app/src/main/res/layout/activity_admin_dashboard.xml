@@ -111,17 +111,18 @@
     <!-- ── Emergency Patient Button ───────────────────────── -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnEmergencyPatient"
+        style="@style/SmartQ.Button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="⚠ Emergency Patient"
-        android:textColor="#FFFFFF"
-        android:backgroundTint="#C62828"
+        android:textColor="@color/white"
+        android:backgroundTint="@color/priority_high"
         android:textStyle="bold"
         android:textSize="14sp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="8dp"
-        app:cornerRadius="8dp"/>
+        app:cornerRadius="12dp"/>
 
     <!-- ── Stats Row ─────────────────────────────────────── -->
     <LinearLayout
@@ -299,17 +300,14 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCallNext"
+                style="@style/SmartQ.Button.Gradient"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/bg_cta_gradient"
-                android:textColor="@color/primary_container"
                 android:text="Call Next ▶"
                 android:textStyle="bold"
                 android:textSize="13sp"
                 android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                app:backgroundTint="@android:color/transparent"
-                app:cornerRadius="10dp"/>
+                android:paddingEnd="16dp"/>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 

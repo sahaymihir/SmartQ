@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="20dp"
+    app:cardBackgroundColor="@color/surface"
+    app:cardCornerRadius="18dp"
+    app:cardElevation="0dp"
+    app:strokeColor="@color/outline_variant"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:id="@+id/tvDialogTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Follow-up symptoms"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvDialogMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Please share current symptoms before joining follow-up queue."
+            android:textColor="@color/on_surface_variant"
+            android:textSize="14sp" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/SmartQ.TextInput.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:hint="Describe current symptoms">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etFollowUpSymptoms"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textMultiLine|textCapSentences"
+                android:maxLines="4"
+                android:minLines="2"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="end"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDialogCancel"
+                style="@style/SmartQ.Button.Outlined"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="Cancel" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDialogJoin"
+                style="@style/SmartQ.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Join Follow-up" />
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

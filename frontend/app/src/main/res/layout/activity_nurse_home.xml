@@ -44,7 +44,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnRefresh"
-                style="@style/SmartQ.Button.Outlined"
+                style="@style/SmartQ.Button.Secondary"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
@@ -64,7 +64,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             app:cardBackgroundColor="@color/surface_container_low"
-            app:cardCornerRadius="18dp"
+            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
             app:strokeColor="@color/outline_variant"
             app:strokeWidth="1dp">
@@ -120,7 +120,7 @@
             android:layout_marginTop="16dp"
             android:visibility="gone"
             app:cardBackgroundColor="@color/surface_container_low"
-            app:cardCornerRadius="18dp"
+            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
             app:strokeColor="@color/outline_variant"
             app:strokeWidth="1dp">

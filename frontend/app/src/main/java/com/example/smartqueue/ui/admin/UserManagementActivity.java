@@ -20,6 +20,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.AppCompatButton;
+import androidx.core.content.ContextCompat;
 
 import com.example.smartqueue.R;
 import com.example.smartqueue.models.request.CreateUserRequest;
@@ -69,6 +70,14 @@ public class UserManagementActivity extends AppCompatActivity {
     private ApiService apiService;
     private boolean isSuperuser = false;
 
+    private int colorSurfaceContainerLow;
+    private int colorOutlineVariant;
+    private int colorTextPrimary;
+    private int colorTextSecondary;
+    private int colorPrimary;
+    private int colorPriorityHigh;
+    private int colorWhite;
+
     /** Currently selected role filter. Empty string = all. */
     private String currentRoleFilter = "";
 
@@ -105,6 +114,14 @@ public class UserManagementActivity extends AppCompatActivity {
         tvTitle         = findViewById(R.id.tvTitle);
         btnAddUser      = findViewById(R.id.btnAddUser);
         btnBack         = findViewById(R.id.btnBack);
+
+        colorSurfaceContainerLow = ContextCompat.getColor(this, R.color.surface_container_low);
+        colorOutlineVariant = ContextCompat.getColor(this, R.color.outline_variant);
+        colorTextPrimary = ContextCompat.getColor(this, R.color.text_primary);
+        colorTextSecondary = ContextCompat.getColor(this, R.color.text_secondary);
+        colorPrimary = ContextCompat.getColor(this, R.color.primary);
+        colorPriorityHigh = ContextCompat.getColor(this, R.color.priority_high);
+        colorWhite = ContextCompat.getColor(this, R.color.white);
 
         // Only superusers can see admin accounts
         chipAdmins.setVisibility(isSuperuser ? View.VISIBLE : View.GONE);
@@ -191,8 +208,8 @@ public class UserManagementActivity extends AppCompatActivity {
         // Card background
         android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
         bg.setCornerRadius(dp(8));
-        bg.setColor(0xFFF5F5F5);
-        bg.setStroke(dp(1), 0xFFE0E0E0);
+        bg.setColor(colorSurfaceContainerLow);
+        bg.setStroke(dp(1), colorOutlineVariant);
         card.setBackground(bg);
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -203,7 +220,7 @@ public class UserManagementActivity extends AppCompatActivity {
 
         // ── Row 1: name + role badge ──────────────────────
         LinearLayout row1 = row();
-        TextView tvName = text(user.getDisplayLabel(), 15, true, 0xFF1A1A2E);
+        TextView tvName = text(user.getDisplayLabel(), 15, true, colorTextPrimary);
         tvName.setLayoutParams(weightedLP(1));
         row1.addView(tvName);
 
@@ -213,7 +230,7 @@ public class UserManagementActivity extends AppCompatActivity {
 
         // ── Row 2: staff ID (if present) ─────────────────
         if (user.getStaffId() != null && !user.getStaffId().isEmpty()) {
-            TextView tvStaffId = text("Staff ID: " + user.getStaffId(), 12, false, 0xFF1565C0);
+            TextView tvStaffId = text("Staff ID: " + user.getStaffId(), 12, false, colorPrimary);
             tvStaffId.setPadding(0, dp(2), 0, dp(2));
             card.addView(tvStaffId);
         }
@@ -221,23 +238,23 @@ public class UserManagementActivity extends AppCompatActivity {
         // ── Row 3: specialty (doctors) ────────────────────
         if ("doctor".equals(user.getRole())
                 && user.getSpecialty() != null && !user.getSpecialty().isEmpty()) {
-            card.addView(text("Specialty: " + user.getSpecialty(), 12, false, 0xFF555555));
+            card.addView(text("Specialty: " + user.getSpecialty(), 12, false, colorTextSecondary));
         }
 
         // ── Row 4: email + phone ──────────────────────────
-        card.addView(text(user.getEmail() + "  ·  " + user.getPhone(), 12, false, 0xFF777777));
+        card.addView(text(user.getEmail() + "  ·  " + user.getPhone(), 12, false, colorTextSecondary));
 
         // ── Row 5: age + delete button ────────────────────
         LinearLayout row5 = row();
         row5.setPadding(0, dp(4), 0, 0);
-        TextView tvAge = text("Age: " + user.getAge(), 12, false, 0xFF777777);
+        TextView tvAge = text("Age: " + user.getAge(), 12, false, colorTextSecondary);
         tvAge.setLayoutParams(weightedLP(1));
         row5.addView(tvAge);
 
         AppCompatButton btnDelete = new AppCompatButton(this);
         btnDelete.setText("Delete");
         btnDelete.setTextSize(12);
-        btnDelete.setTextColor(0xFFC62828);
+        btnDelete.setTextColor(colorPriorityHigh);
         btnDelete.setPadding(dp(8), dp(2), dp(8), dp(2));
         btnDelete.setAllCaps(false);
         btnDelete.setBackground(buildDeleteButtonBackground());
@@ -283,9 +300,9 @@ public class UserManagementActivity extends AppCompatActivity {
         String email = user != null && user.getEmail() != null ? user.getEmail() : "—";
         String phone = user != null && user.getPhone() != null ? user.getPhone() : "—";
 
-        card.addView(text(name, 15, true, 0xFF1A1A2E));
+        card.addView(text(name, 15, true, colorTextPrimary));
         card.addView(text(role, 11, true, roleBadgeColor(user != null ? user.getRole() : null)));
-        card.addView(text(email + "  ·  " + phone, 12, false, 0xFF555555));
+        card.addView(text(email + "  ·  " + phone, 12, false, colorTextSecondary));
         return card;
     }
 
@@ -538,7 +555,7 @@ public class UserManagementActivity extends AppCompatActivity {
         TextView tv = new TextView(this);
         tv.setText(label);
         tv.setTextSize(10);
-        tv.setTextColor(0xFFFFFFFF);
+        tv.setTextColor(colorWhite);
         tv.setTypeface(null, android.graphics.Typeface.BOLD);
         tv.setPadding(dp(6), dp(2), dp(6), dp(2));
 
@@ -550,13 +567,13 @@ public class UserManagementActivity extends AppCompatActivity {
     }
 
     private int roleBadgeColor(String role) {
-        if (role == null) return 0xFF607D8B;
+        if (role == null) return colorOutlineVariant;
         switch (role.toLowerCase()) {
-            case "doctor":    return 0xFF1565C0;
-            case "nurse":     return 0xFF2E7D32;
-            case "admin":     return 0xFF6A1B9A;
-            case "superuser": return 0xFFC62828;
-            default:          return 0xFF607D8B;
+            case "doctor":    return colorPrimary;
+            case "nurse":     return ContextCompat.getColor(this, R.color.status_active);
+            case "admin":     return ContextCompat.getColor(this, R.color.secondary_container);
+            case "superuser": return colorPriorityHigh;
+            default:            return colorOutlineVariant;
         }
     }
 
@@ -588,16 +605,16 @@ public class UserManagementActivity extends AppCompatActivity {
     private android.graphics.drawable.GradientDrawable buildCardBackground() {
         android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
         bg.setCornerRadius(dp(8));
-        bg.setColor(0xFFF5F5F5);
-        bg.setStroke(dp(1), 0xFFE0E0E0);
+        bg.setColor(colorSurfaceContainerLow);
+        bg.setStroke(dp(1), colorOutlineVariant);
         return bg;
     }
 
     private android.graphics.drawable.GradientDrawable buildDeleteButtonBackground() {
         android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
         bg.setCornerRadius(dp(8));
-        bg.setColor(0x00FFFFFF);
-        bg.setStroke(dp(1), 0xFFC62828);
+        bg.setColor(ContextCompat.getColor(this, R.color.transparent));
+        bg.setStroke(dp(1), colorPriorityHigh);
         return bg;
     }
 

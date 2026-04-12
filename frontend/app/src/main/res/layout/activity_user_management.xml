@@ -20,11 +20,10 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnBack"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
+            style="@style/SmartQ.Button.Back"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="← Back"
-            android:textColor="@color/primary"
             android:textSize="13sp"/>
 
         <TextView
@@ -40,15 +39,14 @@
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnAddUser"
+            style="@style/SmartQ.Button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="+ Add User"
             android:textSize="13sp"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="@color/primary"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            app:cornerRadius="8dp"/>
+            app:cornerRadius="12dp"/>
     </LinearLayout>
 
     <!-- ── Role Filter Chips ────────────────────────────────── -->

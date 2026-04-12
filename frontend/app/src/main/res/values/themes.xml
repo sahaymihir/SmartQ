@@ -94,6 +94,7 @@
         <item name="android:textColor">@color/on_primary</item>
         <item name="backgroundTint">@color/primary</item>
         <item name="cornerRadius">12dp</item>
+        <item name="android:minHeight">48dp</item>
         <item name="android:textSize">15sp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
         <item name="android:textAllCaps">false</item>
@@ -123,10 +124,23 @@
         <item name="android:textColor">@color/primary</item>
         <item name="strokeColor">@color/outline_variant</item>
         <item name="cornerRadius">12dp</item>
+        <item name="android:minHeight">48dp</item>
         <item name="android:textSize">14sp</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:paddingTop">14dp</item>
         <item name="android:paddingBottom">14dp</item>
+    </style>
+
+    <style name="SmartQ.Button.Secondary" parent="SmartQ.Button.Outlined">
+        <item name="android:textColor">@color/on_surface</item>
+        <item name="strokeColor">@color/outline_variant</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <style name="SmartQ.Button.Back" parent="Widget.MaterialComponents.Button.TextButton">
+        <item name="android:textColor">@color/on_surface_variant</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textAllCaps">false</item>
     </style>
 
     <!-- Text Button -->
