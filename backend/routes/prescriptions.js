@@ -19,12 +19,16 @@ const fs = require('fs');
 const multer = require('multer');
 const axios = require('axios');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
-const { Token } = require('../models/Queue');
+const { Queue, Token } = require('../models/Queue');
 const {
   buildPrescriptionView,
   ensurePrescriptionForToken,
   savePrescriptionForToken,
 } = require('../services/prescriptionService');
+const {
+  diffMinutes,
+  recomputeWaitingQueue,
+} = require('../utils/queueHelpers');
 
 const OCR_SERVICE_URL = process.env.OCR_SERVICE_URL || null;
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'prescriptions');
@@ -91,6 +95,11 @@ const canAccessPrescription = (token, user, { write = false } = {}) => {
   }
 
   return false;
+};
+
+const getTokenQueueDate = (token) => {
+  const sourceDate = token?.createdAt || new Date();
+  return new Date(sourceDate).toISOString().split('T')[0];
 };
 
 // ─── OCR extraction helper ─────────────────────────────────────
@@ -375,6 +384,42 @@ router.put('/:tokenId', protect, adminOnly, async (req, res) => {
     }
 
     const prescription = await savePrescriptionForToken(token, req.user, req.body || {});
+
+    if (prescription.status === 'finalized' && ['waiting', 'called', 'arrived'].includes(token.status)) {
+      const now = new Date();
+      const startedAt = token.consultationStartedAt || token.calledAt || token.joinedAt || token.createdAt;
+      const consultationDuration = diffMinutes(startedAt, now);
+
+      token.status = 'completed';
+      token.completedAt = token.completedAt || now;
+
+      if (!Number.isFinite(token.actualWaitMinutes)) {
+        token.actualWaitMinutes = diffMinutes(
+          token.joinedAt || token.createdAt,
+          token.calledAt || now
+        );
+      }
+
+      if (!Number.isFinite(token.actualConsultMinutes)) {
+        token.actualConsultMinutes = consultationDuration;
+      }
+
+      await token.save();
+
+      const queueDate = getTokenQueueDate(token);
+      const queue = await Queue.findOne({ doctor: token.doctor, date: queueDate });
+      if (queue) {
+        if (queue.currentToken === token.tokenNumber) {
+          queue.currentToken = 0;
+        }
+        if (Number.isFinite(consultationDuration) && consultationDuration > 0 && consultationDuration < 60) {
+          queue.updateAvgConsultation(consultationDuration);
+        }
+        await queue.save();
+        await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, queueDate);
+      }
+    }
+
     const view = buildPrescriptionView(token, prescription);
 
     res.json({
