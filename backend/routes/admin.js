@@ -3,6 +3,8 @@ const router = express.Router();
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 const { Token, Queue } = require('../models/Queue');
 const { notifyTokenCalled, notifyQueuePaused } = require('../services/notificationService');
+const User = require('../models/User');
+const predictionHistory = require('../store/predictionStore');
 const {
   ACTIVE_TOKEN_STATUSES,
   buildDayQuery,
@@ -562,6 +564,68 @@ router.get('/analytics/eta-accuracy', async (req, res) => {
     console.error('ETA accuracy error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/admin/model-eval-history
+// Returns all symptom prediction evaluations (in-memory, capped at 100)
+// ─────────────────────────────────────────────────────────────
+router.get('/model-eval-history', async (req, res) => {
+  res.json({ success: true, history: predictionHistory });
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/admin/seed
+// Creates Indian dummy doctors and patients for demo/testing.
+// Safe to call multiple times — skips existing emails.
+// ─────────────────────────────────────────────────────────────
+router.post('/seed', async (req, res) => {
+  const dummyDoctors = [
+    { name: 'Dr. Ananya Krishnamurthy', email: 'ananya@smartq.in', password: 'doc@1234', phone: '+91-9876543201', age: 38, role: 'doctor', specialty: 'Cardiology' },
+    { name: 'Dr. Rajesh Patel', email: 'rajesh@smartq.in', password: 'doc@1234', phone: '+91-9876543202', age: 45, role: 'doctor', specialty: 'Orthopaedics' },
+    { name: 'Dr. Sunita Sharma', email: 'sunita@smartq.in', password: 'doc@1234', phone: '+91-9876543203', age: 42, role: 'doctor', specialty: 'Neurology' },
+    { name: 'Dr. Vikram Nair', email: 'vikram@smartq.in', password: 'doc@1234', phone: '+91-9876543204', age: 50, role: 'doctor', specialty: 'General OPD' },
+    { name: 'Dr. Priya Menon', email: 'priya@smartq.in', password: 'doc@1234', phone: '+91-9876543205', age: 36, role: 'doctor', specialty: 'Dermatology' },
+    { name: 'Dr. Anil Gupta', email: 'anil@smartq.in', password: 'doc@1234', phone: '+91-9876543206', age: 48, role: 'doctor', specialty: 'Gastroenterology' },
+    { name: 'Dr. Kavita Reddy', email: 'kavita@smartq.in', password: 'doc@1234', phone: '+91-9876543207', age: 40, role: 'doctor', specialty: 'Paediatrics' },
+    { name: 'Dr. Mohan Iyer', email: 'mohan@smartq.in', password: 'doc@1234', phone: '+91-9876543208', age: 55, role: 'doctor', specialty: 'Pulmonology' }
+  ];
+
+  const dummyPatients = [
+    { name: 'Arjun Singh', email: 'arjun@patient.in', password: 'patient@1234', phone: '+91-9811111111', age: 35, role: 'patient' },
+    { name: 'Priya Sharma', email: 'priya.p@patient.in', password: 'patient@1234', phone: '+91-9822222222', age: 28, role: 'patient' },
+    { name: 'Ravi Kumar', email: 'ravi@patient.in', password: 'patient@1234', phone: '+91-9833333333', age: 52, role: 'patient' },
+    { name: 'Sunita Devi', email: 'sunita.d@patient.in', password: 'patient@1234', phone: '+91-9844444444', age: 43, role: 'patient' },
+    { name: 'Rahul Mehta', email: 'rahul@patient.in', password: 'patient@1234', phone: '+91-9855555555', age: 67, role: 'patient' },
+    { name: 'Deepa Nair', email: 'deepa@patient.in', password: 'patient@1234', phone: '+91-9866666666', age: 31, role: 'patient' },
+    { name: 'Sanjay Patel', email: 'sanjay@patient.in', password: 'patient@1234', phone: '+91-9877777777', age: 58, role: 'patient' },
+    { name: 'Kavitha Reddy', email: 'kavitha@patient.in', password: 'patient@1234', phone: '+91-9888888888', age: 24, role: 'patient' },
+    { name: 'Anil Verma', email: 'anil.v@patient.in', password: 'patient@1234', phone: '+91-9899999999', age: 71, role: 'patient' },
+    { name: 'Meena Rao', email: 'meena@patient.in', password: 'patient@1234', phone: '+91-9800000001', age: 39, role: 'patient' },
+    { name: 'Vikram Joshi', email: 'vikram.j@patient.in', password: 'patient@1234', phone: '+91-9800000002', age: 46, role: 'patient' },
+    { name: 'Pooja Iyer', email: 'pooja@patient.in', password: 'patient@1234', phone: '+91-9800000003', age: 22, role: 'patient' }
+  ];
+
+  let doctorsCreated = 0, patientsCreated = 0, skipped = 0;
+
+  for (const data of [...dummyDoctors, ...dummyPatients]) {
+    try {
+      await User.create(data);
+      if (data.role === 'doctor') doctorsCreated++;
+      else patientsCreated++;
+    } catch (err) {
+      if (err.code === 11000) skipped++; // duplicate email — skip silently
+      else throw err;
+    }
+  }
+
+  res.json({
+    success: true,
+    message: `Seed complete. Created: ${doctorsCreated} doctors, ${patientsCreated} patients. Skipped: ${skipped} duplicates.`,
+    doctorsCreated,
+    patientsCreated,
+    skipped
+  });
 });
 
 module.exports = router;

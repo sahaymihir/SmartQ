@@ -16,6 +16,7 @@ const queueRoutes = require('./routes/queue');
 const adminRoutes = require('./routes/admin');
 const notificationRoutes = require('./routes/notifications');
 const prescriptionRoutes = require('./routes/prescriptions');
+const doctorsRoutes = require('./routes/doctors');
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/api/queue', queueRoutes);            // protected — patient queue li
 app.use('/api/admin', adminRoutes);            // protected — doctor/admin operations
 app.use('/api/notifications', notificationRoutes); // protected — FCM device registration
 app.use('/api/prescriptions', prescriptionRoutes); // protected — OCR prescription pipeline
+app.use('/api/doctors', doctorsRoutes); // doctors list + symptom predict
 
 // ─── Global Error Handler ─────────────────────────────────
 app.use((err, req, res, next) => {
