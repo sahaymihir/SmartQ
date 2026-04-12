@@ -278,7 +278,7 @@ fun PatientQueueScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         AnimatedPrimaryButton(
-                            text = "Update Symptoms / Join Queue",
+                            text = if (queuePosition > 0) "Update Symptoms" else "Join Queue",
                             onClick = onViewDetails,
                             modifier = Modifier.fillMaxWidth(),
                         )

@@ -37,7 +37,7 @@ class ComposeAdminDashboardActivity : ComponentActivity() {
         doctorId = sessionManager.userId.orEmpty()
 
         setContent {
-            var adminName by remember { mutableStateOf(sessionManager.getName()) }
+            var adminName by remember { mutableStateOf(sessionManager.name) }
             var isLoading by remember { mutableStateOf(false) }
 
             SmartQTheme {

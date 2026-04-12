@@ -88,7 +88,7 @@ class ComposeMainActivity : ComponentActivity() {
                                 onSuccess = { queue ->
                                     patientRefreshing = false
                                     patientPosition = queue.position
-                                    patientQueueLength = maxOf(patientQueueLength, queue.position)
+                                    patientQueueLength = queue.position
                                     patientEta = queue.etaMinutes
                                     patientQueueAhead = buildAheadPlaceholders(queue.position)
                                     patientPriority = queue.triagePriorityClass?.let(::priorityClassToLabel)
@@ -128,7 +128,7 @@ class ComposeMainActivity : ComponentActivity() {
                     currentUserName = currentUserName,
                     isAuthenticated = isAuthenticated,
                     patientPosition = patientPosition,
-                    patientQueueLength = patientQueueLength.coerceAtLeast(patientPosition),
+                    patientQueueLength = patientQueueLength,
                     patientEta = patientEta,
                     patientPriority = patientPriority,
                     patientDoctorName = patientDoctorName,
@@ -175,7 +175,7 @@ class ComposeMainActivity : ComponentActivity() {
                             onJoined = { token ->
                                 showToast(token.message ?: "Queue joined successfully")
                                 patientPosition = token.position
-                                patientQueueLength = maxOf(patientQueueLength, token.position)
+                                patientQueueLength = token.position
                                 patientEta = token.etaMinutes
                                 patientQueueAhead = buildAheadPlaceholders(token.position)
                                 patientPriority = token.triagePriorityClass?.let(::priorityClassToLabel)
@@ -194,7 +194,7 @@ class ComposeMainActivity : ComponentActivity() {
                             onSuccess = { queue ->
                                 patientRefreshing = false
                                 patientPosition = queue.position
-                                patientQueueLength = maxOf(patientQueueLength, queue.position)
+                                patientQueueLength = queue.position
                                 patientEta = queue.etaMinutes
                                 patientQueueAhead = buildAheadPlaceholders(queue.position)
                                 patientPriority = queue.triagePriorityClass?.let(::priorityClassToLabel)
