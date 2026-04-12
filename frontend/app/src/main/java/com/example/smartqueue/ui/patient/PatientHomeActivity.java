@@ -16,7 +16,6 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.LinearLayout;
-import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -83,11 +82,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     private LinearLayout layoutAiResult;
     private TextView tvAiPickTitle, tvAiPickMeta, tvAiPickReasoning, tvSelectedDoctor, tvDoctorListLoading;
 
-    // Visit type views
-    private RadioGroup rgVisitType;
-    private LinearLayout layoutFollowUpNote;
-    private TextView tvFollowUpNote;
-    private MaterialButton btnChooseFollowUp;
+    // History views
     private LinearLayout layoutHistoryList;
     private TextView tvHistoryEmpty;
 
@@ -107,11 +102,6 @@ public class PatientHomeActivity extends AppCompatActivity {
     private String selectedDoctorName = null;
     private String autoRecommendedId  = null;
     private final List<ConsultationHistoryResponse.Consultation> consultationHistory = new ArrayList<>();
-
-    // Visit intent state
-    private String selectedVisitType  = "new";     // "new" or "follow_up"
-    private String followUpTokenId    = null;       // linked prior token chosen by the patient
-    private ConsultationHistoryResponse.Consultation selectedFollowUpConsultation = null;
 
     // Polling handler
     private Handler pollHandler = new Handler(Looper.getMainLooper());
@@ -164,7 +154,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         setupGreeting();
         setupClickListeners();
         loadDoctors();
-        loadConsultationHistory(false);
+        loadConsultationHistory();
         checkExistingToken();
     }
 
@@ -205,11 +195,6 @@ public class PatientHomeActivity extends AppCompatActivity {
         tvSelectedDoctor    = findViewById(R.id.tvSelectedDoctor);
         tvDoctorListLoading = findViewById(R.id.tvDoctorListLoading);
 
-        // Visit type views
-        rgVisitType         = findViewById(R.id.rgVisitType);
-        layoutFollowUpNote  = findViewById(R.id.layoutFollowUpNote);
-        tvFollowUpNote      = findViewById(R.id.tvFollowUpNote);
-        btnChooseFollowUp   = findViewById(R.id.btnChooseFollowUp);
         layoutHistoryList   = findViewById(R.id.layoutHistoryList);
         tvHistoryEmpty      = findViewById(R.id.tvHistoryEmpty);
 
@@ -226,33 +211,6 @@ public class PatientHomeActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
-
-        // Visit type selection — show/hide follow-up note
-        rgVisitType.setOnCheckedChangeListener((group, checkedId) -> {
-            if (checkedId == R.id.rbVisitFollowUp) {
-                selectedVisitType = "follow_up";
-                layoutFollowUpNote.setVisibility(View.VISIBLE);
-                if (consultationHistory.isEmpty()) {
-                    loadConsultationHistory(true);
-                } else {
-                    showFollowUpPicker();
-                }
-            } else {
-                selectedVisitType = "new";
-                followUpTokenId = null;
-                selectedFollowUpConsultation = null;
-                tvFollowUpNote.setText(getString(R.string.follow_up_note));
-                layoutFollowUpNote.setVisibility(View.GONE);
-            }
-        });
-
-        btnChooseFollowUp.setOnClickListener(v -> {
-            if (consultationHistory.isEmpty()) {
-                loadConsultationHistory(true);
-            } else {
-                showFollowUpPicker();
-            }
-        });
 
         // Dismiss test recommendations
         btnDismissTestRecs.setOnClickListener(v -> cardTestRecs.setVisibility(View.GONE));
@@ -290,53 +248,10 @@ public class PatientHomeActivity extends AppCompatActivity {
                 Toast.makeText(this, "Please select a doctor first", Toast.LENGTH_SHORT).show();
                 return;
             }
-            if ("follow_up".equals(selectedVisitType) && followUpTokenId == null) {
-                Toast.makeText(this, "Please choose a previous visit for follow-up", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            btnJoinQueue.setEnabled(false);
-            btnJoinQueue.setText("Joining...");
-
-            JoinQueueRequest joinRequest = buildJoinQueueRequest();
-            apiService.joinQueue(selectedDoctorId, joinRequest).enqueue(new Callback<TokenResponse>() {
-                @Override
-                public void onResponse(Call<TokenResponse> call, Response<TokenResponse> response) {
-                    if (response.code() == 401) { handleUnauthorized(); return; }
-                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                        TokenResponse body = response.body();
-                        resetQueueAlertFlags();
-                        activeTokenNumber = body.getTokenNumber();
-                        isInQueue = true;
-                        showInQueueState();
-                        updateQueueUI(body.getPosition(), body.getTokenNumber(),
-                                body.getEtaMinutes(), "waiting", false, body.getSnoozeCount(),
-                                isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
-                        tvDoctorName.setText(selectedDoctorName);
-                        maybeNotifyQueueEvents(body.getTokenNumber(), "waiting", body.getPosition(), selectedDoctorName);
-                        startPolling();
-                        updateSuggestedTestsCard("waiting", body.isNurseTriaged(), body.getTestRecommendations());
-                        Toast.makeText(PatientHomeActivity.this,
-                                body.getMessage() != null ? body.getMessage() : "Token #" + body.getTokenNumber() + " issued!",
-                                Toast.LENGTH_SHORT).show();
-                    } else {
-                        btnJoinQueue.setEnabled(true);
-                        btnJoinQueue.setText("Join Queue");
-                        MessageResponse error = ApiErrorParser.parseMessage(response);
-                        Toast.makeText(PatientHomeActivity.this,
-                                error != null && error.getMessage() != null
-                                        ? error.getMessage()
-                                        : "Could not join queue. Try again.",
-                                Toast.LENGTH_SHORT).show();
-                    }
-                }
-                @Override
-                public void onFailure(Call<TokenResponse> call, Throwable t) {
-                    btnJoinQueue.setEnabled(true);
-                    btnJoinQueue.setText("Join Queue");
-                    Toast.makeText(PatientHomeActivity.this,
-                            "Server error. Is backend running?", Toast.LENGTH_LONG).show();
-                }
-            });
+            String symptoms = etSymptoms.getText() != null
+                    ? etSymptoms.getText().toString().trim()
+                    : "";
+            joinQueueWithContext(selectedDoctorId, selectedDoctorName, symptoms, "new", null);
         });
 
         // Check In
@@ -477,9 +392,6 @@ public class PatientHomeActivity extends AppCompatActivity {
                     allDoctors = response.body().getDoctors();
                     updateDoctorPickerOptions();
                     tvDoctorListLoading.setVisibility(View.GONE);
-                    if (selectedFollowUpConsultation != null) {
-                        applyDoctorSelectionForFollowUp(selectedFollowUpConsultation, false);
-                    }
                 } else {
                     doctorPickerOptions.clear();
                     if (doctorPickerAdapter != null) {
@@ -611,10 +523,151 @@ public class PatientHomeActivity extends AppCompatActivity {
                 });
     }
 
-    private JoinQueueRequest buildJoinQueueRequest() {
-        String symptoms = etSymptoms.getText() != null
-                ? etSymptoms.getText().toString().trim() : "";
-        return new JoinQueueRequest(symptoms, selectedVisitType, followUpTokenId, "en");
+    private JoinQueueRequest buildJoinQueueRequest(String symptoms, String visitType, String followUpTokenId) {
+        return new JoinQueueRequest(symptoms, visitType, followUpTokenId, "en");
+    }
+
+    private void joinQueueWithContext(
+            String doctorId,
+            String doctorName,
+            String symptoms,
+            String visitType,
+            String followUpTokenId
+    ) {
+        if (isBlank(doctorId)) {
+            Toast.makeText(this, "Please select a doctor first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        btnJoinQueue.setEnabled(false);
+        btnJoinQueue.setText("Joining...");
+
+        JoinQueueRequest joinRequest = buildJoinQueueRequest(symptoms, visitType, followUpTokenId);
+        apiService.joinQueue(doctorId, joinRequest).enqueue(new Callback<TokenResponse>() {
+            @Override
+            public void onResponse(Call<TokenResponse> call, Response<TokenResponse> response) {
+                if (response.code() == 401) { handleUnauthorized(); return; }
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    TokenResponse body = response.body();
+                    resetQueueAlertFlags();
+                    activeTokenNumber = body.getTokenNumber();
+                    isInQueue = true;
+                    showInQueueState();
+                    updateQueueUI(body.getPosition(), body.getTokenNumber(),
+                            body.getEtaMinutes(), "waiting", false, body.getSnoozeCount(),
+                            isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
+                    tvDoctorName.setText(textOrDefault(doctorName, selectedDoctorName));
+                    maybeNotifyQueueEvents(body.getTokenNumber(), "waiting", body.getPosition(), textOrDefault(doctorName, selectedDoctorName));
+                    startPolling();
+                    updateSuggestedTestsCard("waiting", body.isNurseTriaged(), body.getTestRecommendations());
+                    Toast.makeText(PatientHomeActivity.this,
+                            body.getMessage() != null ? body.getMessage() : "Token #" + body.getTokenNumber() + " issued!",
+                            Toast.LENGTH_SHORT).show();
+                } else {
+                    btnJoinQueue.setEnabled(true);
+                    btnJoinQueue.setText("Join Queue");
+                    MessageResponse error = ApiErrorParser.parseMessage(response);
+                    Toast.makeText(PatientHomeActivity.this,
+                            error != null && error.getMessage() != null
+                                    ? error.getMessage()
+                                    : "Could not join queue. Try again.",
+                            Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<TokenResponse> call, Throwable t) {
+                btnJoinQueue.setEnabled(true);
+                btnJoinQueue.setText("Join Queue");
+                Toast.makeText(PatientHomeActivity.this,
+                        "Server error. Is backend running?", Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void requestFollowUpQueueJoin(ConsultationHistoryResponse.Consultation consultation) {
+        if (consultation == null) {
+            return;
+        }
+        if (isInQueue) {
+            Toast.makeText(this, "You already have an active queue token.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        DoctorsResponse.Doctor followUpDoctor = resolveFollowUpDoctor(consultation);
+        String targetDoctorId = followUpDoctor != null ? followUpDoctor.getId() : selectedDoctorId;
+        String targetDoctorName = followUpDoctor != null
+                ? textOrDefault(followUpDoctor.getName(), "Doctor")
+                : selectedDoctorName;
+
+        if (isBlank(targetDoctorId)) {
+            Toast.makeText(this, "No matching follow-up doctor found. Select a doctor first.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (followUpDoctor != null) {
+            selectedDoctorId = followUpDoctor.getId();
+            selectedDoctorName = targetDoctorName;
+            tvSelectedDoctor.setText(targetDoctorName);
+            syncDoctorPickerSelectionById(followUpDoctor.getId());
+        }
+
+        String symptoms = etSymptoms.getText() != null ? etSymptoms.getText().toString().trim() : "";
+        if (symptoms.isEmpty()) {
+            showFollowUpSymptomsPrompt(consultation, targetDoctorId, targetDoctorName);
+            return;
+        }
+
+        joinQueueWithContext(targetDoctorId, targetDoctorName, symptoms, "follow_up", consultation.getTokenId());
+    }
+
+    private void showFollowUpSymptomsPrompt(
+            ConsultationHistoryResponse.Consultation consultation,
+            String doctorId,
+            String doctorName
+    ) {
+        final TextInputEditText input = new TextInputEditText(this);
+        input.setHint("Describe current symptoms");
+        input.setText(!isBlank(consultation.getSymptomsSummary())
+                ? consultation.getSymptomsSummary()
+                : textOrDefault(consultation.getSymptoms(), ""));
+        int padding = Math.round(16 * getResources().getDisplayMetrics().density);
+        input.setPadding(padding, padding, padding, padding);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Follow-up symptoms")
+                .setMessage("Please share current symptoms before joining follow-up queue.")
+                .setView(input)
+                .setPositiveButton("Join Follow-up", (dialog, which) -> {
+                    String promptedSymptoms = input.getText() != null ? input.getText().toString().trim() : "";
+                    if (promptedSymptoms.isEmpty()) {
+                        Toast.makeText(this, "Symptoms are required for follow-up.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    etSymptoms.setText(promptedSymptoms);
+                    joinQueueWithContext(doctorId, doctorName, promptedSymptoms, "follow_up", consultation.getTokenId());
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private DoctorsResponse.Doctor resolveFollowUpDoctor(ConsultationHistoryResponse.Consultation consultation) {
+        if (consultation == null || allDoctors == null || allDoctors.isEmpty()) {
+            return null;
+        }
+
+        DoctorsResponse.Doctor sameSpecialtyDoctor = null;
+        for (DoctorsResponse.Doctor doctor : allDoctors) {
+            if (doctor.getId() != null && doctor.getId().equals(consultation.getDoctorId())) {
+                return doctor;
+            }
+            if (sameSpecialtyDoctor == null
+                    && !isBlank(consultation.getDoctorSpecialty())
+                    && consultation.getDoctorSpecialty().equalsIgnoreCase(doctor.getSpecialty())) {
+                sameSpecialtyDoctor = doctor;
+            }
+        }
+        return sameSpecialtyDoctor;
     }
 
     private void startVoiceInput() {
@@ -681,7 +734,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             @Override
             public void run() {
                 if (!isInQueue && sessionManager.isLoggedIn()) {
-                    loadConsultationHistory(false);
+                    loadConsultationHistory();
                     historyPollHandler.postDelayed(this, HISTORY_POLL_INTERVAL_MS);
                 }
             }
@@ -762,7 +815,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         setCalledRefreshLoading(false);
         cardTestRecs.setVisibility(View.GONE);
         resetQueueAlertFlags();
-        loadConsultationHistory(false);
+        loadConsultationHistory();
         if (showToast) {
             Toast.makeText(this, "No active queue token found.", Toast.LENGTH_SHORT).show();
         }
@@ -1001,7 +1054,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         dialog.show();
     }
 
-    private void loadConsultationHistory(boolean openPickerAfterLoad) {
+    private void loadConsultationHistory() {
         apiService.getConsultationHistory().enqueue(new Callback<ConsultationHistoryResponse>() {
             @Override
             public void onResponse(Call<ConsultationHistoryResponse> call, Response<ConsultationHistoryResponse> response) {
@@ -1010,23 +1063,12 @@ public class PatientHomeActivity extends AppCompatActivity {
                     consultationHistory.clear();
                     consultationHistory.addAll(response.body().getHistory());
                     renderConsultationHistory();
-
-                    if ("follow_up".equals(selectedVisitType)) {
-                        if (consultationHistory.isEmpty()) {
-                            tvFollowUpNote.setText(getString(R.string.follow_up_none));
-                        } else if (openPickerAfterLoad || selectedFollowUpConsultation == null) {
-                            showFollowUpPicker();
-                        }
-                    }
                 }
             }
 
             @Override
             public void onFailure(Call<ConsultationHistoryResponse> call, Throwable t) {
                 tvHistoryEmpty.setText(getString(R.string.history_empty));
-                if ("follow_up".equals(selectedVisitType)) {
-                    tvFollowUpNote.setText(getString(R.string.follow_up_none));
-                }
             }
         });
     }
@@ -1048,6 +1090,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             TextView tvSummary = card.findViewById(R.id.tvHistorySummary);
             TextView tvOutcome = card.findViewById(R.id.tvHistoryOutcome);
             TextView tvAction = card.findViewById(R.id.tvHistoryAction);
+            MaterialButton btnHistoryFollowUp = card.findViewById(R.id.btnHistoryFollowUp);
 
             tvDate.setText("Visit day: " + formatHistoryDate(consultation.getDate()));
             tvDoctor.setText(consultation.getDoctorName());
@@ -1060,33 +1103,11 @@ public class PatientHomeActivity extends AppCompatActivity {
                     : (!isBlank(consultation.getDiagnosis()) ? consultation.getDiagnosis() : "Open for full prescription details."));
             tvAction.setText(consultation.hasPrescription() ? "Open prescription" : "Open visit details");
 
+            tvAction.setOnClickListener(v -> openPrescriptionScreen(consultation.getTokenId(), true));
+            btnHistoryFollowUp.setOnClickListener(v -> requestFollowUpQueueJoin(consultation));
             card.setOnClickListener(v -> openPrescriptionScreen(consultation.getTokenId(), true));
             layoutHistoryList.addView(card);
         }
-    }
-
-    private void showFollowUpPicker() {
-        if (consultationHistory.isEmpty()) {
-            tvFollowUpNote.setText(getString(R.string.follow_up_none));
-            Toast.makeText(this, getString(R.string.follow_up_none), Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        CharSequence[] options = new CharSequence[consultationHistory.size()];
-        for (int i = 0; i < consultationHistory.size(); i++) {
-            ConsultationHistoryResponse.Consultation consultation = consultationHistory.get(i);
-            String doctorName = !isBlank(consultation.getDoctorName()) ? consultation.getDoctorName() : "Previous visit";
-            String conclusion = !isBlank(consultation.getConclusionPreview())
-                    ? consultation.getConclusionPreview()
-                    : (!isBlank(consultation.getDiagnosis()) ? consultation.getDiagnosis() : "Visit details");
-            options[i] = formatHistoryDate(consultation.getDate()) + " • " + doctorName + "\n" + conclusion;
-        }
-
-        new AlertDialog.Builder(this)
-                .setTitle(getString(R.string.follow_up_choose_visit))
-                .setItems(options, (dialog, which) -> applyFollowUpSelection(consultationHistory.get(which)))
-                .setNegativeButton("Cancel", null)
-                .show();
     }
 
     private void showVisitHistoryDialog() {
@@ -1113,61 +1134,6 @@ public class PatientHomeActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void applyFollowUpSelection(ConsultationHistoryResponse.Consultation consultation) {
-        selectedFollowUpConsultation = consultation;
-        followUpTokenId = consultation.getTokenId();
-        tvFollowUpNote.setText(getString(R.string.follow_up_note_linked)
-                + consultation.getDoctorName()
-                + " • " + formatHistoryDate(consultation.getDate()));
-        applyDoctorSelectionForFollowUp(consultation, true);
-    }
-
-    private void applyDoctorSelectionForFollowUp(ConsultationHistoryResponse.Consultation consultation,
-                                                 boolean showFeedback) {
-        if (consultation == null || allDoctors == null || allDoctors.isEmpty()) {
-            return;
-        }
-
-        DoctorsResponse.Doctor sameDoctor = null;
-        DoctorsResponse.Doctor sameSpecialtyDoctor = null;
-        for (DoctorsResponse.Doctor doctor : allDoctors) {
-            if (doctor.getId() != null && doctor.getId().equals(consultation.getDoctorId())) {
-                sameDoctor = doctor;
-                break;
-            }
-            if (sameSpecialtyDoctor == null
-                    && !isBlank(consultation.getDoctorSpecialty())
-                    && consultation.getDoctorSpecialty().equalsIgnoreCase(doctor.getSpecialty())) {
-                sameSpecialtyDoctor = doctor;
-            }
-        }
-
-        autoRecommendedId = null;
-        if (sameDoctor != null) {
-            selectedDoctorId = sameDoctor.getId();
-            selectedDoctorName = sameDoctor.getName();
-            tvSelectedDoctor.setText(sameDoctor.getName());
-            if (showFeedback) {
-                Toast.makeText(this, "Follow-up matched to the same doctor", Toast.LENGTH_SHORT).show();
-            }
-        } else if (sameSpecialtyDoctor != null) {
-            selectedDoctorId = sameSpecialtyDoctor.getId();
-            selectedDoctorName = sameSpecialtyDoctor.getName();
-            tvSelectedDoctor.setText(sameSpecialtyDoctor.getName());
-            if (showFeedback) {
-                Toast.makeText(this, "Previous doctor unavailable. Routed to the same specialty.", Toast.LENGTH_SHORT).show();
-            }
-        } else {
-            selectedDoctorId = null;
-            selectedDoctorName = null;
-            tvSelectedDoctor.setText("Select doctor manually");
-            if (showFeedback) {
-                Toast.makeText(this, "Previous doctor unavailable. Please pick a doctor manually.", Toast.LENGTH_SHORT).show();
-            }
-        }
-
-        syncDoctorPickerSelectionById(selectedDoctorId);
-    }
 
     private void openPrescriptionScreen(String tokenId, boolean readOnly) {
         if (isBlank(tokenId)) {
@@ -1269,7 +1235,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (!isInQueue) {
-            loadConsultationHistory(false);
+            loadConsultationHistory();
             startHistoryPolling();
         } else {
             stopHistoryPolling();
