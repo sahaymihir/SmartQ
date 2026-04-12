@@ -53,33 +53,26 @@ import kotlinx.coroutines.delay
 @Composable
 fun PatientQueueScreen(
     patientName: String = "John Patient",
+    queuePosition: Int = 0,
+    queueLength: Int = 0,
+    estimatedWaitMin: Int = 0,
+    priority: String = "normal",
+    doctorName: String = "Not assigned",
+    departmentName: String = "General OPD",
+    queueAhead: List<Triple<String, String, String>> = emptyList(),
+    isRefreshing: Boolean = false,
+    onCheckIn: () -> Unit = {},
+    onSnooze: () -> Unit = {},
     onViewDetails: () -> Unit = {},
     onRefresh: () -> Unit = {},
 ) {
     SmartQTheme {
-        var queuePosition by remember { mutableStateOf(3) }
-        var queueLength by remember { mutableStateOf(8) }
-        var estimatedWaitMin by remember { mutableStateOf(12) }
-        var isRefreshing by remember { mutableStateOf(false) }
-        var priority by remember { mutableStateOf("normal") }
-
-        // Mock queue data ahead
-        val queueAhead = remember {
+        val queueAheadItems = if (queueAhead.isEmpty()) {
             listOf(
-                Triple("Patient A", "P101", "high"),
-                Triple("Patient B", "P102", "medium"),
+                Triple("Waiting for live queue", "--", "normal"),
             )
-        }
-
-        LaunchedEffect(Unit) {
-            while (true) {
-                delay(5000)
-                // Simulate queue updates
-                if (queuePosition > 1) {
-                    queuePosition--
-                    estimatedWaitMin = (queuePosition - 1) * 3 + 6
-                }
-            }
+        } else {
+            queueAhead
         }
 
         Scaffold(
@@ -102,10 +95,7 @@ fun PatientQueueScreen(
                     },
                     actions = {
                         IconButton(
-                            onClick = {
-                                isRefreshing = true
-                                onRefresh()
-                            },
+                            onClick = onRefresh,
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Refresh,
@@ -260,7 +250,7 @@ fun PatientQueueScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "Ahead of You (${queueAhead.size})",
+                                "Ahead of You (${queueAheadItems.size})",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.SemiBold
                             ),
@@ -269,7 +259,7 @@ fun PatientQueueScreen(
                     }
                 }
 
-                itemsIndexed(queueAhead) { index, (name, id, prio) ->
+                itemsIndexed(queueAheadItems) { index, (name, id, prio) ->
                     QueueItemCard(
                         patientName = name,
                         patientId = id,
@@ -288,8 +278,18 @@ fun PatientQueueScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         AnimatedPrimaryButton(
-                            text = "View Doctor Info",
+                            text = if (queuePosition > 0) "Update Symptoms" else "Join Queue",
                             onClick = onViewDetails,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        AnimatedPrimaryButton(
+                            text = "Check In",
+                            onClick = onCheckIn,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        AnimatedPrimaryButton(
+                            text = "Snooze (+2)",
+                            onClick = onSnooze,
                             modifier = Modifier.fillMaxWidth(),
                         )
 

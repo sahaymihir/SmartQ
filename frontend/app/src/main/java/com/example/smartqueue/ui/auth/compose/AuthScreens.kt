@@ -249,7 +249,7 @@ fun LoginScreen(
  */
 @Composable
 fun RegisterScreen(
-    onRegisterSuccess: (email: String, password: String, name: String) -> Unit = { _, _, _ -> },
+    onRegisterSuccess: (name: String, email: String, password: String, phone: String, age: Int) -> Unit = { _, _, _, _, _ -> },
     onNavigateToLogin: () -> Unit = {},
 ) {
     SmartQTheme {
@@ -261,11 +261,16 @@ fun RegisterScreen(
         var isConfirmPasswordVisible by remember { mutableStateOf(false) }
         var isLoading by remember { mutableStateOf(false) }
         var showForm by remember { mutableStateOf(false) }
+        var phone by remember { mutableStateOf("") }
+        var ageText by remember { mutableStateOf("") }
 
         // Validation states
         val isPasswordMatch = password == confirmPassword && password.isNotEmpty()
         val isPasswordStrong = password.length >= 8
         val isEmailValid = email.contains("@")
+        val isPhoneValid = phone.length >= 10
+        val age = ageText.toIntOrNull() ?: 0
+        val isAgeValid = age in 1..120
 
         LaunchedEffect(Unit) {
             delay(300)
@@ -380,6 +385,42 @@ fun RegisterScreen(
                     }
                 }
 
+                item {
+                    AnimatedVisibility(
+                        visible = showForm,
+                        enter = slideInVertically(initialOffsetY = { 30 }) + fadeIn(),
+                    ) {
+                        AuthInputField(
+                            value = phone,
+                            onValueChange = { phone = it.filter { c -> c.isDigit() }.take(12) },
+                            label = "Phone",
+                            placeholder = "10-digit number",
+                            keyboardType = KeyboardType.Phone,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                        )
+                    }
+                }
+
+                item {
+                    AnimatedVisibility(
+                        visible = showForm,
+                        enter = slideInVertically(initialOffsetY = { 30 }) + fadeIn(),
+                    ) {
+                        AuthInputField(
+                            value = ageText,
+                            onValueChange = { ageText = it.filter { c -> c.isDigit() }.take(3) },
+                            label = "Age",
+                            placeholder = "Enter age",
+                            keyboardType = KeyboardType.Number,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                        )
+                    }
+                }
+
                 // Password Strength Indicator
                 item {
                     AnimatedVisibility(
@@ -442,10 +483,16 @@ fun RegisterScreen(
                             text = "Create Account",
                             onClick = {
                                 isLoading = true
-                                onRegisterSuccess(email, password, fullName)
+                                onRegisterSuccess(fullName, email, password, phone, age)
                             },
                             isLoading = isLoading,
-                            enabled = isPasswordMatch && isPasswordStrong && isEmailValid && fullName.isNotEmpty() && !isLoading,
+                            enabled = isPasswordMatch &&
+                                isPasswordStrong &&
+                                isEmailValid &&
+                                isPhoneValid &&
+                                isAgeValid &&
+                                fullName.isNotEmpty() &&
+                                !isLoading,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(48.dp),

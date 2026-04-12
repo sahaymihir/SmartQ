@@ -56,7 +56,7 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SymptomInputScreen(
-    onSubmit: (symptoms: List<String>) -> Unit = {},
+    onSubmit: (chiefComplaint: String, symptoms: List<String>, severity: Int) -> Unit = { _, _, _ -> },
     onBack: () -> Unit = {},
 ) {
     SmartQTheme {
@@ -322,7 +322,7 @@ fun SymptomInputScreen(
                                     text = "Submit",
                                     onClick = {
                                         isSubmitting = true
-                                        onSubmit(selectedSymptoms.toList())
+                                        onSubmit(chiefComplaint, selectedSymptoms.toList(), severity)
                                     },
                                     isLoading = isSubmitting,
                                     enabled = severity > 0,
