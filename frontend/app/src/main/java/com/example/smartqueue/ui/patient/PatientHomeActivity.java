@@ -54,7 +54,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     private TextInputEditText etSymptoms, etDoctorSearch;
     private MaterialButton btnFindDoctor;
     private LinearLayout layoutAiResult, layoutDoctorList;
-    private TextView tvAiPickTitle, tvAiPickReasoning, tvSelectedDoctor, tvDoctorListLoading;
+    private TextView tvAiPickTitle, tvAiPickMeta, tvAiPickReasoning, tvSelectedDoctor, tvDoctorListLoading;
 
     private SessionManager sessionManager;
     private ApiService apiService;
@@ -116,6 +116,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         layoutAiResult      = findViewById(R.id.layoutAiResult);
         layoutDoctorList    = findViewById(R.id.layoutDoctorList);
         tvAiPickTitle       = findViewById(R.id.tvAiPickTitle);
+        tvAiPickMeta        = findViewById(R.id.tvAiPickMeta);
         tvAiPickReasoning   = findViewById(R.id.tvAiPickReasoning);
         tvSelectedDoctor    = findViewById(R.id.tvSelectedDoctor);
         tvDoctorListLoading = findViewById(R.id.tvDoctorListLoading);
@@ -384,10 +385,29 @@ public class PatientHomeActivity extends AppCompatActivity {
                                 selectedDoctorName = rec.getName();
                                 tvSelectedDoctor.setText(rec.getName());
                             }
-                                tvAiPickTitle.setText("Prediction: "
+                            tvAiPickTitle.setText("Prediction: "
                                     + (rec != null ? rec.getName() : "—")
                                     + " (" + (rec != null ? rec.getSpecialty() : "") + ")");
-                            tvAiPickReasoning.setText(body.getReasoning());
+
+                            StringBuilder meta = new StringBuilder();
+                            if (body.getPrimarySpecialist() != null && !body.getPrimarySpecialist().isEmpty()) {
+                                meta.append("Clinical fit: ").append(body.getPrimarySpecialist());
+                            }
+                            if (body.getRoutedSpecialty() != null && !body.getRoutedSpecialty().isEmpty()) {
+                                if (meta.length() > 0) meta.append(" • ");
+                                meta.append("SmartQ route: ").append(body.getRoutedSpecialty());
+                            }
+                            if (body.isLowConfidence()) {
+                                if (meta.length() > 0) meta.append(" • ");
+                                meta.append("You can change this");
+                            }
+                            tvAiPickMeta.setText(meta.length() > 0 ? meta.toString() : "Doctor suggestion");
+
+                            String reasoning = body.getReasoning() != null ? body.getReasoning() : "—";
+                            if (body.isLowConfidence()) {
+                                reasoning += " You can pick another doctor if this suggestion does not feel right.";
+                            }
+                            tvAiPickReasoning.setText(reasoning);
                             layoutAiResult.setVisibility(View.VISIBLE);
                             filterAndRenderDoctors(
                                     etDoctorSearch.getText() != null

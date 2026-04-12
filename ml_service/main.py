@@ -12,6 +12,12 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
+from specialty_hybrid import (
+    SpecialtyPredictionRequest,
+    SpecialtyPredictionResponse,
+    predict_specialty,
+)
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("smartq-ml-service")
@@ -626,6 +632,19 @@ async def predict(payload: PredictionRequest, request: Request) -> PredictionRes
     except Exception as exc:
         logger.exception("Prediction failed")
         raise HTTPException(status_code=500, detail="Prediction failed") from exc
+
+
+@app.post("/specialty", response_model=SpecialtyPredictionResponse)
+async def specialty(payload: SpecialtyPredictionRequest) -> SpecialtyPredictionResponse:
+    try:
+        return predict_specialty(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Specialty prediction failed")
+        raise HTTPException(status_code=500, detail="Specialty prediction failed") from exc
 
 
 @app.post("/test-recommendations", response_model=TestRecommendationResponse)

@@ -214,13 +214,24 @@
                                 android:textColor="@color/primary"/>
 
                             <TextView
+                                android:id="@+id/tvAiPickMeta"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Clinical fit"
+                                android:textSize="10sp"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginTop="2dp"
+                                android:maxLines="2"/>
+
+                            <TextView
                                 android:id="@+id/tvAiPickReasoning"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="—"
                                 android:textSize="11sp"
                                 android:textColor="@color/text_secondary"
-                                android:maxLines="2"/>
+                                android:layout_marginTop="2dp"
+                                android:maxLines="4"/>
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>

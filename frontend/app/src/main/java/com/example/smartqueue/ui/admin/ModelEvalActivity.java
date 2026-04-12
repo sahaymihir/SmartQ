@@ -33,11 +33,12 @@ public class ModelEvalActivity extends AppCompatActivity {
 
     private ApiService apiService;
 
-    // Test panel views
     private TextInputEditText etTestSymptoms;
     private MaterialButton btnRunTest, btnBack, btnRefreshHistory;
+    private MaterialButton btnExampleCardio, btnExampleFever, btnExampleRash;
     private LinearLayout layoutTestResult, layoutTestScores, layoutEvalHistory, layoutNoHistory;
-    private TextView tvTestFactors, tvTestDoctor, tvTestReasoning, tvHistoryCount;
+    private TextView tvTestPrimarySpecialist, tvTestRoutedSpecialty, tvTestNormalizedSymptoms;
+    private TextView tvTestFactors, tvTestDoctor, tvTestReasoning, tvTestModelSource, tvHistoryCount;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,18 +53,25 @@ public class ModelEvalActivity extends AppCompatActivity {
     }
 
     private void bindViews() {
-        btnBack             = findViewById(R.id.btnBack);
-        btnRunTest          = findViewById(R.id.btnRunTest);
-        btnRefreshHistory   = findViewById(R.id.btnRefreshHistory);
-        etTestSymptoms      = findViewById(R.id.etTestSymptoms);
-        layoutTestResult    = findViewById(R.id.layoutTestResult);
-        layoutTestScores    = findViewById(R.id.layoutTestScores);
-        layoutEvalHistory   = findViewById(R.id.layoutEvalHistory);
-        layoutNoHistory     = findViewById(R.id.layoutNoHistory);
-        tvTestFactors       = findViewById(R.id.tvTestFactors);
-        tvTestDoctor        = findViewById(R.id.tvTestDoctor);
-        tvTestReasoning     = findViewById(R.id.tvTestReasoning);
-        tvHistoryCount      = findViewById(R.id.tvHistoryCount);
+        btnBack = findViewById(R.id.btnBack);
+        btnRunTest = findViewById(R.id.btnRunTest);
+        btnRefreshHistory = findViewById(R.id.btnRefreshHistory);
+        btnExampleCardio = findViewById(R.id.btnExampleCardio);
+        btnExampleFever = findViewById(R.id.btnExampleFever);
+        btnExampleRash = findViewById(R.id.btnExampleRash);
+        etTestSymptoms = findViewById(R.id.etTestSymptoms);
+        layoutTestResult = findViewById(R.id.layoutTestResult);
+        layoutTestScores = findViewById(R.id.layoutTestScores);
+        layoutEvalHistory = findViewById(R.id.layoutEvalHistory);
+        layoutNoHistory = findViewById(R.id.layoutNoHistory);
+        tvTestPrimarySpecialist = findViewById(R.id.tvTestPrimarySpecialist);
+        tvTestRoutedSpecialty = findViewById(R.id.tvTestRoutedSpecialty);
+        tvTestNormalizedSymptoms = findViewById(R.id.tvTestNormalizedSymptoms);
+        tvTestFactors = findViewById(R.id.tvTestFactors);
+        tvTestDoctor = findViewById(R.id.tvTestDoctor);
+        tvTestReasoning = findViewById(R.id.tvTestReasoning);
+        tvTestModelSource = findViewById(R.id.tvTestModelSource);
+        tvHistoryCount = findViewById(R.id.tvHistoryCount);
     }
 
     private void setupClickListeners() {
@@ -73,6 +81,15 @@ public class ModelEvalActivity extends AppCompatActivity {
         });
 
         btnRefreshHistory.setOnClickListener(v -> loadHistory());
+
+        btnExampleCardio.setOnClickListener(v ->
+                applyExample("I feel pressure in my chest and I am short of breath"));
+
+        btnExampleFever.setOnClickListener(v ->
+                applyExample("I have fever and cold for two days with body ache"));
+
+        btnExampleRash.setOnClickListener(v ->
+                applyExample("I have an itchy rash on my arms and neck"));
 
         btnRunTest.setOnClickListener(v -> {
             String symptoms = etTestSymptoms.getText() != null
@@ -85,13 +102,18 @@ public class ModelEvalActivity extends AppCompatActivity {
         });
     }
 
+    private void applyExample(String symptoms) {
+        etTestSymptoms.setText(symptoms);
+        etTestSymptoms.setSelection(symptoms.length());
+        runTestPrediction(symptoms);
+    }
+
     @Override
     public void onBackPressed() {
         super.onBackPressed();
         overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
     }
 
-    // ── Run a test prediction and show inline result ───────────
     private void runTestPrediction(String symptoms) {
         btnRunTest.setEnabled(false);
         btnRunTest.setText("Running...");
@@ -103,11 +125,12 @@ public class ModelEvalActivity extends AppCompatActivity {
                                            Response<SymptomPredictResponse> response) {
                         btnRunTest.setEnabled(true);
                         btnRunTest.setText("Run Prediction");
+
                         if (response.isSuccessful() && response.body() != null
                                 && response.body().isSuccess()) {
                             SymptomPredictResponse body = response.body();
                             showTestResult(body);
-                            loadHistory(); // refresh history after test
+                            loadHistory();
                         } else {
                             Toast.makeText(ModelEvalActivity.this,
                                     "Prediction failed", Toast.LENGTH_SHORT).show();
@@ -124,50 +147,46 @@ public class ModelEvalActivity extends AppCompatActivity {
                 });
     }
 
-    // ── Render inline test result ──────────────────────────────
     private void showTestResult(SymptomPredictResponse body) {
-        // Extracted factors
+        int confidencePct = (int) Math.round(body.getConfidence() * 100);
+
+        String primary = !TextUtils.isEmpty(body.getPrimarySpecialist())
+                ? body.getPrimarySpecialist() : "General Practice";
+        if (body.isLowConfidence()) {
+            primary += "  •  " + confidencePct + "% route confidence  •  Low confidence";
+        } else {
+            primary += "  •  " + confidencePct + "% route confidence";
+        }
+        tvTestPrimarySpecialist.setText(primary);
+
+        String routed = !TextUtils.isEmpty(body.getRoutedSpecialty())
+                ? body.getRoutedSpecialty() : "General OPD";
+        if (body.isLowConfidence()) {
+            routed += "  •  manual review recommended";
+        }
+        tvTestRoutedSpecialty.setText(routed);
+
+        tvTestNormalizedSymptoms.setText(!TextUtils.isEmpty(body.getNormalizedSymptoms())
+                ? body.getNormalizedSymptoms() : "—");
+
         List<String> factors = body.getExtractedFactors();
         tvTestFactors.setText(factors != null && !factors.isEmpty()
-                ? TextUtils.join(", ", factors) : "No specific keywords detected");
+                ? TextUtils.join(", ", factors)
+                : "No strong signals detected");
 
-        // Top 4 specialty scores
-        layoutTestScores.removeAllViews();
-        List<SymptomPredictResponse.SpecialtyScore> scores = body.getSpecialtyScores();
-        if (scores != null) {
-            int shown = 0;
-            for (SymptomPredictResponse.SpecialtyScore s : scores) {
-                if (s.getScore() <= 0.03 || shown >= 4) continue;
-                TextView tv = new TextView(this);
-                int pct = (int) (s.getScore() * 100);
-                String keywords = s.getMatchedKeywords() != null && !s.getMatchedKeywords().isEmpty()
-                        ? " ← " + TextUtils.join(", ", s.getMatchedKeywords()) : "";
-                tv.setText("• " + s.getSpecialty() + "  " + pct + "%" + keywords);
-                tv.setTextSize(13f);
-                tv.setTextColor(getResources().getColor(R.color.text_primary));
-                tv.setPadding(0, 4, 0, 4);
-                layoutTestScores.addView(tv);
-                shown++;
-            }
-            if (shown == 0) {
-                TextView tv = new TextView(this);
-                tv.setText("• No strong specialty signals detected");
-                tv.setTextSize(13f);
-                tv.setTextColor(getResources().getColor(R.color.text_secondary));
-                layoutTestScores.addView(tv);
-            }
-        }
+        renderPredictionScores(body.getSpecialtyScores(), layoutTestScores);
 
-        // Recommended doctor
         SymptomPredictResponse.Doctor doc = body.getRecommendedDoctor();
         tvTestDoctor.setText(doc != null
-                ? doc.getName() + "  (" + doc.getSpecialty() + ")" : "—");
+                ? doc.getName() + " (" + doc.getSpecialty() + ")"
+                : "—");
         tvTestReasoning.setText(body.getReasoning() != null ? body.getReasoning() : "—");
+        tvTestModelSource.setText("Source: "
+                + (!TextUtils.isEmpty(body.getModelSource()) ? body.getModelSource() : "specialty_hybrid_v1"));
 
         layoutTestResult.setVisibility(View.VISIBLE);
     }
 
-    // ── Load prediction history from server ────────────────────
     private void loadHistory() {
         apiService.getModelEvalHistory().enqueue(new Callback<ModelEvalHistoryResponse>() {
             @Override
@@ -187,7 +206,6 @@ public class ModelEvalActivity extends AppCompatActivity {
         });
     }
 
-    // ── Render history list ────────────────────────────────────
     private void renderHistory(List<ModelEvalHistoryResponse.EvalEntry> history) {
         layoutEvalHistory.removeAllViews();
 
@@ -205,56 +223,139 @@ public class ModelEvalActivity extends AppCompatActivity {
         for (ModelEvalHistoryResponse.EvalEntry entry : history) {
             View card = inflater.inflate(R.layout.item_eval_card, layoutEvalHistory, false);
 
-            TextView tvPatient    = card.findViewById(R.id.tvEvalPatientName);
-            TextView tvTime       = card.findViewById(R.id.tvEvalTime);
-            TextView tvConf       = card.findViewById(R.id.tvEvalConfidence);
-            TextView tvSymptoms   = card.findViewById(R.id.tvEvalSymptoms);
-            TextView tvFactors    = card.findViewById(R.id.tvEvalFactors);
-            LinearLayout lScores  = card.findViewById(R.id.layoutEvalScores);
-            TextView tvDoctor     = card.findViewById(R.id.tvEvalDoctor);
-            TextView tvReasoning  = card.findViewById(R.id.tvEvalReasoning);
+            TextView tvPatient = card.findViewById(R.id.tvEvalPatientName);
+            TextView tvTime = card.findViewById(R.id.tvEvalTime);
+            TextView tvSource = card.findViewById(R.id.tvEvalSource);
+            TextView tvConf = card.findViewById(R.id.tvEvalConfidence);
+            TextView tvSymptoms = card.findViewById(R.id.tvEvalSymptoms);
+            TextView tvNormalizedSymptoms = card.findViewById(R.id.tvEvalNormalizedSymptoms);
+            TextView tvFactors = card.findViewById(R.id.tvEvalFactors);
+            TextView tvRouteSummary = card.findViewById(R.id.tvEvalRouteSummary);
+            LinearLayout lScores = card.findViewById(R.id.layoutEvalScores);
+            TextView tvDoctor = card.findViewById(R.id.tvEvalDoctor);
+            TextView tvReasoning = card.findViewById(R.id.tvEvalReasoning);
 
-            tvPatient.setText(entry.getPatientName() != null ? entry.getPatientName() : "Unknown");
+            tvPatient.setText(!TextUtils.isEmpty(entry.getPatientName())
+                    ? entry.getPatientName() : "Unknown");
             tvTime.setText(formatTimestamp(entry.getTimestamp()));
-            int confPct = (int) (entry.getConfidence() * 100);
-            tvConf.setText(confPct + "% match");
-            tvSymptoms.setText(entry.getSymptoms() != null ? entry.getSymptoms() : "—");
+            tvSource.setText(!TextUtils.isEmpty(entry.getModelSource())
+                    ? entry.getModelSource() : "specialty_hybrid_v1");
 
-            // Factors
+            int confPct = (int) Math.round(entry.getConfidence() * 100);
+            tvConf.setText(entry.isLowConfidence()
+                    ? "Low conf  " + confPct + "%"
+                    : confPct + "% route");
+            tvConf.setBackgroundResource(entry.isLowConfidence()
+                    ? R.drawable.badge_medium
+                    : R.drawable.badge_normal);
+
+            tvSymptoms.setText(!TextUtils.isEmpty(entry.getSymptoms()) ? entry.getSymptoms() : "—");
+            tvNormalizedSymptoms.setText(!TextUtils.isEmpty(entry.getNormalizedSymptoms())
+                    ? entry.getNormalizedSymptoms() : "—");
+
             List<String> factors = entry.getExtractedFactors();
             tvFactors.setText(factors != null && !factors.isEmpty()
-                    ? TextUtils.join(", ", factors) : "No keywords detected");
+                    ? TextUtils.join(", ", factors)
+                    : "No strong signals detected");
 
-            // Top specialty scores (top 3 non-trivial ones)
-            lScores.removeAllViews();
-            List<ModelEvalHistoryResponse.SpecialtyScore> scores = entry.getSpecialtyScores();
-            if (scores != null) {
-                int shown = 0;
-                for (ModelEvalHistoryResponse.SpecialtyScore s : scores) {
-                    if (s.getScore() <= 0.03 || shown >= 3) continue;
-                    TextView tv = new TextView(this);
-                    int pct = (int) (s.getScore() * 100);
-                    String kw = s.getMatchedKeywords() != null && !s.getMatchedKeywords().isEmpty()
-                            ? " ← " + TextUtils.join(", ", s.getMatchedKeywords()) : "";
-                    tv.setText("• " + s.getSpecialty() + "  " + pct + "%" + kw);
-                    tv.setTextSize(12f);
-                    tv.setTextColor(getResources().getColor(R.color.text_primary));
-                    tv.setPadding(0, 3, 0, 3);
-                    lScores.addView(tv);
-                    shown++;
-                }
+            String routeSummary = "Clinical fit: "
+                    + (!TextUtils.isEmpty(entry.getPrimarySpecialist()) ? entry.getPrimarySpecialist() : "General Practice")
+                    + "  •  SmartQ route: "
+                    + (!TextUtils.isEmpty(entry.getRoutedSpecialty()) ? entry.getRoutedSpecialty() : "General OPD");
+            if (entry.isLowConfidence()) {
+                routeSummary += "  •  manual review recommended";
             }
+            tvRouteSummary.setText(routeSummary);
 
-            // Recommended doctor
+            renderHistoryScores(entry.getSpecialtyScores(), lScores);
+
             ModelEvalHistoryResponse.RecommendedDoctor doc = entry.getRecommendedDoctor();
-            tvDoctor.setText(doc != null ? doc.getName() + " (" + doc.getSpecialty() + ")" : "—");
+            tvDoctor.setText(doc != null
+                    ? doc.getName() + " (" + doc.getSpecialty() + ")"
+                    : "—");
             tvReasoning.setText(entry.getReasoning() != null ? entry.getReasoning() : "—");
 
             layoutEvalHistory.addView(card);
         }
     }
 
-    // ── Format ISO timestamp to human-readable ─────────────────
+    private void renderPredictionScores(List<SymptomPredictResponse.SpecialtyScore> scores, LinearLayout container) {
+        container.removeAllViews();
+
+        if (scores == null || scores.isEmpty()) {
+            addScoreRow(container, "No strong specialty signals detected", null, false, true);
+            return;
+        }
+
+        int shown = 0;
+        for (SymptomPredictResponse.SpecialtyScore score : scores) {
+            if (score.getScore() <= 0 || shown >= 4) continue;
+            addScoreRow(
+                    container,
+                    score.getSpecialty(),
+                    buildScoreMeta(score.getScore(), score.getRoutedSpecialty(), score.getMatchedKeywords()),
+                    false,
+                    false
+            );
+            shown++;
+        }
+
+        if (shown == 0) {
+            addScoreRow(container, "No strong specialty signals detected", null, false, true);
+        }
+    }
+
+    private void renderHistoryScores(List<ModelEvalHistoryResponse.SpecialtyScore> scores, LinearLayout container) {
+        container.removeAllViews();
+
+        if (scores == null || scores.isEmpty()) {
+            addScoreRow(container, "No strong specialty signals detected", null, true, true);
+            return;
+        }
+
+        int shown = 0;
+        for (ModelEvalHistoryResponse.SpecialtyScore score : scores) {
+            if (score.getScore() <= 0 || shown >= 4) continue;
+            addScoreRow(
+                    container,
+                    score.getSpecialty(),
+                    buildScoreMeta(score.getScore(), score.getRoutedSpecialty(), score.getMatchedKeywords()),
+                    true,
+                    false
+            );
+            shown++;
+        }
+
+        if (shown == 0) {
+            addScoreRow(container, "No strong specialty signals detected", null, true, true);
+        }
+    }
+
+    private void addScoreRow(LinearLayout container, String title, String meta, boolean compact, boolean muted) {
+        TextView tv = new TextView(this);
+        StringBuilder text = new StringBuilder("• ").append(title);
+        if (!TextUtils.isEmpty(meta)) {
+            text.append("  ").append(meta);
+        }
+        tv.setText(text.toString());
+        tv.setTextSize(compact ? 12f : 13f);
+        tv.setTextColor(getResources().getColor(muted ? R.color.text_secondary : R.color.text_primary));
+        tv.setPadding(0, compact ? 3 : 4, 0, compact ? 3 : 4);
+        container.addView(tv);
+    }
+
+    private String buildScoreMeta(double score, String routedSpecialty, List<String> matchedSignals) {
+        int pct = (int) Math.round(score * 100);
+        StringBuilder meta = new StringBuilder(pct + "%");
+        if (!TextUtils.isEmpty(routedSpecialty)) {
+            meta.append(" → ").append(routedSpecialty);
+        }
+        if (matchedSignals != null && !matchedSignals.isEmpty()) {
+            meta.append(" ← ").append(TextUtils.join(", ", matchedSignals));
+        }
+        return meta.toString();
+    }
+
     private String formatTimestamp(String iso) {
         if (iso == null) return "—";
         try {
