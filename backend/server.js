@@ -14,6 +14,7 @@ if (missingEnvVars.length > 0) {
 const authRoutes = require('./routes/auth');
 const queueRoutes = require('./routes/queue');
 const adminRoutes = require('./routes/admin');
+const doctorsRoutes = require('./routes/doctors');
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/queue', queueRoutes);   // protected — Week 2
 app.use('/api/admin', adminRoutes);   // protected — Week 3
+app.use('/api/doctors', doctorsRoutes); // doctors list + symptom predict
 
 // ─── Global Error Handler ─────────────────────────────────
 app.use((err, req, res, next) => {

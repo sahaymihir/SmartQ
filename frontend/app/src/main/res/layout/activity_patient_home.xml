@@ -103,7 +103,129 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
-            <!-- Doctor selector -->
+            <!-- Symptoms input card -->
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/SmartQ.Card"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="10dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🤖"
+                            android:textSize="18sp"
+                            android:layout_marginEnd="8dp"/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Describe your symptoms"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_primary"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="AI will suggest the best doctor"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_secondary"/>
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/SmartQ.TextInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="e.g. chest pain, fever, joint ache...">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etSymptoms"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minLines="2"
+                            android:maxLines="4"
+                            android:inputType="textMultiLine|textCapSentences"
+                            android:textSize="14sp"
+                            android:textColor="@color/text_primary"/>
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnFindDoctor"
+                        style="@style/SmartQ.Button.Outlined"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Find Best Doctor"
+                        android:layout_marginTop="10dp"/>
+
+                    <!-- AI result (hidden until prediction runs) -->
+                    <LinearLayout
+                        android:id="@+id/layoutAiResult"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="@color/primary_light"
+                        android:padding="10dp"
+                        android:layout_marginTop="10dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="✨"
+                            android:textSize="16sp"
+                            android:layout_marginEnd="8dp"/>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvAiPickTitle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="AI Recommended"
+                                android:textSize="12sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/primary"/>
+
+                            <TextView
+                                android:id="@+id/tvAiPickReasoning"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="11sp"
+                                android:textColor="@color/text_secondary"
+                                android:maxLines="2"/>
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Doctor list card -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -114,48 +236,71 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="20dp">
+                    android:padding="16dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Select Doctor"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        android:layout_marginBottom="12dp"/>
-
-                    <RadioGroup
-                        android:id="@+id/rgDoctor"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical">
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="10dp">
 
-                        <com.google.android.material.radiobutton.MaterialRadioButton
-                            android:id="@+id/rbDoctor1"
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Select Doctor"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"/>
+
+                        <TextView
+                            android:id="@+id/tvSelectedDoctor"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="None selected"
+                            android:textSize="11sp"
+                            android:textColor="@color/text_secondary"/>
+                    </LinearLayout>
+
+                    <!-- Search field -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/SmartQ.TextInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Search by name or specialty"
+                        android:layout_marginBottom="10dp">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etDoctorSearch"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Dr. Nisha Shetty — General OPD"
-                            android:checked="true"
-                            android:textColor="@color/text_primary"
-                            android:padding="8dp"/>
+                            android:inputType="text"
+                            android:textSize="14sp"
+                            android:imeOptions="actionSearch"
+                            android:singleLine="true"
+                            android:textColor="@color/text_primary"/>
+                    </com.google.android.material.textfield.TextInputLayout>
 
-                        <com.google.android.material.radiobutton.MaterialRadioButton
-                            android:id="@+id/rbDoctor2"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Dr. Pawan Kumar — Orthopaedics"
-                            android:textColor="@color/text_primary"
-                            android:padding="8dp"/>
+                    <!-- Loading indicator -->
+                    <TextView
+                        android:id="@+id/tvDoctorListLoading"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Loading doctors..."
+                        android:textSize="13sp"
+                        android:textColor="@color/text_secondary"
+                        android:gravity="center"
+                        android:padding="16dp"
+                        android:visibility="visible"/>
 
-                        <com.google.android.material.radiobutton.MaterialRadioButton
-                            android:id="@+id/rbDoctor3"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Dr. Meena Rao — Cardiology"
-                            android:textColor="@color/text_primary"
-                            android:padding="8dp"/>
-                    </RadioGroup>
+                    <!-- Doctor list (populated dynamically) -->
+                    <LinearLayout
+                        android:id="@+id/layoutDoctorList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

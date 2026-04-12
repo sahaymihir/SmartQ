@@ -3,8 +3,12 @@ package com.example.smartqueue.network;
 import com.example.smartqueue.models.request.LoginRequest;
 import com.example.smartqueue.models.request.RegisterRequest;
 import com.example.smartqueue.models.request.PrescriptionRequest;
+import com.example.smartqueue.models.request.SymptomRequest;
 import com.example.smartqueue.models.response.AuthResponse;
+import com.example.smartqueue.models.response.DoctorsResponse;
+import com.example.smartqueue.models.response.ModelEvalHistoryResponse;
 import com.example.smartqueue.models.response.QueueResponse;
+import com.example.smartqueue.models.response.SymptomPredictResponse;
 import com.example.smartqueue.models.response.TokenResponse;
 import com.example.smartqueue.models.response.MessageResponse;
 
@@ -31,7 +35,15 @@ public interface ApiService {
     @POST("queue/checkin")
     Call<MessageResponse> checkIn();
 
-    // ── DOCTOR / ADMIN ENDPOINTS ──────────────────────
+    // ── DOCTOR ENDPOINTS ─────────────────────────────────────
+
+    @GET("doctors")
+    Call<DoctorsResponse> getDoctors();
+
+    @POST("doctors/symptom-predict")
+    Call<SymptomPredictResponse> predictDoctor(@Body SymptomRequest body);
+
+    // ── ADMIN ENDPOINTS ──────────────────────────────────────
 
     @GET("admin/queue")
     Call<QueueResponse> getAdminQueue(@Query("doctorId") String doctorId);
@@ -47,4 +59,11 @@ public interface ApiService {
 
     @POST("admin/prescription")
     Call<MessageResponse> savePrescription(@Body PrescriptionRequest body);
+
+    @GET("admin/model-eval-history")
+    Call<ModelEvalHistoryResponse> getModelEvalHistory();
+
+    @POST("admin/seed")
+    Call<MessageResponse> seedDummyData();
 }
+

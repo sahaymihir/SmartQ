@@ -42,6 +42,12 @@ const userSchema = new mongoose.Schema({
     enum: ['patient', 'admin', 'doctor'],
     default: 'patient'
   },
+  // Specialty — only relevant for role: 'doctor'
+  specialty: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   // Computed priority score — higher = more urgent
   // Seniors (60+): base score 10, others: base score 5
   // Severity bumps added later via queue snooze/triage

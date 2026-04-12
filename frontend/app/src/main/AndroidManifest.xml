@@ -37,6 +37,7 @@
         <activity android:name=".ui.auth.RegisterActivity" android:exported="false"/>
         <activity android:name=".ui.patient.PatientHomeActivity" android:exported="false"/>
         <activity android:name=".ui.admin.AdminDashboardActivity" android:exported="false"/>
+        <activity android:name=".ui.admin.ModelEvalActivity" android:exported="false"/>
         <activity android:name=".ui.doctor.DoctorHomeActivity" android:exported="false"/>
 
     </application>

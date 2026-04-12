@@ -4,9 +4,11 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -15,16 +17,22 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
 
 import com.example.smartqueue.R;
+import com.example.smartqueue.models.request.SymptomRequest;
+import com.example.smartqueue.models.response.DoctorsResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.models.response.MessageResponse;
+import com.example.smartqueue.models.response.SymptomPredictResponse;
 import com.example.smartqueue.models.response.TokenResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
 import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -36,27 +44,31 @@ public class PatientHomeActivity extends AppCompatActivity {
     private TextView tvGreeting, tvPatientName;
     private LinearLayout layoutNotInQueue, layoutInQueue;
     private CardView cardCalled;
-    private RadioGroup rgDoctor;
     private MaterialButton btnJoinQueue;
     private TextView tvTokenNumber, tvDoctorName, tvPosition, tvETA, tvQueueStatus;
     private TextView tvCheckinTitle, tvCheckinSubtitle, tvSnoozeCount;
     private CardView cardCheckin, cardSnooze;
     private MaterialButton btnCheckIn, btnSnooze, btnLeaveQueue, btnDone;
 
+    // New doctor-selection views
+    private TextInputEditText etSymptoms, etDoctorSearch;
+    private MaterialButton btnFindDoctor;
+    private LinearLayout layoutAiResult, layoutDoctorList;
+    private TextView tvAiPickTitle, tvAiPickReasoning, tvSelectedDoctor, tvDoctorListLoading;
+
     private SessionManager sessionManager;
     private ApiService apiService;
 
-    // Polling handler — refreshes queue status every 10s
+    // Doctor selection state
+    private List<DoctorsResponse.Doctor> allDoctors = new ArrayList<>();
+    private String selectedDoctorId   = null;
+    private String selectedDoctorName = null;
+    private String autoRecommendedId  = null;
+
+    // Polling handler
     private Handler pollHandler = new Handler(Looper.getMainLooper());
     private Runnable pollRunnable;
     private boolean isInQueue = false;
-
-    // Doctor IDs — replace with real MongoDB _id values after creating admin accounts
-    private static final String[] DOCTOR_IDS = {
-            "69d74ea332ca11b9fd32772f",  // Dr. Nisha Shetty
-            "69d4dd2e3a9c3c82e6baa59f",  // Dr. Pawan Kumar
-            "69d4df3fff45ca443418bd31"   // Dr. Meena Rao
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,33 +81,44 @@ public class PatientHomeActivity extends AppCompatActivity {
         bindViews();
         setupGreeting();
         setupClickListeners();
-        checkExistingToken(); // check if patient already has an active token
+        loadDoctors();
+        checkExistingToken();
     }
 
     private void bindViews() {
-        tvGreeting       = findViewById(R.id.tvGreeting);
-        tvPatientName    = findViewById(R.id.tvPatientName);
-        layoutNotInQueue = findViewById(R.id.layoutNotInQueue);
-        layoutInQueue    = findViewById(R.id.layoutInQueue);
-        cardCalled       = findViewById(R.id.cardCalled);
-        rgDoctor         = findViewById(R.id.rgDoctor);
-        btnJoinQueue     = findViewById(R.id.btnJoinQueue);
-        tvTokenNumber    = findViewById(R.id.tvTokenNumber);
-        tvDoctorName     = findViewById(R.id.tvDoctorName);
-        tvPosition       = findViewById(R.id.tvPosition);
-        tvETA            = findViewById(R.id.tvETA);
-        tvQueueStatus    = findViewById(R.id.tvQueueStatus);
-        tvCheckinTitle   = findViewById(R.id.tvCheckinTitle);
-        tvCheckinSubtitle = findViewById(R.id.tvCheckinSubtitle);
-        tvSnoozeCount    = findViewById(R.id.tvSnoozeCount);
-        cardCheckin      = findViewById(R.id.cardCheckin);
-        cardSnooze       = findViewById(R.id.cardSnooze);
-        btnCheckIn       = findViewById(R.id.btnCheckIn);
-        btnSnooze        = findViewById(R.id.btnSnooze);
-        btnLeaveQueue    = findViewById(R.id.btnLeaveQueue);
-        btnDone          = findViewById(R.id.btnDone);
+        tvGreeting         = findViewById(R.id.tvGreeting);
+        tvPatientName      = findViewById(R.id.tvPatientName);
+        layoutNotInQueue   = findViewById(R.id.layoutNotInQueue);
+        layoutInQueue      = findViewById(R.id.layoutInQueue);
+        cardCalled         = findViewById(R.id.cardCalled);
+        btnJoinQueue       = findViewById(R.id.btnJoinQueue);
+        tvTokenNumber      = findViewById(R.id.tvTokenNumber);
+        tvDoctorName       = findViewById(R.id.tvDoctorName);
+        tvPosition         = findViewById(R.id.tvPosition);
+        tvETA              = findViewById(R.id.tvETA);
+        tvQueueStatus      = findViewById(R.id.tvQueueStatus);
+        tvCheckinTitle     = findViewById(R.id.tvCheckinTitle);
+        tvCheckinSubtitle  = findViewById(R.id.tvCheckinSubtitle);
+        tvSnoozeCount      = findViewById(R.id.tvSnoozeCount);
+        cardCheckin        = findViewById(R.id.cardCheckin);
+        cardSnooze         = findViewById(R.id.cardSnooze);
+        btnCheckIn         = findViewById(R.id.btnCheckIn);
+        btnSnooze          = findViewById(R.id.btnSnooze);
+        btnLeaveQueue      = findViewById(R.id.btnLeaveQueue);
+        btnDone            = findViewById(R.id.btnDone);
         MaterialButton btnLogout = findViewById(R.id.btnLogout);
         btnLogout.setOnClickListener(v -> confirmLogout());
+
+        // New doctor-selection views
+        etSymptoms          = findViewById(R.id.etSymptoms);
+        etDoctorSearch      = findViewById(R.id.etDoctorSearch);
+        btnFindDoctor       = findViewById(R.id.btnFindDoctor);
+        layoutAiResult      = findViewById(R.id.layoutAiResult);
+        layoutDoctorList    = findViewById(R.id.layoutDoctorList);
+        tvAiPickTitle       = findViewById(R.id.tvAiPickTitle);
+        tvAiPickReasoning   = findViewById(R.id.tvAiPickReasoning);
+        tvSelectedDoctor    = findViewById(R.id.tvSelectedDoctor);
+        tvDoctorListLoading = findViewById(R.id.tvDoctorListLoading);
     }
 
     private void setupGreeting() {
@@ -106,27 +129,47 @@ public class PatientHomeActivity extends AppCompatActivity {
 
     private void setupClickListeners() {
 
-        // ── Join Queue ────────────────────────────────────
+        // Find Doctor (AI prediction)
+        btnFindDoctor.setOnClickListener(v -> {
+            String symptoms = etSymptoms.getText() != null
+                    ? etSymptoms.getText().toString().trim() : "";
+            if (symptoms.isEmpty()) {
+                Toast.makeText(this, "Please describe your symptoms first", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            predictDoctor(symptoms);
+        });
+
+        // Doctor list search filter
+        etDoctorSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+            @Override public void onTextChanged(CharSequence s, int st, int b, int c) {}
+            @Override
+            public void afterTextChanged(Editable s) {
+                filterAndRenderDoctors(s.toString().trim().toLowerCase());
+            }
+        });
+
+        // Join Queue
         btnJoinQueue.setOnClickListener(v -> {
-            String doctorId = getSelectedDoctorId();
+            if (selectedDoctorId == null) {
+                Toast.makeText(this, "Please select a doctor first", Toast.LENGTH_SHORT).show();
+                return;
+            }
             btnJoinQueue.setEnabled(false);
             btnJoinQueue.setText("Joining...");
 
-            apiService.joinQueue(doctorId).enqueue(new Callback<TokenResponse>() {
+            apiService.joinQueue(selectedDoctorId).enqueue(new Callback<TokenResponse>() {
                 @Override
                 public void onResponse(Call<TokenResponse> call, Response<TokenResponse> response) {
-                    if (response.code() == 401) {
-                        handleUnauthorized();
-                        return;
-                    }
-                    
+                    if (response.code() == 401) { handleUnauthorized(); return; }
                     if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                         TokenResponse body = response.body();
                         isInQueue = true;
                         showInQueueState();
                         updateQueueUI(body.getPosition(), body.getTokenNumber(),
                                 body.getEtaMinutes(), "waiting", false, 0);
-                        tvDoctorName.setText(getSelectedDoctorName());
+                        tvDoctorName.setText(selectedDoctorName);
                         startPolling();
                         Toast.makeText(PatientHomeActivity.this,
                                 "Token #" + body.getTokenNumber() + " issued!", Toast.LENGTH_SHORT).show();
@@ -137,7 +180,6 @@ public class PatientHomeActivity extends AppCompatActivity {
                                 "Could not join queue. Try again.", Toast.LENGTH_SHORT).show();
                     }
                 }
-
                 @Override
                 public void onFailure(Call<TokenResponse> call, Throwable t) {
                     btnJoinQueue.setEnabled(true);
@@ -148,16 +190,13 @@ public class PatientHomeActivity extends AppCompatActivity {
             });
         });
 
-        // ── Check In ──────────────────────────────────────
+        // Check In
         btnCheckIn.setOnClickListener(v -> {
             btnCheckIn.setEnabled(false);
             apiService.checkIn().enqueue(new Callback<MessageResponse>() {
                 @Override
                 public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
-                    if (response.code() == 401) {
-                        handleUnauthorized();
-                        return;
-                    }
+                    if (response.code() == 401) { handleUnauthorized(); return; }
                     if (response.isSuccessful() && response.body() != null) {
                         updateCheckinUI(true);
                         Toast.makeText(PatientHomeActivity.this,
@@ -174,7 +213,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             });
         });
 
-        // ── Snooze ────────────────────────────────────────
+        // Snooze
         btnSnooze.setOnClickListener(v ->
                 new AlertDialog.Builder(this)
                         .setTitle("Snooze Queue")
@@ -183,14 +222,11 @@ public class PatientHomeActivity extends AppCompatActivity {
                             apiService.snoozeQueue(2).enqueue(new Callback<MessageResponse>() {
                                 @Override
                                 public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
-                                    if (response.code() == 401) {
-                                        handleUnauthorized();
-                                        return;
-                                    }
+                                    if (response.code() == 401) { handleUnauthorized(); return; }
                                     if (response.isSuccessful() && response.body() != null) {
                                         Toast.makeText(PatientHomeActivity.this,
                                                 response.body().getMessage(), Toast.LENGTH_SHORT).show();
-                                        fetchQueueStatus(); // refresh immediately
+                                        fetchQueueStatus();
                                     }
                                 }
                                 @Override
@@ -203,7 +239,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                         .show()
         );
 
-        // ── Leave Queue ───────────────────────────────────
+        // Leave Queue
         btnLeaveQueue.setOnClickListener(v ->
                 new AlertDialog.Builder(this)
                         .setTitle("Leave Queue?")
@@ -219,7 +255,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                         .show()
         );
 
-        // ── Done ──────────────────────────────────────────
+        // Done
         btnDone.setOnClickListener(v -> {
             stopPolling();
             isInQueue = false;
@@ -229,15 +265,153 @@ public class PatientHomeActivity extends AppCompatActivity {
         });
     }
 
+    // Load doctors from API
+    private void loadDoctors() {
+        tvDoctorListLoading.setVisibility(View.VISIBLE);
+        layoutDoctorList.setVisibility(View.GONE);
+
+        apiService.getDoctors().enqueue(new Callback<DoctorsResponse>() {
+            @Override
+            public void onResponse(Call<DoctorsResponse> call, Response<DoctorsResponse> response) {
+                if (response.isSuccessful() && response.body() != null
+                        && response.body().isSuccess()
+                        && response.body().getDoctors() != null
+                        && !response.body().getDoctors().isEmpty()) {
+                    allDoctors = response.body().getDoctors();
+                    tvDoctorListLoading.setVisibility(View.GONE);
+                    layoutDoctorList.setVisibility(View.VISIBLE);
+                    filterAndRenderDoctors("");
+                } else {
+                    tvDoctorListLoading.setText("No doctors found. Ask admin to run Seed Data.");
+                }
+            }
+            @Override
+            public void onFailure(Call<DoctorsResponse> call, Throwable t) {
+                tvDoctorListLoading.setText("Could not load doctors. Is backend running?");
+            }
+        });
+    }
+
+    // Filter and render doctor list based on search query
+    private void filterAndRenderDoctors(String query) {
+        List<DoctorsResponse.Doctor> filtered = new ArrayList<>();
+        for (DoctorsResponse.Doctor doc : allDoctors) {
+            if (query.isEmpty()
+                    || doc.getName().toLowerCase().contains(query)
+                    || doc.getSpecialty().toLowerCase().contains(query)) {
+                filtered.add(doc);
+            }
+        }
+        renderDoctorList(filtered);
+    }
+
+    // Inflate and render doctor list items into layoutDoctorList
+    private void renderDoctorList(List<DoctorsResponse.Doctor> doctors) {
+        layoutDoctorList.removeAllViews();
+        LayoutInflater inflater = LayoutInflater.from(this);
+
+        if (doctors.isEmpty()) {
+            TextView tv = new TextView(this);
+            tv.setText("No doctors match your search");
+            tv.setTextSize(13f);
+            tv.setPadding(0, 24, 0, 24);
+            tv.setGravity(android.view.Gravity.CENTER);
+            tv.setTextColor(getResources().getColor(R.color.text_secondary));
+            layoutDoctorList.addView(tv);
+            return;
+        }
+
+        for (DoctorsResponse.Doctor doctor : doctors) {
+            View item = inflater.inflate(R.layout.item_doctor, layoutDoctorList, false);
+
+            CardView card        = item.findViewById(R.id.cardDoctorItem);
+            TextView tvInitial   = item.findViewById(R.id.tvDoctorInitial);
+            TextView tvName      = item.findViewById(R.id.tvDoctorItemName);
+            TextView tvSpecialty = item.findViewById(R.id.tvDoctorItemSpecialty);
+            TextView tvAiBadge   = item.findViewById(R.id.tvAiPick);
+            TextView tvCheck     = item.findViewById(R.id.tvDoctorSelectedMark);
+
+            tvName.setText(doctor.getName());
+            tvSpecialty.setText(doctor.getSpecialty());
+            tvInitial.setText(specialtyInitial(doctor.getSpecialty()));
+
+            boolean isSelected = doctor.getId() != null && doctor.getId().equals(selectedDoctorId);
+            boolean isAiPick   = doctor.getId() != null && doctor.getId().equals(autoRecommendedId);
+
+            tvCheck.setVisibility(isSelected ? View.VISIBLE : View.GONE);
+            tvAiBadge.setVisibility(isAiPick ? View.VISIBLE : View.GONE);
+            card.setCardBackgroundColor(getResources().getColor(
+                    isSelected ? R.color.primary_light : R.color.white));
+
+            final String docId   = doctor.getId();
+            final String docName = doctor.getName();
+
+            card.setOnClickListener(v -> {
+                selectedDoctorId   = docId;
+                selectedDoctorName = docName;
+                tvSelectedDoctor.setText(docName);
+                // Keep AI badge but user has overridden if different doctor selected
+                filterAndRenderDoctors(
+                        etDoctorSearch.getText() != null
+                                ? etDoctorSearch.getText().toString().trim().toLowerCase() : "");
+            });
+
+            layoutDoctorList.addView(item);
+        }
+    }
+
+    // Call symptom prediction API
+    private void predictDoctor(String symptoms) {
+        btnFindDoctor.setEnabled(false);
+        btnFindDoctor.setText("Finding...");
+
+        apiService.predictDoctor(new SymptomRequest(symptoms))
+                .enqueue(new Callback<SymptomPredictResponse>() {
+                    @Override
+                    public void onResponse(Call<SymptomPredictResponse> call,
+                                           Response<SymptomPredictResponse> response) {
+                        btnFindDoctor.setEnabled(true);
+                        btnFindDoctor.setText("Find Best Doctor");
+                        if (response.code() == 401) { handleUnauthorized(); return; }
+
+                        if (response.isSuccessful() && response.body() != null
+                                && response.body().isSuccess()) {
+                            SymptomPredictResponse body = response.body();
+                            SymptomPredictResponse.Doctor rec = body.getRecommendedDoctor();
+                            if (rec != null && rec.getId() != null) {
+                                autoRecommendedId  = rec.getId();
+                                selectedDoctorId   = rec.getId();
+                                selectedDoctorName = rec.getName();
+                                tvSelectedDoctor.setText(rec.getName());
+                            }
+                            tvAiPickTitle.setText("🤖 AI Pick: "
+                                    + (rec != null ? rec.getName() : "—")
+                                    + " (" + (rec != null ? rec.getSpecialty() : "") + ")");
+                            tvAiPickReasoning.setText(body.getReasoning());
+                            layoutAiResult.setVisibility(View.VISIBLE);
+                            filterAndRenderDoctors(
+                                    etDoctorSearch.getText() != null
+                                            ? etDoctorSearch.getText().toString().trim().toLowerCase() : "");
+                        } else {
+                            Toast.makeText(PatientHomeActivity.this,
+                                    "Could not predict doctor. Try again.", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<SymptomPredictResponse> call, Throwable t) {
+                        btnFindDoctor.setEnabled(true);
+                        btnFindDoctor.setText("Find Best Doctor");
+                        Toast.makeText(PatientHomeActivity.this,
+                                "Server error", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
     private void checkExistingToken() {
         apiService.getQueueStatus().enqueue(new Callback<QueueResponse>() {
             @Override
             public void onResponse(Call<QueueResponse> call, Response<QueueResponse> response) {
-                if (response.code() == 401) {
-                    // Don't call handleUnauthorized here during onCreate, 
-                    // it might loop if token is cleared but session is still "logged in"
-                    return;
-                }
+                if (response.code() == 401) return;
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     QueueResponse body = response.body();
                     isInQueue = true;
@@ -259,7 +433,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     }
 
     private void startPolling() {
-        stopPolling(); // Clear existing
+        stopPolling();
         pollRunnable = new Runnable() {
             @Override
             public void run() {
@@ -280,10 +454,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         apiService.getQueueStatus().enqueue(new Callback<QueueResponse>() {
             @Override
             public void onResponse(Call<QueueResponse> call, Response<QueueResponse> response) {
-                if (response.code() == 401) {
-                    handleUnauthorized();
-                    return;
-                }
+                if (response.code() == 401) { handleUnauthorized(); return; }
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     QueueResponse body = response.body();
                     if ("called".equals(body.getStatus())) {
@@ -314,7 +485,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     }
 
     private void updateQueueUI(int position, int token, int eta,
-                               String status, boolean checkedIn, int snoozeCount) {
+                                String status, boolean checkedIn, int snoozeCount) {
         tvTokenNumber.setText("#" + token);
         tvPosition.setText(String.valueOf(position));
         tvETA.setText(eta == 0 ? "Next up!" : "~" + eta + " min");
@@ -355,20 +526,6 @@ public class PatientHomeActivity extends AppCompatActivity {
         cardCalled.setVisibility(View.VISIBLE);
     }
 
-    private String getSelectedDoctorId() {
-        int selectedId = rgDoctor.getCheckedRadioButtonId();
-        if (selectedId == R.id.rbDoctor2) return DOCTOR_IDS[1];
-        if (selectedId == R.id.rbDoctor3) return DOCTOR_IDS[2];
-        return DOCTOR_IDS[0];
-    }
-
-    private String getSelectedDoctorName() {
-        int selectedId = rgDoctor.getCheckedRadioButtonId();
-        if (selectedId == R.id.rbDoctor2) return "Dr. Pawan Kumar";
-        if (selectedId == R.id.rbDoctor3) return "Dr. Meena Rao";
-        return "Dr. Nisha Shetty";
-    }
-
     private String formatStatus(String status) {
         switch (status) {
             case "waiting":   return "Waiting";
@@ -376,6 +533,12 @@ public class PatientHomeActivity extends AppCompatActivity {
             case "checkedin": return "Arrived";
             default:          return "Waiting";
         }
+    }
+
+    // Return first letter of specialty for the avatar circle
+    private String specialtyInitial(String specialty) {
+        if (specialty == null || specialty.isEmpty()) return "?";
+        return String.valueOf(specialty.charAt(0)).toUpperCase();
     }
 
     private void confirmLogout() {

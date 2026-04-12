@@ -30,7 +30,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
     private TextView tvAdminName, tvCurrentlyServing, tvPausedBadge;
     private TextView tvStatWaiting, tvStatDone, tvStatAvg, tvQueueLabel;
-    private MaterialButton btnCallNext, btnPause, btnLogout;
+    private MaterialButton btnCallNext, btnPause, btnLogout, btnModelEval, btnSeedData;
     private LinearLayout layoutQueueList;
 
     private SessionManager sessionManager;
@@ -70,6 +70,8 @@ public class AdminDashboardActivity extends AppCompatActivity {
         btnLogout          = findViewById(R.id.btnLogout);
 
         tvAdminName.setText(sessionManager.getName());
+        btnModelEval   = findViewById(R.id.btnModelEval);
+        btnSeedData    = findViewById(R.id.btnSeedData);
     }
 
     private void setupClickListeners() {
@@ -127,6 +129,38 @@ public class AdminDashboardActivity extends AppCompatActivity {
                             sessionManager.clearSession();
                             startActivity(new Intent(this, LoginActivity.class));
                             finish();
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show()
+        );
+
+        // ── Model Evaluation ──────────────────────────────
+        btnModelEval.setOnClickListener(v ->
+                startActivity(new Intent(this, ModelEvalActivity.class))
+        );
+
+        // ── Seed Dummy Data ───────────────────────────────
+        btnSeedData.setOnClickListener(v ->
+                new AlertDialog.Builder(this)
+                        .setTitle("Seed Demo Data")
+                        .setMessage("This will create 8 Indian doctors and 12 Indian patient accounts. Existing accounts will be skipped. Continue?")
+                        .setPositiveButton("Seed", (d, w) -> {
+                            btnSeedData.setEnabled(false);
+                            apiService.seedDummyData().enqueue(new Callback<MessageResponse>() {
+                                @Override
+                                public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
+                                    btnSeedData.setEnabled(true);
+                                    if (response.isSuccessful() && response.body() != null) {
+                                        Toast.makeText(AdminDashboardActivity.this,
+                                                response.body().getMessage(), Toast.LENGTH_LONG).show();
+                                    }
+                                }
+                                @Override
+                                public void onFailure(Call<MessageResponse> call, Throwable t) {
+                                    btnSeedData.setEnabled(true);
+                                    Toast.makeText(AdminDashboardActivity.this, "Network error", Toast.LENGTH_SHORT).show();
+                                }
+                            });
                         })
                         .setNegativeButton("Cancel", null)
                         .show()
