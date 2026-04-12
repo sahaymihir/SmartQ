@@ -54,6 +54,7 @@ const buildTokenResponse = (token) => ({
   actualConsultMinutes: token.actualConsultMinutes,
   status: token.status,
   checkedIn: token.checkedIn,
+  snoozeCount: token.snoozeCount || 0,
   priority: token.priority,
   priorityScore: token.priorityScore,
   aiConfidence: token.aiConfidence,

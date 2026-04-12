@@ -10,6 +10,7 @@ public class TokenResponse {
     private int position;
     private int etaMinutes;
     private int predictedWaitMinutes;
+    private int snoozeCount;
     private String routingLane;
     private boolean requiresImmediateReview;
     private String escalationReason;
@@ -32,6 +33,7 @@ public class TokenResponse {
     public int getPosition() { return position; }
     public int getEtaMinutes() { return etaMinutes; }
     public int getPredictedWaitMinutes() { return predictedWaitMinutes; }
+    public int getSnoozeCount() { return snoozeCount; }
     public String getRoutingLane() { return routingLane; }
     public boolean isImmediateReviewRequired() { return requiresImmediateReview; }
     public String getEscalationReason() { return escalationReason; }

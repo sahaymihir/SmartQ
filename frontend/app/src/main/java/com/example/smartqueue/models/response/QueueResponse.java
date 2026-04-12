@@ -10,6 +10,7 @@ public class QueueResponse {
     private String status;
     private String doctorName;
     private boolean checkedIn;
+    private int snoozeCount;
     private String routingLane;
     private boolean requiresImmediateReview;
     private String escalationReason;
@@ -26,6 +27,7 @@ public class QueueResponse {
     public String getStatus()                   { return status; }
     public String getDoctorName()               { return doctorName; }
     public boolean isCheckedIn()                { return checkedIn; }
+    public int getSnoozeCount()                 { return snoozeCount; }
     public String getRoutingLane()              { return routingLane; }
     public boolean isImmediateReviewRequired()  { return requiresImmediateReview; }
     public String getEscalationReason()         { return escalationReason; }
@@ -42,6 +44,7 @@ public class QueueResponse {
     public void setStatus(String v)                     { this.status = v; }
     public void setDoctorName(String v)                 { this.doctorName = v; }
     public void setCheckedIn(boolean v)                 { this.checkedIn = v; }
+    public void setSnoozeCount(int v)                   { this.snoozeCount = v; }
     public void setRoutingLane(String v)                { this.routingLane = v; }
     public void setRequiresImmediateReview(boolean v)   { this.requiresImmediateReview = v; }
     public void setEscalationReason(String v)           { this.escalationReason = v; }

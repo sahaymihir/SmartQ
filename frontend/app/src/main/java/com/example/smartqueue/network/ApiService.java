@@ -46,6 +46,9 @@ public interface ApiService {
     @POST("queue/checkin")
     Call<MessageResponse> checkIn();
 
+    @POST("queue/leave")
+    Call<MessageResponse> leaveQueue();
+
     /** Patient's past consultations — used for follow-up visit linkage. */
     @GET("queue/history")
     Call<ConsultationHistoryResponse> getConsultationHistory();

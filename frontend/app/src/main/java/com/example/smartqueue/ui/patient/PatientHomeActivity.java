@@ -52,7 +52,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     private LinearLayout layoutNotInQueue, layoutInQueue;
     private CardView cardCalled;
     private MaterialButton btnJoinQueue;
-    private TextView tvTokenNumber, tvDoctorName, tvPosition, tvETA, tvQueueStatus;
+    private TextView tvTokenNumber, tvDoctorName, tvPosition, tvPositionLabel, tvETA, tvQueueStatus;
     private TextView tvCheckinTitle, tvCheckinSubtitle, tvSnoozeCount;
     private CardView cardCheckin, cardSnooze;
     private MaterialButton btnCheckIn, btnSnooze, btnLeaveQueue, btnDone;
@@ -129,6 +129,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         tvTokenNumber      = findViewById(R.id.tvTokenNumber);
         tvDoctorName       = findViewById(R.id.tvDoctorName);
         tvPosition         = findViewById(R.id.tvPosition);
+        tvPositionLabel    = findViewById(R.id.tvPositionLabel);
         tvETA              = findViewById(R.id.tvETA);
         tvQueueStatus      = findViewById(R.id.tvQueueStatus);
         tvCheckinTitle     = findViewById(R.id.tvCheckinTitle);
@@ -251,7 +252,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                         isInQueue = true;
                         showInQueueState();
                         updateQueueUI(body.getPosition(), body.getTokenNumber(),
-                                body.getEtaMinutes(), "waiting", false, 0,
+                                body.getEtaMinutes(), "waiting", false, body.getSnoozeCount(),
                                 isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
                         tvDoctorName.setText(selectedDoctorName);
                         startPolling();
@@ -290,12 +291,19 @@ public class PatientHomeActivity extends AppCompatActivity {
                 @Override
                 public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
                     if (response.code() == 401) { handleUnauthorized(); return; }
-                    if (response.isSuccessful() && response.body() != null) {
+                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                         updateCheckinUI(true);
                         Toast.makeText(PatientHomeActivity.this,
                                 "Checked in! Hospital notified.", Toast.LENGTH_SHORT).show();
                     } else {
                         btnCheckIn.setEnabled(true);
+                        fetchQueueStatus();
+                        MessageResponse error = ApiErrorParser.parseMessage(response);
+                        Toast.makeText(PatientHomeActivity.this,
+                                error != null && error.getMessage() != null
+                                        ? error.getMessage()
+                                        : "Could not check in. Try again.",
+                                Toast.LENGTH_SHORT).show();
                     }
                 }
                 @Override
@@ -312,18 +320,31 @@ public class PatientHomeActivity extends AppCompatActivity {
                         .setTitle("Snooze Queue")
                         .setMessage("You'll be pushed back 2 spots. Max 2 snoozes.")
                         .setPositiveButton("Snooze", (dialog, which) -> {
+                            btnSnooze.setEnabled(false);
                             apiService.snoozeQueue(2).enqueue(new Callback<MessageResponse>() {
                                 @Override
                                 public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
                                     if (response.code() == 401) { handleUnauthorized(); return; }
-                                    if (response.isSuccessful() && response.body() != null) {
+                                    if (response.isSuccessful() && response.body() != null
+                                            && response.body().isSuccess()) {
                                         Toast.makeText(PatientHomeActivity.this,
                                                 response.body().getMessage(), Toast.LENGTH_SHORT).show();
+                                        btnSnooze.setEnabled(true);
+                                        fetchQueueStatus();
+                                    } else {
+                                        MessageResponse error = ApiErrorParser.parseMessage(response);
+                                        Toast.makeText(PatientHomeActivity.this,
+                                                error != null && error.getMessage() != null
+                                                        ? error.getMessage()
+                                                        : "Could not snooze queue. Try again.",
+                                                Toast.LENGTH_SHORT).show();
+                                        btnSnooze.setEnabled(true);
                                         fetchQueueStatus();
                                     }
                                 }
                                 @Override
                                 public void onFailure(Call<MessageResponse> call, Throwable t) {
+                                    btnSnooze.setEnabled(true);
                                     Toast.makeText(PatientHomeActivity.this, "Network error", Toast.LENGTH_SHORT).show();
                                 }
                             });
@@ -333,28 +354,56 @@ public class PatientHomeActivity extends AppCompatActivity {
         );
 
         // Leave Queue
-        btnLeaveQueue.setOnClickListener(v ->
-                new AlertDialog.Builder(this)
-                        .setTitle("Leave Queue?")
-                        .setMessage("Cancel your token?")
-                        .setPositiveButton("Leave", (dialog, which) -> {
-                            stopPolling();
-                            isInQueue = false;
-                            showNotInQueueState();
-                            btnJoinQueue.setEnabled(true);
-                            btnJoinQueue.setText("Join Queue");
-                        })
-                        .setNegativeButton("Stay", null)
-                        .show()
-        );
+        btnLeaveQueue.setOnClickListener(v -> confirmLeaveQueue());
 
         // Done
-        btnDone.setOnClickListener(v -> {
-            stopPolling();
-            isInQueue = false;
-            showNotInQueueState();
-            btnJoinQueue.setEnabled(true);
-            btnJoinQueue.setText("Join Queue");
+        btnDone.setOnClickListener(v -> fetchQueueStatus(true));
+    }
+
+    private void confirmLeaveQueue() {
+        new AlertDialog.Builder(this)
+                .setTitle("Leave Queue?")
+                .setMessage("This cancels your active token and updates the hospital queue.")
+                .setPositiveButton("Leave", (dialog, which) -> leaveQueue())
+                .setNegativeButton("Stay", null)
+                .show();
+    }
+
+    private void leaveQueue() {
+        setLeaveQueueLoading(true);
+        apiService.leaveQueue().enqueue(new Callback<MessageResponse>() {
+            @Override
+            public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
+                if (response.code() == 401) { handleUnauthorized(); return; }
+                if (response.code() == 404) {
+                    handleNoActiveToken(false);
+                    Toast.makeText(PatientHomeActivity.this, "No active token found.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    Toast.makeText(PatientHomeActivity.this,
+                            response.body().getMessage() != null
+                                    ? response.body().getMessage()
+                                    : "Token cancelled.",
+                            Toast.LENGTH_SHORT).show();
+                    handleNoActiveToken(false);
+                } else {
+                    setLeaveQueueLoading(false);
+                    MessageResponse error = ApiErrorParser.parseMessage(response);
+                    Toast.makeText(PatientHomeActivity.this,
+                            error != null && error.getMessage() != null
+                                    ? error.getMessage()
+                                    : "Could not leave queue. Try again.",
+                            Toast.LENGTH_SHORT).show();
+                    fetchQueueStatus();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<MessageResponse> call, Throwable t) {
+                setLeaveQueueLoading(false);
+                Toast.makeText(PatientHomeActivity.this, "Network error", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
@@ -390,11 +439,14 @@ public class PatientHomeActivity extends AppCompatActivity {
 
     // Filter and render doctor list based on search query
     private void filterAndRenderDoctors(String query) {
+        String normalizedQuery = query == null ? "" : query.trim().toLowerCase();
         List<DoctorsResponse.Doctor> filtered = new ArrayList<>();
         for (DoctorsResponse.Doctor doc : allDoctors) {
-            if (query.isEmpty()
-                    || doc.getName().toLowerCase().contains(query)
-                    || doc.getSpecialty().toLowerCase().contains(query)) {
+            String name = doc.getName() == null ? "" : doc.getName().toLowerCase();
+            String specialty = doc.getSpecialty() == null ? "" : doc.getSpecialty().toLowerCase();
+            if (normalizedQuery.isEmpty()
+                    || name.contains(normalizedQuery)
+                    || specialty.contains(normalizedQuery)) {
                 filtered.add(doc);
             }
         }
@@ -427,9 +479,12 @@ public class PatientHomeActivity extends AppCompatActivity {
             TextView tvAiBadge   = item.findViewById(R.id.tvAiPick);
             TextView tvCheck     = item.findViewById(R.id.tvDoctorSelectedMark);
 
-            tvName.setText(doctor.getName());
-            tvSpecialty.setText(doctor.getSpecialty());
-            tvInitial.setText(specialtyInitial(doctor.getSpecialty()));
+            String displayName = textOrDefault(doctor.getName(), "Doctor");
+            String displaySpecialty = textOrDefault(doctor.getSpecialty(), "General OPD");
+
+            tvName.setText(displayName);
+            tvSpecialty.setText(displaySpecialty);
+            tvInitial.setText(specialtyInitial(displaySpecialty));
 
             boolean isSelected = doctor.getId() != null && doctor.getId().equals(selectedDoctorId);
             boolean isAiPick   = doctor.getId() != null && doctor.getId().equals(autoRecommendedId);
@@ -440,7 +495,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                     isSelected ? R.color.primary_container : R.color.surface_container_low));
 
             final String docId   = doctor.getId();
-            final String docName = doctor.getName();
+            final String docName = displayName;
 
             card.setOnClickListener(v -> {
                 selectedDoctorId   = docId;
@@ -474,15 +529,17 @@ public class PatientHomeActivity extends AppCompatActivity {
                                 && response.body().isSuccess()) {
                             SymptomPredictResponse body = response.body();
                             SymptomPredictResponse.Doctor rec = body.getRecommendedDoctor();
+                            String recName = rec != null ? textOrDefault(rec.getName(), "Recommended doctor") : "No match";
+                            String recSpecialty = rec != null ? textOrDefault(rec.getSpecialty(), "General OPD") : "";
                             if (rec != null && rec.getId() != null) {
                                 autoRecommendedId  = rec.getId();
                                 selectedDoctorId   = rec.getId();
-                                selectedDoctorName = rec.getName();
-                                tvSelectedDoctor.setText(rec.getName());
+                                selectedDoctorName = recName;
+                                tvSelectedDoctor.setText(recName);
                             }
-                            tvAiPickTitle.setText("Prediction: "
-                                    + (rec != null ? rec.getName() : "—")
-                                    + " (" + (rec != null ? rec.getSpecialty() : "") + ")");
+                            tvAiPickTitle.setText(rec != null
+                                    ? "Suggested doctor: " + recName + " (" + recSpecialty + ")"
+                                    : "No confident doctor suggestion");
 
                             StringBuilder meta = new StringBuilder();
                             if (body.getPrimarySpecialist() != null && !body.getPrimarySpecialist().isEmpty()) {
@@ -532,24 +589,24 @@ public class PatientHomeActivity extends AppCompatActivity {
         apiService.getQueueStatus().enqueue(new Callback<QueueResponse>() {
             @Override
             public void onResponse(Call<QueueResponse> call, Response<QueueResponse> response) {
-                if (response.code() == 401) return;
+                if (response.code() == 401) { handleUnauthorized(); return; }
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     QueueResponse body = response.body();
                     isInQueue = true;
                     showInQueueState();
                     updateQueueUI(body.getPosition(), body.getTokenNumber(),
-                            body.getEtaMinutes(), body.getStatus(), body.isCheckedIn(), 0,
+                            body.getEtaMinutes(), body.getStatus(), body.isCheckedIn(), body.getSnoozeCount(),
                             isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
                     if (body.getDoctorName() != null) tvDoctorName.setText(body.getDoctorName());
                     if ("called".equals(body.getStatus())) showCalledState();
                     else startPolling();
                 } else {
-                    showNotInQueueState();
+                    handleNoActiveToken(false);
                 }
             }
             @Override
             public void onFailure(Call<QueueResponse> call, Throwable t) {
-                showNotInQueueState();
+                handleNoActiveToken(false);
             }
         });
     }
@@ -573,25 +630,88 @@ public class PatientHomeActivity extends AppCompatActivity {
     }
 
     private void fetchQueueStatus() {
+        fetchQueueStatus(false);
+    }
+
+    private void fetchQueueStatus(boolean userInitiated) {
+        if (userInitiated) {
+            setCalledRefreshLoading(true);
+        }
         apiService.getQueueStatus().enqueue(new Callback<QueueResponse>() {
             @Override
             public void onResponse(Call<QueueResponse> call, Response<QueueResponse> response) {
+                if (userInitiated) {
+                    setCalledRefreshLoading(false);
+                }
                 if (response.code() == 401) { handleUnauthorized(); return; }
+                if (response.code() == 404) {
+                    handleNoActiveToken(userInitiated);
+                    return;
+                }
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     QueueResponse body = response.body();
+                    isInQueue = true;
+                    if (body.getDoctorName() != null) tvDoctorName.setText(body.getDoctorName());
                     if ("called".equals(body.getStatus())) {
                         stopPolling();
                         showCalledState();
+                        if (userInitiated) {
+                            Toast.makeText(PatientHomeActivity.this,
+                                    "Your token is still active.", Toast.LENGTH_SHORT).show();
+                        }
                     } else {
+                        showInQueueState();
                         updateQueueUI(body.getPosition(), body.getTokenNumber(),
-                                body.getEtaMinutes(), body.getStatus(), body.isCheckedIn(), 0,
+                                body.getEtaMinutes(), body.getStatus(), body.isCheckedIn(), body.getSnoozeCount(),
                                 isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
+                        startPolling();
                     }
+                } else if (userInitiated) {
+                    MessageResponse error = ApiErrorParser.parseMessage(response);
+                    Toast.makeText(PatientHomeActivity.this,
+                            error != null && error.getMessage() != null
+                                    ? error.getMessage()
+                                    : "Could not refresh queue status.",
+                            Toast.LENGTH_SHORT).show();
                 }
             }
             @Override
-            public void onFailure(Call<QueueResponse> call, Throwable t) { }
+            public void onFailure(Call<QueueResponse> call, Throwable t) {
+                if (userInitiated) {
+                    setCalledRefreshLoading(false);
+                    Toast.makeText(PatientHomeActivity.this, "Network error", Toast.LENGTH_SHORT).show();
+                }
+            }
         });
+    }
+
+    private void handleNoActiveToken(boolean showToast) {
+        stopPolling();
+        isInQueue = false;
+        showNotInQueueState();
+        resetJoinButton();
+        setLeaveQueueLoading(false);
+        setCalledRefreshLoading(false);
+        cardTestRecs.setVisibility(View.GONE);
+        loadConsultationHistory(false);
+        if (showToast) {
+            Toast.makeText(this, "No active queue token found.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void resetJoinButton() {
+        btnJoinQueue.setEnabled(true);
+        btnJoinQueue.setText("Join Queue");
+    }
+
+    private void setLeaveQueueLoading(boolean loading) {
+        btnLeaveQueue.setEnabled(!loading);
+        btnLeaveQueue.setText(loading ? "Leaving..." : "Leave Queue");
+    }
+
+    private void setCalledRefreshLoading(boolean loading) {
+        btnDone.setEnabled(!loading);
+        btnDone.setText(loading ? "Refreshing..." : "Refresh Status");
     }
 
     private void handleUnauthorized() {
@@ -613,6 +733,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         tvTokenNumber.setText("#" + token);
         if (immediateReview) {
             tvPosition.setText("ER");
+            tvPositionLabel.setText("review");
             tvETA.setText("Immediate review");
             tvQueueStatus.setText("Immediate review");
             btnSnooze.setEnabled(false);
@@ -620,12 +741,15 @@ public class PatientHomeActivity extends AppCompatActivity {
             tvSnoozeCount.setText("Emergency cases cannot use snooze");
         } else {
             tvPosition.setText(String.valueOf(position));
+            tvPositionLabel.setText("in line");
             tvETA.setText(eta == 0 ? "Next up!" : "~" + eta + " min");
             tvQueueStatus.setText(formatStatus(status));
-            boolean canSnooze = "waiting".equals(status);
+            boolean canSnooze = "waiting".equals(status) && snoozeCount < 2;
             btnSnooze.setEnabled(canSnooze);
             cardSnooze.setAlpha(canSnooze ? 1f : 0.6f);
-            tvSnoozeCount.setText("Push back 2 spots (" + snoozeCount + "/2 used)");
+            tvSnoozeCount.setText(snoozeCount >= 2
+                    ? "Maximum snooze limit reached (2/2 used)"
+                    : "Push back 2 spots (" + snoozeCount + "/2 used)");
         }
         updateCheckinUI(checkedIn);
     }
@@ -667,6 +791,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     }
 
     private String formatStatus(String status) {
+        if (status == null) return "Waiting";
         switch (status) {
             case "waiting":   return "Waiting";
             case "called":    return "Called!";
@@ -872,6 +997,10 @@ public class PatientHomeActivity extends AppCompatActivity {
         return label;
     }
 
+    private String textOrDefault(String value, String fallback) {
+        return isBlank(value) ? fallback : value.trim();
+    }
+
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }
@@ -893,7 +1022,7 @@ public class PatientHomeActivity extends AppCompatActivity {
 
             String urgency = rec.getUrgency() != null ? " [" + rec.getUrgency() + "]" : "";
             String rationale = rec.getRationale() != null ? "\n  " + rec.getRationale() : "";
-            tv.setText("• " + rec.getTest() + urgency + rationale);
+            tv.setText("- " + rec.getTest() + urgency + rationale);
             layoutTestRecsList.addView(tv);
         }
         cardTestRecs.setVisibility(View.VISIBLE);

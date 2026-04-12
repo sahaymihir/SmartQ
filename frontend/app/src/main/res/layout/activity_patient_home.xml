@@ -33,7 +33,7 @@
                     android:layout_height="wrap_content"
                     android:text="Good morning,"
                     android:textSize="13sp"
-                    android:textColor="@color/text_secondary"/>
+                    android:textColor="@color/on_surface_variant"/>
 
                 <TextView
                     android:id="@+id/tvPatientName"
@@ -51,7 +51,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Logout"
-                android:textColor="@color/text_secondary"
+                android:textColor="@color/primary"
                 android:textSize="13sp"/>
         </LinearLayout>
 
@@ -81,24 +81,27 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Queue"
-                        android:textSize="56sp"/>
+                        android:text="Patient queue"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="true"
+                        android:textColor="@color/primary"/>
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Ready to join?"
-                        android:textSize="20sp"
+                        android:text="Ready to join the queue?"
+                        android:textSize="22sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
-                        android:layout_marginTop="16dp"/>
+                        android:layout_marginTop="12dp"/>
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Skip the waiting room.\nJoin the queue digitally."
-                        android:textSize="14sp"
-                        android:textColor="@color/text_secondary"
+                        android:textSize="15sp"
+                        android:textColor="@color/on_surface_variant"
                         android:gravity="center"
                         android:layout_marginTop="8dp"/>
                 </LinearLayout>
@@ -160,8 +163,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:background="@drawable/bg_frosted_card"
-                        android:padding="10dp"
+                        android:background="@drawable/bg_patient_info_panel"
+                        android:padding="12dp"
                         android:layout_marginTop="10dp"
                         android:visibility="gone">
 
@@ -169,7 +172,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="@string/visit_type_follow_up"
-                            android:textSize="11sp"
+                            android:textSize="12sp"
                             android:textStyle="bold"
                             android:textColor="@color/primary"/>
 
@@ -178,8 +181,8 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="@string/follow_up_note"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp"
+                            android:textColor="@color/on_surface_variant"
                             android:layout_marginTop="4dp"/>
 
                         <com.google.android.material.button.MaterialButton
@@ -218,8 +221,11 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="ML"
-                            android:textSize="18sp"
+                            android:text="Intake"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:textAllCaps="true"
+                            android:textColor="@color/primary"
                             android:layout_marginEnd="8dp"/>
 
                         <LinearLayout
@@ -232,16 +238,16 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Describe your symptoms"
-                                android:textSize="14sp"
+                                android:textSize="15sp"
                                 android:textStyle="bold"
                                 android:textColor="@color/text_primary"/>
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Predictions suggest the best doctor"
-                                android:textSize="12sp"
-                                android:textColor="@color/text_secondary"/>
+                                android:text="Your symptoms help suggest the best doctor"
+                                android:textSize="13sp"
+                                android:textColor="@color/on_surface_variant"/>
                         </LinearLayout>
                     </LinearLayout>
 
@@ -277,16 +283,19 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:background="@drawable/bg_frosted_card"
-                        android:padding="10dp"
+                        android:background="@drawable/bg_patient_info_panel"
+                        android:padding="12dp"
                         android:layout_marginTop="10dp"
                         android:visibility="gone">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="ML"
-                            android:textSize="16sp"
+                            android:text="Suggested"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:textAllCaps="true"
+                            android:textColor="@color/primary"
                             android:layout_marginEnd="8dp"/>
 
                         <LinearLayout
@@ -300,7 +309,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Prediction"
-                                android:textSize="12sp"
+                                android:textSize="13sp"
                                 android:textStyle="bold"
                                 android:textColor="@color/primary"/>
 
@@ -309,8 +318,8 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Clinical fit"
-                                android:textSize="10sp"
-                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp"
+                                android:textColor="@color/on_surface_variant"
                                 android:layout_marginTop="2dp"
                                 android:maxLines="2"/>
 
@@ -319,8 +328,8 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="—"
-                                android:textSize="11sp"
-                                android:textColor="@color/text_secondary"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_primary"
                                 android:layout_marginTop="2dp"
                                 android:maxLines="4"/>
                         </LinearLayout>
@@ -353,7 +362,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Select Doctor"
-                            android:textSize="14sp"
+                            android:textSize="15sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_primary"/>
 
@@ -362,8 +371,8 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="None selected"
-                            android:textSize="11sp"
-                            android:textColor="@color/text_secondary"/>
+                            android:textSize="12sp"
+                            android:textColor="@color/primary"/>
                     </LinearLayout>
 
                     <!-- Search field -->
@@ -391,8 +400,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Loading doctors..."
-                        android:textSize="13sp"
-                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp"
+                        android:textColor="@color/on_surface_variant"
                         android:gravity="center"
                         android:padding="16dp"
                         android:visibility="visible"/>
@@ -423,7 +432,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/history_title"
-                        android:textSize="14sp"
+                        android:textSize="15sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"/>
 
@@ -433,8 +442,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:text="@string/history_empty"
-                        android:textSize="12sp"
-                        android:textColor="@color/text_secondary"/>
+                        android:textSize="13sp"
+                        android:textColor="@color/on_surface_variant"/>
 
                     <LinearLayout
                         android:id="@+id/layoutHistoryList"
@@ -492,8 +501,11 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="🧪"
-                            android:textSize="18sp"
+                            android:text="Tests"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:textAllCaps="true"
+                            android:textColor="@color/primary"
                             android:layout_marginEnd="8dp"/>
 
                         <LinearLayout
@@ -506,7 +518,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/test_recs_title"
-                                android:textSize="13sp"
+                                android:textSize="14sp"
                                 android:textStyle="bold"
                                 android:textColor="@color/text_primary"/>
 
@@ -514,8 +526,8 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="@string/test_recs_subtitle"
-                                android:textSize="11sp"
-                                android:textColor="@color/text_secondary"
+                                android:textSize="13sp"
+                                android:textColor="@color/on_surface_variant"
                                 android:layout_marginTop="2dp"
                                 android:maxLines="3"/>
                         </LinearLayout>
@@ -536,19 +548,21 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="end"
                         android:text="@string/test_recs_dismiss"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp"
+                        android:textColor="@color/primary"
+                        android:textSize="12sp"
                         android:layout_marginTop="4dp"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
             <!-- Token + Position card -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="0dp"
-                app:cardBackgroundColor="@color/primary"
+                app:cardBackgroundColor="@color/surface_container_low"
+                app:strokeColor="@color/primary"
+                app:strokeWidth="1dp"
                 android:layout_marginBottom="16dp">
 
                 <LinearLayout
@@ -574,25 +588,26 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Your Token"
-                                android:textSize="12sp"
-                                android:textColor="#AAFFFFFF"/>
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/primary"/>
 
                             <TextView
                                 android:id="@+id/tvTokenNumber"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="#42"
-                                android:textSize="36sp"
+                                android:textSize="40sp"
                                 android:textStyle="bold"
-                                android:textColor="@color/on_surface"/>
+                                android:textColor="@color/text_primary"/>
 
                             <TextView
                                 android:id="@+id/tvDoctorName"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Dr. Nisha Shetty"
-                                android:textSize="13sp"
-                                android:textColor="#CCFFFFFF"
+                                android:textSize="14sp"
+                                android:textColor="@color/on_surface_variant"
                                 android:layout_marginTop="2dp"/>
                         </LinearLayout>
 
@@ -602,7 +617,7 @@
                             android:layout_height="80dp"
                             android:orientation="vertical"
                             android:gravity="center"
-                            android:background="@drawable/circle_white_alpha">
+                            android:background="@drawable/bg_patient_position_circle">
 
                             <TextView
                                 android:id="@+id/tvPosition"
@@ -611,14 +626,15 @@
                                 android:text="4"
                                 android:textSize="28sp"
                                 android:textStyle="bold"
-                                android:textColor="@color/on_surface"/>
+                                android:textColor="@color/primary"/>
 
                             <TextView
+                                android:id="@+id/tvPositionLabel"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="in line"
-                                android:textSize="10sp"
-                                android:textColor="#CCFFFFFF"/>
+                                android:textSize="11sp"
+                                android:textColor="@color/on_surface_variant"/>
                         </LinearLayout>
                     </LinearLayout>
 
@@ -626,7 +642,7 @@
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
-                        android:background="#33FFFFFF"
+                        android:background="@color/outline_variant"
                         android:layout_marginTop="20dp"
                         android:layout_marginBottom="20dp"/>
 
@@ -650,20 +666,20 @@
                                 android:text="~24 min"
                                 android:textSize="22sp"
                                 android:textStyle="bold"
-                                android:textColor="@color/on_surface"/>
+                                android:textColor="@color/text_primary"/>
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Estimated Wait"
-                                android:textSize="11sp"
-                                android:textColor="#AAFFFFFF"/>
+                                android:textSize="12sp"
+                                android:textColor="@color/on_surface_variant"/>
                         </LinearLayout>
 
                         <View
                             android:layout_width="1dp"
                             android:layout_height="40dp"
-                            android:background="#33FFFFFF"/>
+                            android:background="@color/outline_variant"/>
 
                         <LinearLayout
                             android:layout_width="0dp"
@@ -679,18 +695,18 @@
                                 android:text="Waiting"
                                 android:textSize="22sp"
                                 android:textStyle="bold"
-                                android:textColor="@color/on_surface"/>
+                                android:textColor="@color/text_primary"/>
 
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="Status"
-                                android:textSize="11sp"
-                                android:textColor="#AAFFFFFF"/>
+                                android:textSize="12sp"
+                                android:textColor="@color/on_surface_variant"/>
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Check-in card -->
             <androidx.cardview.widget.CardView
@@ -710,8 +726,11 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Check-in"
-                        android:textSize="24sp"
+                        android:text="Arrival"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="true"
+                        android:textColor="@color/primary"
                         android:layout_marginEnd="12dp"/>
 
                     <LinearLayout
@@ -725,7 +744,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Not checked in yet"
-                            android:textSize="14sp"
+                            android:textSize="15sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_primary"/>
 
@@ -734,8 +753,8 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Tap when you arrive at the hospital"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_secondary"/>
+                            android:textSize="13sp"
+                            android:textColor="@color/on_surface_variant"/>
                     </LinearLayout>
 
                     <com.google.android.material.button.MaterialButton
@@ -769,7 +788,10 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Delay"
-                        android:textSize="24sp"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="true"
+                        android:textColor="@color/primary"
                         android:layout_marginEnd="12dp"/>
 
                     <LinearLayout
@@ -782,7 +804,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Running late?"
-                            android:textSize="14sp"
+                            android:textSize="15sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_primary"/>
 
@@ -791,8 +813,8 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Push back 2 spots (0/2 used)"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_secondary"/>
+                            android:textSize="13sp"
+                            android:textColor="@color/on_surface_variant"/>
                     </LinearLayout>
 
                     <com.google.android.material.button.MaterialButton
@@ -820,13 +842,15 @@
         </LinearLayout>
 
         <!-- ── CALLED STATE ───────────────────────────────── -->
-        <androidx.cardview.widget.CardView
+        <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardCalled"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
-                app:cardBackgroundColor="@color/primary_container"
+            app:cardBackgroundColor="@color/surface_container_low"
+            app:strokeColor="@color/primary"
+            app:strokeWidth="1dp"
             android:visibility="gone">
 
             <LinearLayout
@@ -839,8 +863,11 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Alert"
-                    android:textSize="48sp"/>
+                    android:text="Now calling"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"
+                    android:textColor="@color/primary"/>
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -848,30 +875,27 @@
                     android:text="It's Your Turn!"
                     android:textSize="24sp"
                     android:textStyle="bold"
-                    android:textColor="@color/on_surface"
-                    android:layout_marginTop="16dp"/>
+                    android:textColor="@color/text_primary"
+                    android:layout_marginTop="12dp"/>
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Please proceed to the consultation room now."
-                    android:textSize="14sp"
-                    android:textColor="#CCDAE2FD"
+                    android:textSize="15sp"
+                    android:textColor="@color/on_surface_variant"
                     android:gravity="center"
                     android:layout_marginTop="8dp"/>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnDone"
+                    style="@style/SmartQ.Button"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/bg_cta_gradient"
-                    android:textColor="@color/primary_container"
-                    android:text="Done — Leave Queue"
-                    android:layout_marginTop="24dp"
-                    app:backgroundTint="@null"
-                    app:cornerRadius="12dp"/>
+                    android:text="Refresh Status"
+                    android:layout_marginTop="24dp"/>
             </LinearLayout>
-        </androidx.cardview.widget.CardView>
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 </ScrollView>

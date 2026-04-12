@@ -41,8 +41,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:text="Follow-up"
-            android:textColor="@color/text_secondary"
-            android:textSize="11sp" />
+            android:textColor="@color/on_surface_variant"
+            android:textSize="12sp" />
 
         <TextView
             android:id="@+id/tvHistorySummary"
@@ -51,8 +51,8 @@
             android:layout_marginTop="8dp"
             android:maxLines="3"
             android:text="Symptoms summary"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
+            android:textColor="@color/on_surface_variant"
+            android:textSize="13sp" />
 
         <TextView
             android:id="@+id/tvHistoryOutcome"
@@ -62,7 +62,7 @@
             android:maxLines="2"
             android:text="Conclusion"
             android:textColor="@color/text_primary"
-            android:textSize="12sp" />
+            android:textSize="13sp" />
 
         <TextView
             android:id="@+id/tvHistoryAction"
