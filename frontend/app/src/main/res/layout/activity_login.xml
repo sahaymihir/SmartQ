@@ -235,7 +235,7 @@
                 android:textStyle="bold"
                 android:textAllCaps="false"
                 android:letterSpacing="0.02"
-                app:backgroundTint="@null"
+                app:backgroundTint="@android:color/transparent"
                 app:cornerRadius="28dp"
                 app:elevation="8dp"
                 app:icon="@android:drawable/ic_menu_send"

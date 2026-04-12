@@ -308,7 +308,7 @@
                 android:textSize="13sp"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
-                app:backgroundTint="@null"
+                app:backgroundTint="@android:color/transparent"
                 app:cornerRadius="10dp"/>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
@@ -468,7 +468,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:animateLayoutChanges="true"
             android:paddingBottom="16dp"/>
     </ScrollView>
 

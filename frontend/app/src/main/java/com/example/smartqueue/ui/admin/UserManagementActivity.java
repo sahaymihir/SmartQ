@@ -18,6 +18,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AppCompatButton;
 
 import com.example.smartqueue.R;
 import com.example.smartqueue.models.request.CreateUserRequest;
@@ -134,8 +135,8 @@ public class UserManagementActivity extends AppCompatActivity {
 
     private void loadUsers(String roleFilter) {
         progressBar.setVisibility(View.VISIBLE);
-        tvEmpty.setVisibility(View.GONE);
         layoutUserList.removeAllViews();
+        showStatus("Loading users...");
 
         String filterParam = TextUtils.isEmpty(roleFilter) || ELEVATED_ROLE_FILTER.equals(roleFilter)
                 ? null : roleFilter;
@@ -145,6 +146,7 @@ public class UserManagementActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(Call<UserListResponse> call,
                                            Response<UserListResponse> response) {
+                        if (isFinishing() || isDestroyed()) return;
                         progressBar.setVisibility(View.GONE);
                         if (response.isSuccessful() && response.body() != null
                                 && response.body().isSuccess()) {
@@ -153,23 +155,21 @@ public class UserManagementActivity extends AppCompatActivity {
                                 users = filterElevatedUsers(users);
                             }
                             if (users == null || users.isEmpty()) {
-                                tvEmpty.setVisibility(View.VISIBLE);
+                                showStatus("No users found.");
                             } else {
-                                for (UserListResponse.UserEntry user : users) {
-                                    layoutUserList.addView(buildUserCard(user));
-                                }
+                                tvEmpty.setVisibility(View.GONE);
+                                renderUserCards(users);
                             }
                         } else {
-                            tvEmpty.setVisibility(View.VISIBLE);
-                            tvEmpty.setText("Failed to load users.");
+                            showStatus("Failed to load users.");
                         }
                     }
 
                     @Override
                     public void onFailure(Call<UserListResponse> call, Throwable t) {
+                        if (isFinishing() || isDestroyed()) return;
                         progressBar.setVisibility(View.GONE);
-                        tvEmpty.setVisibility(View.VISIBLE);
-                        tvEmpty.setText("Network error. Check connection.");
+                        showStatus("Network error. Check connection.");
                     }
                 });
     }
@@ -229,18 +229,15 @@ public class UserManagementActivity extends AppCompatActivity {
         tvAge.setLayoutParams(weightedLP(1));
         row5.addView(tvAge);
 
-        MaterialButton btnDelete = new MaterialButton(this,
-                null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        AppCompatButton btnDelete = new AppCompatButton(this);
         btnDelete.setText("Delete");
         btnDelete.setTextSize(12);
         btnDelete.setTextColor(0xFFC62828);
-        btnDelete.setStrokeColor(android.content.res.ColorStateList.valueOf(0xFFC62828));
+        btnDelete.setPadding(dp(8), dp(2), dp(8), dp(2));
+        btnDelete.setAllCaps(false);
+        btnDelete.setBackground(buildDeleteButtonBackground());
         btnDelete.setMinWidth(0);
         btnDelete.setMinHeight(0);
-        btnDelete.setPadding(dp(8), dp(2), dp(8), dp(2));
-        int[] insets = {0, 0, 0, 0};
-        btnDelete.setInsetTop(0);
-        btnDelete.setInsetBottom(0);
         LinearLayout.LayoutParams deleteLp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, dp(32));
         btnDelete.setLayoutParams(deleteLp);
@@ -248,6 +245,42 @@ public class UserManagementActivity extends AppCompatActivity {
         row5.addView(btnDelete);
         card.addView(row5);
 
+        return card;
+    }
+
+    private void renderUserCards(List<UserListResponse.UserEntry> users) {
+        layoutUserList.removeAllViews();
+        for (UserListResponse.UserEntry user : users) {
+            try {
+                layoutUserList.addView(buildUserCard(user));
+            } catch (RuntimeException error) {
+                android.util.Log.e("UserManagement", "Failed to render user card", error);
+                layoutUserList.addView(buildFallbackUserCard(user));
+            }
+        }
+    }
+
+    private View buildFallbackUserCard(UserListResponse.UserEntry user) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(12);
+        card.setPadding(pad, pad, pad, pad);
+        card.setBackground(buildCardBackground());
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, 0, dp(8));
+        card.setLayoutParams(lp);
+
+        String name = user != null ? user.getDisplayLabel() : "Unknown user";
+        String role = user != null ? user.getRoleBadge() : "USER";
+        String email = user != null && user.getEmail() != null ? user.getEmail() : "—";
+        String phone = user != null && user.getPhone() != null ? user.getPhone() : "—";
+
+        card.addView(text(name, 15, true, 0xFF1A1A2E));
+        card.addView(text(role, 11, true, roleBadgeColor(user != null ? user.getRole() : null)));
+        card.addView(text(email + "  ·  " + phone, 12, false, 0xFF555555));
         return card;
     }
 
@@ -462,6 +495,27 @@ public class UserManagementActivity extends AppCompatActivity {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, weight);
         return lp;
+    }
+
+    private void showStatus(String message) {
+        tvEmpty.setText(message);
+        tvEmpty.setVisibility(View.VISIBLE);
+    }
+
+    private android.graphics.drawable.GradientDrawable buildCardBackground() {
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setCornerRadius(dp(8));
+        bg.setColor(0xFFF5F5F5);
+        bg.setStroke(dp(1), 0xFFE0E0E0);
+        return bg;
+    }
+
+    private android.graphics.drawable.GradientDrawable buildDeleteButtonBackground() {
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setCornerRadius(dp(8));
+        bg.setColor(0x00FFFFFF);
+        bg.setStroke(dp(1), 0xFFC62828);
+        return bg;
     }
 
     private int dp(int value) {

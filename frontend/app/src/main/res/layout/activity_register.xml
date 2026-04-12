@@ -210,7 +210,7 @@
                         android:textStyle="bold"
                         android:textAllCaps="false"
                         android:letterSpacing="0.02"
-                        app:backgroundTint="@null"
+                        app:backgroundTint="@android:color/transparent"
                         app:cornerRadius="12dp"/>
 
                     <!-- Loading -->

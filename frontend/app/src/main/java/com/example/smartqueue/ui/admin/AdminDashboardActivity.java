@@ -293,9 +293,11 @@ public class AdminDashboardActivity extends AppCompatActivity {
     }
 
     private void loadQueue() {
+        renderQueuePlaceholder("Loading queue...");
         apiService.getAdminQueue(doctorId).enqueue(new Callback<QueueResponse>() {
             @Override
             public void onResponse(Call<QueueResponse> call, Response<QueueResponse> response) {
+                if (isFinishing() || isDestroyed()) return;
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     QueueResponse body = response.body();
                     List<QueueResponse.QueueEntry> queue = body.getQueue();
@@ -335,10 +337,14 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
                     renderQueueList(queue);
                     loadMlOpsLogs(false);
+                } else {
+                    renderQueuePlaceholder("Could not load queue.");
                 }
             }
             @Override
             public void onFailure(Call<QueueResponse> call, Throwable t) {
+                if (isFinishing() || isDestroyed()) return;
+                renderQueuePlaceholder("Network error while loading queue.");
                 Toast.makeText(AdminDashboardActivity.this,
                         "Could not load queue", Toast.LENGTH_SHORT).show();
             }
@@ -349,13 +355,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
         layoutQueueList.removeAllViews();
 
         if (queue.isEmpty()) {
-            TextView tv = new TextView(this);
-            tv.setText("Queue is empty.");
-            tv.setTextSize(16f);
-            tv.setPadding(0, 80, 0, 80);
-            tv.setGravity(android.view.Gravity.CENTER);
-            tv.setTextColor(getResources().getColor(R.color.text_secondary));
-            layoutQueueList.addView(tv);
+            renderQueuePlaceholder("Queue is empty.");
             return;
         }
 
@@ -438,6 +438,17 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
             layoutQueueList.addView(row);
         }
+    }
+
+    private void renderQueuePlaceholder(String message) {
+        layoutQueueList.removeAllViews();
+        TextView tv = new TextView(this);
+        tv.setText(message);
+        tv.setTextSize(16f);
+        tv.setPadding(0, 80, 0, 80);
+        tv.setGravity(android.view.Gravity.CENTER);
+        tv.setTextColor(getResources().getColor(R.color.text_secondary));
+        layoutQueueList.addView(tv);
     }
 
     private boolean isImmediateReview(QueueResponse.QueueEntry entry) {

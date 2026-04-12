@@ -107,7 +107,7 @@
     <style name="SmartQ.Button.Gradient" parent="Widget.MaterialComponents.Button">
         <item name="android:background">@drawable/bg_cta_gradient</item>
         <item name="android:textColor">@color/primary_container</item>
-        <item name="backgroundTint">@null</item>
+        <item name="backgroundTint">@android:color/transparent</item>
         <item name="cornerRadius">12dp</item>
         <item name="android:textSize">15sp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
