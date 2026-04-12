@@ -62,6 +62,17 @@ const noShowLimiter = rateLimit({
   message: { success: false, message: 'Too many no-show updates, please try again shortly.' },
 });
 
+const isSameDayCheckIn = (checkInDate, todayDateString) => {
+  if (!checkInDate) {
+    return false;
+  }
+  const checkIn = new Date(checkInDate);
+  if (Number.isNaN(checkIn.getTime())) {
+    return false;
+  }
+  return checkIn.toISOString().split('T')[0] === todayDateString;
+};
+
 const buildTokenResponse = (token) => ({
   tokenId: token._id,
   tokenNumber: token.tokenNumber,
@@ -285,6 +296,18 @@ router.post('/join', joinLimiter, protect, async (req, res) => {
     }
 
     const today = getTodayDateString();
+    const patientPresence = await User.findById(patient._id)
+      .select('lastHospitalCheckInAt')
+      .lean();
+    const checkedInToday = isSameDayCheckIn(patientPresence?.lastHospitalCheckInAt, today);
+    if (!checkedInToday) {
+      return res.status(409).json({
+        success: false,
+        requiresCheckIn: true,
+        message: 'Please check in at hospital first before joining a queue.',
+      });
+    }
+
     const existingToken = await Token.findOne({
       patient: patient._id,
       status: { $in: ACTIVE_TOKEN_STATUSES },
@@ -467,6 +490,8 @@ router.post('/join', joinLimiter, protect, async (req, res) => {
       joinedAt,
       predictedWaitMinutes,
       predictedConsultMinutes: queue.avgConsultationMinutes,
+      checkedIn: true,
+      checkedInAt: patientPresence?.lastHospitalCheckInAt || joinedAt,
       // Visit intent fields
       visitType,
       followUpTokenId,
@@ -692,7 +717,20 @@ router.post('/snooze', protect, async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.post('/checkin', protect, async (req, res) => {
   try {
+    if (req.user.role !== 'patient') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only patient accounts can check in',
+      });
+    }
+
     const today = getTodayDateString();
+    const now = new Date();
+
+    await User.updateOne(
+      { _id: req.user._id, role: 'patient' },
+      { $set: { lastHospitalCheckInAt: now } }
+    );
 
     const token = await Token.findOne({
       patient: req.user._id,
@@ -701,7 +739,11 @@ router.post('/checkin', protect, async (req, res) => {
     });
 
     if (!token) {
-      return res.status(404).json({ success: false, message: 'No active token found' });
+      return res.json({
+        success: true,
+        checkedIn: true,
+        message: 'Check-in successful. You can now join a queue.'
+      });
     }
 
     if (token.checkedIn) {
@@ -709,7 +751,7 @@ router.post('/checkin', protect, async (req, res) => {
     }
 
     token.checkedIn = true;
-    token.checkedInAt = new Date();
+    token.checkedInAt = now;
     await token.save();
 
     res.json({
@@ -719,6 +761,36 @@ router.post('/checkin', protect, async (req, res) => {
 
   } catch (err) {
     console.error('Check-in error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/queue/checkin-status
+// Returns whether patient has checked in today.
+// ─────────────────────────────────────────────────────────────
+router.get('/checkin-status', protect, async (req, res) => {
+  try {
+    const today = getTodayDateString();
+    const patient = await User.findById(req.user._id)
+      .select('role lastHospitalCheckInAt')
+      .lean();
+
+    if (!patient || patient.role !== 'patient') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only patient accounts can check status',
+      });
+    }
+
+    const checkedInToday = isSameDayCheckIn(patient.lastHospitalCheckInAt, today);
+    return res.json({
+      success: true,
+      checkedIn: checkedInToday,
+      checkedInAt: patient.lastHospitalCheckInAt || null,
+    });
+  } catch (err) {
+    console.error('Check-in status error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

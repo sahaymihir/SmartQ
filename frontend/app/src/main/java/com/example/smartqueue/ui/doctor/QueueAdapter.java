@@ -68,13 +68,22 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.ViewHolder> 
         } else {
             info.append(" | Priority: ").append(textOrDefault(entry.getPriority(), "normal"));
         }
+        if ("waiting".equals(status) && !entry.isNurseTriaged()) {
+            info.append(" | Vitals pending");
+        } else if ("waiting_doctor".equals(status) || entry.isNurseTriaged()) {
+            info.append(" | Nurse triaged");
+        }
         if (entry.isManualReviewRequired()) {
             info.append(" | Manual review");
         }
         holder.tvPatientInfo.setText(info.toString());
-        holder.tvStatus.setText(immediateReview && "waiting_doctor".equals(status)
-                ? "IMMEDIATE"
-                : formatStatus(status));
+        if (immediateReview && "waiting_doctor".equals(status)) {
+            holder.tvStatus.setText("IMMEDIATE");
+        } else if ("waiting".equals(status) && !entry.isNurseTriaged()) {
+            holder.tvStatus.setText("WAITING FOR VITALS");
+        } else {
+            holder.tvStatus.setText(formatStatus(status));
+        }
 
         boolean canPrescribe = "called".equals(status) || "arrived".equals(status);
         holder.btnPrescription.setVisibility(canPrescribe ? View.VISIBLE : View.INVISIBLE);

@@ -193,10 +193,10 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Loading..."
-                            android:textSize="18sp"
+                            android:textSize="28sp"
                             android:textStyle="bold"
                             android:textColor="@color/primary"
-                            android:layout_marginTop="4dp"/>
+                            android:layout_marginTop="6dp"/>
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
             </LinearLayout>

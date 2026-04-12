@@ -2,9 +2,11 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 
 const { protect } = require('../middleware/authMiddleware');
+const { Queue } = require('../models/Queue');
 const User = require('../models/User');
 const predictionHistory = require('../store/predictionStore');
 const { predictSpecialty } = require('../services/specialtyService');
+const { getTodayDateString } = require('../utils/queueHelpers');
 
 const router = express.Router();
 
@@ -67,12 +69,22 @@ router.get('/', listDoctorsLimiter, protect, async (req, res) => {
       .select('name specialty _id')
       .sort({ name: 1 });
 
+    const doctorIds = doctors.map((doctor) => doctor._id);
+    const queueStates = await Queue.find({
+      doctor: { $in: doctorIds },
+      date: getTodayDateString(),
+    }).select('doctor isPaused').lean();
+    const queueStateByDoctorId = new Map(
+      queueStates.map((queue) => [queue.doctor.toString(), Boolean(queue.isPaused)])
+    );
+
     res.json({
       success: true,
       doctors: doctors.map((doctor) => ({
         id: doctor._id,
         name: doctor.name,
         specialty: doctor.specialty || 'General OPD',
+        isAvailable: !queueStateByDoctorId.get(doctor._id.toString()),
       })),
     });
   } catch (err) {
@@ -101,22 +113,35 @@ router.post('/symptom-predict', predictLimiter, protect, async (req, res) => {
 
     const canonicalRoute = normalizeSpecialty(routedSpecialty);
 
-    let recommendedDoc = await User.findOne({
-      role: 'doctor',
-      specialty: { $regex: `^${canonicalRoute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
-    }).select('name specialty _id');
+    const allDoctors = await User.find({ role: 'doctor' }).select('name specialty _id').lean();
+    const queueStates = await Queue.find({
+      doctor: { $in: allDoctors.map((doctor) => doctor._id) },
+      date: getTodayDateString(),
+    }).select('doctor isPaused').lean();
+    const pausedByDoctor = new Map(
+      queueStates.map((queue) => [queue.doctor.toString(), Boolean(queue.isPaused)])
+    );
+
+    const availableDoctors = allDoctors.filter(
+      (doctor) => !pausedByDoctor.get(doctor._id.toString())
+    );
+    const doctorPool = availableDoctors.length > 0 ? availableDoctors : allDoctors;
+
+    const escapedRoute = canonicalRoute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    let recommendedDoc = doctorPool.find((doctor) =>
+      new RegExp(`^${escapedRoute}$`, 'i').test(doctor.specialty || '')
+    );
 
     let doctorRoutingNote = '';
     if (!recommendedDoc && canonicalRoute !== 'General OPD') {
-      recommendedDoc = await User.findOne({
-        role: 'doctor',
-        specialty: 'General OPD',
-      }).select('name specialty _id');
+      recommendedDoc = doctorPool.find((doctor) =>
+        /^General OPD$/i.test(doctor.specialty || '')
+      );
       doctorRoutingNote = ` No exact ${canonicalRoute} doctor was available, so SmartQ fell back to General OPD.`;
     }
 
     if (!recommendedDoc) {
-      recommendedDoc = await User.findOne({ role: 'doctor' }).select('name specialty _id');
+      recommendedDoc = doctorPool[0] || null;
       if (recommendedDoc) {
         doctorRoutingNote = ` No staffed ${routedSpecialty} route was available, so SmartQ used the next available doctor.`;
       }
@@ -127,11 +152,13 @@ router.post('/symptom-predict', predictLimiter, protect, async (req, res) => {
           id: recommendedDoc._id,
           name: recommendedDoc.name,
           specialty: normalizeSpecialty(recommendedDoc.specialty || canonicalRoute),
+          isAvailable: !pausedByDoctor.get(recommendedDoc._id.toString()),
         }
       : {
           id: null,
           name: 'No doctor available',
-            specialty: canonicalRoute,
+          specialty: canonicalRoute,
+          isAvailable: false,
         };
 
     const reasoning = `${specialtyPrediction.reasoning}${doctorRoutingNote}`.trim();

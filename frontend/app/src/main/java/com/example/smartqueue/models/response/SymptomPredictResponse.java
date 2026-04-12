@@ -153,10 +153,12 @@ public class SymptomPredictResponse {
         private String id;
         private String name;
         private String specialty;
+        private boolean isAvailable;
 
         public String getId() { return id; }
         public String getName() { return name; }
         public String getSpecialty() { return specialty; }
+        public boolean isAvailable() { return isAvailable; }
     }
 
     public static class PriorityComponents {

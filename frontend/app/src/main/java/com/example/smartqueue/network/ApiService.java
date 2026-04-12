@@ -9,6 +9,7 @@ import com.example.smartqueue.models.request.RegisterRequest;
 import com.example.smartqueue.models.request.PrescriptionRequest;
 import com.example.smartqueue.models.request.SymptomRequest;
 import com.example.smartqueue.models.response.AuthResponse;
+import com.example.smartqueue.models.response.CheckInStatusResponse;
 import com.example.smartqueue.models.response.ConsultationHistoryResponse;
 import com.example.smartqueue.models.response.DoctorsResponse;
 import com.example.smartqueue.models.response.MessageResponse;
@@ -45,6 +46,9 @@ public interface ApiService {
 
     @POST("queue/checkin")
     Call<MessageResponse> checkIn();
+
+    @GET("queue/checkin-status")
+    Call<CheckInStatusResponse> getCheckInStatus();
 
     @POST("queue/leave")
     Call<MessageResponse> leaveQueue();

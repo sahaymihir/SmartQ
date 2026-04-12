@@ -85,6 +85,12 @@ const userSchema = new mongoose.Schema({
   priorityScore: {
     type: Number,
     default: 5
+  },
+  // Last time patient confirmed arrival at hospital premises.
+  // Used to enforce check-in before queue join.
+  lastHospitalCheckInAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

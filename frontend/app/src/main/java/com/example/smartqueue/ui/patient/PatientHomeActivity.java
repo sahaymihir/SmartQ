@@ -31,6 +31,7 @@ import androidx.core.content.ContextCompat;
 import com.example.smartqueue.R;
 import com.example.smartqueue.models.request.JoinQueueRequest;
 import com.example.smartqueue.models.request.SymptomRequest;
+import com.example.smartqueue.models.response.CheckInStatusResponse;
 import com.example.smartqueue.models.response.ConsultationHistoryResponse;
 import com.example.smartqueue.models.response.DoctorsResponse;
 import com.example.smartqueue.models.response.QueueResponse;
@@ -59,7 +60,9 @@ import retrofit2.Response;
 
 public class PatientHomeActivity extends AppCompatActivity {
 
-    private static final long QUEUE_POLL_INTERVAL_MS = 10_000L;
+    private static final long QUEUE_POLL_INTERVAL_MS = 5_000L;
+    private static final long QUEUE_POLL_NEAR_FRONT_MS = 2_000L;
+    private static final long QUEUE_POLL_IMMEDIATE_MS = 1_000L;
     private static final long HISTORY_POLL_INTERVAL_MS = 30_000L;
     private static final String QUEUE_ALERT_CHANNEL_ID = "smartq_queue_alerts";
     private static final int NEXT_IN_LINE_NOTIFICATION_ID = 1201;
@@ -112,6 +115,9 @@ public class PatientHomeActivity extends AppCompatActivity {
     private int activeTokenNumber = -1;
     private boolean nextInLineNotificationSent = false;
     private boolean calledNotificationSent = false;
+    private int lastKnownQueuePosition = Integer.MAX_VALUE;
+    private String lastKnownQueueStatus = "waiting";
+    private boolean hasCheckedInToday = false;
     private ActivityResultLauncher<Intent> speechInputLauncher;
 
     @Override
@@ -155,6 +161,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         setupClickListeners();
         loadDoctors();
         loadConsultationHistory();
+        fetchCheckInStatus(true);
         checkExistingToken();
     }
 
@@ -237,6 +244,13 @@ public class PatientHomeActivity extends AppCompatActivity {
             if (selectedDoctor == null) {
                 return;
             }
+            if (!selectedDoctor.isAvailable()) {
+                selectedDoctorId = null;
+                selectedDoctorName = null;
+                tvSelectedDoctor.setText("Select an available doctor");
+                Toast.makeText(this, "Selected doctor is unavailable right now", Toast.LENGTH_SHORT).show();
+                return;
+            }
             selectedDoctorId = selectedDoctor.getId();
             selectedDoctorName = textOrDefault(selectedDoctor.getName(), "Doctor");
             tvSelectedDoctor.setText(selectedDoctorName);
@@ -244,8 +258,16 @@ public class PatientHomeActivity extends AppCompatActivity {
 
         // Join Queue
         btnJoinQueue.setOnClickListener(v -> {
+            if (!hasCheckedInToday) {
+                Toast.makeText(this, "Please check in at hospital before joining queue", Toast.LENGTH_SHORT).show();
+                return;
+            }
             if (selectedDoctorId == null) {
                 Toast.makeText(this, "Please select a doctor first", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!isDoctorAvailable(selectedDoctorId)) {
+                Toast.makeText(this, "This doctor is currently unavailable. Pick another doctor.", Toast.LENGTH_SHORT).show();
                 return;
             }
             String symptoms = etSymptoms.getText() != null
@@ -262,6 +284,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                 public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
                     if (response.code() == 401) { handleUnauthorized(); return; }
                     if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                        hasCheckedInToday = true;
                         updateCheckinUI(true);
                         Toast.makeText(PatientHomeActivity.this,
                                 "Checked in! Hospital notified.", Toast.LENGTH_SHORT).show();
@@ -430,6 +453,9 @@ public class PatientHomeActivity extends AppCompatActivity {
     private String buildDoctorDisplayLabel(DoctorsResponse.Doctor doctor) {
         String name = textOrDefault(doctor.getName(), "Doctor");
         String specialty = textOrDefault(doctor.getSpecialty(), "General OPD");
+        if (!doctor.isAvailable()) {
+            return name + " - " + specialty + " (Unavailable)";
+        }
         return name + " - " + specialty;
     }
 
@@ -451,10 +477,27 @@ public class PatientHomeActivity extends AppCompatActivity {
         }
         for (DoctorsResponse.Doctor doctor : allDoctors) {
             if (doctorId.equals(doctor.getId())) {
+                if (!doctor.isAvailable()) {
+                    selectedDoctorId = null;
+                    selectedDoctorName = null;
+                    return;
+                }
                 dropdownDoctorPicker.setText(buildDoctorDisplayLabel(doctor), false);
                 return;
             }
         }
+    }
+
+    private boolean isDoctorAvailable(String doctorId) {
+        if (isBlank(doctorId)) {
+            return false;
+        }
+        for (DoctorsResponse.Doctor doctor : allDoctors) {
+            if (doctorId.equals(doctor.getId())) {
+                return doctor.isAvailable();
+            }
+        }
+        return false;
     }
 
     // Call symptom prediction API
@@ -478,11 +521,17 @@ public class PatientHomeActivity extends AppCompatActivity {
                             String recName = rec != null ? textOrDefault(rec.getName(), "Recommended doctor") : "No match";
                             String recSpecialty = rec != null ? textOrDefault(rec.getSpecialty(), "General OPD") : "";
                             if (rec != null && rec.getId() != null) {
-                                autoRecommendedId  = rec.getId();
-                                selectedDoctorId   = rec.getId();
-                                selectedDoctorName = recName;
-                                tvSelectedDoctor.setText(recName);
-                                syncDoctorPickerSelectionById(rec.getId());
+                                if (isDoctorAvailable(rec.getId())) {
+                                    autoRecommendedId  = rec.getId();
+                                    selectedDoctorId   = rec.getId();
+                                    selectedDoctorName = recName;
+                                    tvSelectedDoctor.setText(recName);
+                                    syncDoctorPickerSelectionById(rec.getId());
+                                } else {
+                                    selectedDoctorId = null;
+                                    selectedDoctorName = null;
+                                    tvSelectedDoctor.setText("Suggested doctor unavailable. Select another.");
+                                }
                             }
                             tvAiPickTitle.setText(rec != null
                                     ? "Suggested doctor: " + recName + " (" + recSpecialty + ")"
@@ -538,6 +587,14 @@ public class PatientHomeActivity extends AppCompatActivity {
             Toast.makeText(this, "Please select a doctor first", Toast.LENGTH_SHORT).show();
             return;
         }
+        if (!hasCheckedInToday) {
+            Toast.makeText(this, "Please check in at hospital before joining queue", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!isDoctorAvailable(doctorId)) {
+            Toast.makeText(this, "Selected doctor is unavailable. Please choose another doctor.", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         btnJoinQueue.setEnabled(false);
         btnJoinQueue.setText("Joining...");
@@ -554,8 +611,9 @@ public class PatientHomeActivity extends AppCompatActivity {
                     isInQueue = true;
                     showInQueueState();
                     updateQueueUI(body.getPosition(), body.getTokenNumber(),
-                            body.getEtaMinutes(), "waiting", false, body.getSnoozeCount(),
+                            body.getEtaMinutes(), "waiting", hasCheckedInToday, body.getSnoozeCount(),
                             isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
+                        updateQueuePollingSignals("waiting", body.getPosition());
                     tvDoctorName.setText(textOrDefault(doctorName, selectedDoctorName));
                     maybeNotifyQueueEvents(body.getTokenNumber(), "waiting", body.getPosition(), textOrDefault(doctorName, selectedDoctorName));
                     startPolling();
@@ -696,11 +754,13 @@ public class PatientHomeActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     QueueResponse body = response.body();
                     isInQueue = true;
+                    hasCheckedInToday = body.isCheckedIn();
                     maybeNotifyQueueEvents(body.getTokenNumber(), body.getStatus(), body.getPosition(), body.getDoctorName());
                     showInQueueState();
                     updateQueueUI(body.getPosition(), body.getTokenNumber(),
                             body.getEtaMinutes(), body.getStatus(), body.isCheckedIn(), body.getSnoozeCount(),
                             isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
+                        updateQueuePollingSignals(body.getStatus(), body.getPosition());
                     updateSuggestedTestsCard(body.getStatus(), body.isNurseTriaged(), body.getTestRecommendations());
                     if (body.getDoctorName() != null) tvDoctorName.setText(body.getDoctorName());
                     if ("called".equals(body.getStatus())) showCalledState();
@@ -723,15 +783,30 @@ public class PatientHomeActivity extends AppCompatActivity {
             public void run() {
                 if (isInQueue && sessionManager.isLoggedIn()) {
                     fetchQueueStatus();
-                    pollHandler.postDelayed(this, QUEUE_POLL_INTERVAL_MS);
+                    pollHandler.postDelayed(this, resolveQueuePollIntervalMs());
                 }
             }
         };
-        pollHandler.postDelayed(pollRunnable, QUEUE_POLL_INTERVAL_MS);
+        pollHandler.postDelayed(pollRunnable, QUEUE_POLL_IMMEDIATE_MS);
     }
 
     private void stopPolling() {
         if (pollRunnable != null) pollHandler.removeCallbacks(pollRunnable);
+    }
+
+    private void updateQueuePollingSignals(String status, int position) {
+        lastKnownQueueStatus = status != null ? status : "waiting";
+        lastKnownQueuePosition = Math.max(0, position);
+    }
+
+    private long resolveQueuePollIntervalMs() {
+        if ("called".equals(lastKnownQueueStatus) || lastKnownQueuePosition <= 1) {
+            return QUEUE_POLL_IMMEDIATE_MS;
+        }
+        if (lastKnownQueuePosition <= 3 || "waiting_doctor".equals(lastKnownQueueStatus)) {
+            return QUEUE_POLL_NEAR_FRONT_MS;
+        }
+        return QUEUE_POLL_INTERVAL_MS;
     }
 
     private void startHistoryPolling() {
@@ -776,6 +851,8 @@ public class PatientHomeActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                     QueueResponse body = response.body();
                     isInQueue = true;
+                    hasCheckedInToday = body.isCheckedIn();
+                    updateQueuePollingSignals(body.getStatus(), body.getPosition());
                     maybeNotifyQueueEvents(body.getTokenNumber(), body.getStatus(), body.getPosition(), body.getDoctorName());
                     if (body.getDoctorName() != null) tvDoctorName.setText(body.getDoctorName());
                     if ("called".equals(body.getStatus())) {
@@ -821,10 +898,36 @@ public class PatientHomeActivity extends AppCompatActivity {
         setCalledRefreshLoading(false);
         cardTestRecs.setVisibility(View.GONE);
         resetQueueAlertFlags();
+        updateQueuePollingSignals("waiting", Integer.MAX_VALUE);
+        fetchCheckInStatus(true);
         loadConsultationHistory();
         if (showToast) {
             Toast.makeText(this, "No active queue token found.", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void fetchCheckInStatus(boolean silent) {
+        apiService.getCheckInStatus().enqueue(new Callback<CheckInStatusResponse>() {
+            @Override
+            public void onResponse(Call<CheckInStatusResponse> call, Response<CheckInStatusResponse> response) {
+                if (response.code() == 401) { handleUnauthorized(); return; }
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    hasCheckedInToday = response.body().isCheckedIn();
+                    updateCheckinUI(hasCheckedInToday);
+                } else if (!silent) {
+                    Toast.makeText(PatientHomeActivity.this,
+                            "Could not fetch check-in status.", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<CheckInStatusResponse> call, Throwable t) {
+                if (!silent) {
+                    Toast.makeText(PatientHomeActivity.this,
+                            "Network error while fetching check-in status.", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 
     private void resetJoinButton() {
@@ -1241,6 +1344,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (!isInQueue) {
+            fetchCheckInStatus(true);
             loadConsultationHistory();
             startHistoryPolling();
         } else {

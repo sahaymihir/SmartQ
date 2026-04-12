@@ -98,6 +98,7 @@ router.get('/queue', async (req, res) => {
         priority: t.priority,
         status: t.status,
         checkedIn: t.checkedIn,
+        nurseTriaged: Boolean(t.nurseTriaged),
         triagePriorityClass: t.triagePriorityClass,
         modelPriorityClass: t.modelPriorityClass,
         priorityFinalScore: t.priorityFinalScore,

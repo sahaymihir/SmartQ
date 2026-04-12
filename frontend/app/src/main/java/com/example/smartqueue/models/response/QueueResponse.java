@@ -88,6 +88,7 @@ public class QueueResponse {
         private String escalationReason;
         private String overrideReason;
         private boolean checkedIn;
+        private boolean nurseTriaged;
 
         public String getTokenId()      { return tokenId; }
         public String getPatientId()    { return patientId; }
@@ -111,6 +112,7 @@ public class QueueResponse {
         public String getEscalationReason() { return escalationReason; }
         public String getOverrideReason() { return overrideReason; }
         public boolean isCheckedIn() { return checkedIn; }
+        public boolean isNurseTriaged() { return nurseTriaged; }
 
         public void setTokenId(String v)     { this.tokenId = v; }
         public void setPatientId(String v)   { this.patientId = v; }
@@ -134,5 +136,6 @@ public class QueueResponse {
         public void setEscalationReason(String v) { this.escalationReason = v; }
         public void setOverrideReason(String v) { this.overrideReason = v; }
         public void setCheckedIn(boolean v) { this.checkedIn = v; }
+        public void setNurseTriaged(boolean v) { this.nurseTriaged = v; }
     }
 }
