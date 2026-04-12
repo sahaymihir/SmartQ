@@ -51,31 +51,30 @@ import kotlinx.coroutines.delay
 @Composable
 fun DoctorDashboardScreen(
     doctorName: String = "Dr. Smith",
+    queueItems: List<Triple<String, String, String>> = emptyList(),
+    patientsServedCount: Int = 0,
+    avgConsultationMinutesValue: Int = 8,
+    triageAccuracyValue: Float = 0.95f,
+    callNextLoading: Boolean = false,
     onCallNext: () -> Unit = {},
 ) {
     SmartQTheme {
-        var patientsServed by remember { mutableStateOf(12) }
-        var avgConsultationTime by remember { mutableStateOf(12) } // minutes
-        var triageAccuracy by remember { mutableStateOf(0.982f) } // 98.2%
-        var isLoading by remember { mutableStateOf(false) }
-
-        // Mock queue data
-        val mockQueue = listOf(
-            Triple("Jane Doe", "P101", "high"),
-            Triple("Bob Johnson", "P102", "medium"),
-            Triple("Alice Brown", "P103", "normal"),
-        )
+        val queue = if (queueItems.isEmpty()) {
+            listOf(Triple("Live queue is empty", "--", "normal"))
+        } else {
+            queueItems
+        }
 
         // Animate metrics on load
         var displayAccuracy by remember { mutableStateOf(0f) }
         LaunchedEffect(Unit) {
             var target = 0f
-            while (target < triageAccuracy) {
+            while (target < triageAccuracyValue) {
                 target += 0.01f
                 displayAccuracy = target
                 delay(30)
             }
-            displayAccuracy = triageAccuracy
+            displayAccuracy = triageAccuracyValue
         }
 
         Scaffold(
@@ -121,21 +120,21 @@ fun DoctorDashboardScreen(
                     ) {
                         AnimatedStatCard(
                             label = "Served",
-                            value = patientsServed.toString(),
+                            value = patientsServedCount.toString(),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(100.dp),
                         )
                         AnimatedStatCard(
                             label = "Avg Time",
-                            value = "${avgConsultationTime}m",
+                            value = "${avgConsultationMinutesValue}m",
                             modifier = Modifier
                                 .weight(1f)
                                 .height(100.dp),
                         )
                         AnimatedStatCard(
                             label = "Queue",
-                            value = mockQueue.size.toString(),
+                            value = queue.size.toString(),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(100.dp),
@@ -180,7 +179,7 @@ fun DoctorDashboardScreen(
                             PerformanceMetricBar(
                                 label = "Triage Accuracy",
                                 value = displayAccuracy,
-                                target = triageAccuracy,
+                                target = triageAccuracyValue,
                             )
 
                             // Specialty Prediction
@@ -237,7 +236,7 @@ fun DoctorDashboardScreen(
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Text(
-                                    "Progress: ${(patientsServed.toFloat() / 15 * 100).toInt()}%",
+                                    "Progress: ${(patientsServedCount.toFloat() / 15 * 100).toInt()}%",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     fontWeight = FontWeight.SemiBold,
@@ -245,7 +244,7 @@ fun DoctorDashboardScreen(
                             }
 
                             ProportionalBar(
-                                filled = patientsServed.toFloat(),
+                                filled = patientsServedCount.toFloat(),
                                 total = 15f,
                                 modifier = Modifier.fillMaxWidth(),
                             )
@@ -271,18 +270,17 @@ fun DoctorDashboardScreen(
                 }
 
                 item {
-                    AnimatedPrimaryButton(
-                        text = "Call Next Patient",
-                        onClick = {
-                            isLoading = true
-                            onCallNext()
-                        },
-                        isLoading = isLoading,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                        AnimatedPrimaryButton(
+                            text = "Call Next Patient",
+                            onClick = {
+                                onCallNext()
+                            },
+                            isLoading = callNextLoading,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                 }
 
-                mockQueue.forEachIndexed { index, (name, id, priority) ->
+                queue.forEachIndexed { index, (name, id, priority) ->
                     item {
                         QueueItemCard(
                             patientName = name,

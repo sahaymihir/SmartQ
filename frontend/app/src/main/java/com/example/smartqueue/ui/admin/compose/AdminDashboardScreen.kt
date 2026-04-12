@@ -60,35 +60,33 @@ import kotlinx.coroutines.delay
 @Composable
 fun AdminDashboardScreen(
     adminName: String = "Dr. Smith",
+    queueItems: List<Triple<String, String, String>> = emptyList(),
+    queueCountValue: Int = 0,
+    completedCountValue: Int = 0,
+    avgWaitValue: String = "0m",
+    mlLogs: List<String> = emptyList(),
+    pausedState: Boolean = false,
+    isQueueLoading: Boolean = false,
+    isMlRefreshing: Boolean = false,
     onLogout: () -> Unit = {},
     onCallNext: () -> Unit = {},
     onPauseToggle: () -> Unit = {},
     onRefreshML: () -> Unit = {},
 ) {
     SmartQTheme {
-        var isPaused by remember { mutableStateOf(false) }
-        var isLoadingQueue by remember { mutableStateOf(false) }
-        var queueCount by remember { mutableStateOf(7) }
-        var completedCount by remember { mutableStateOf(3) }
-        var mlOpsRefreshing by remember { mutableStateOf(false) }
-
-        // Mock queue data
-        val mockQueue = remember {
+        val queue = if (queueItems.isEmpty()) {
             listOf(
-                Triple("John Doe", "P001", "high"),
-                Triple("Jane Smith", "P002", "medium"),
-                Triple("Bob Wilson", "P003", "normal"),
+                Triple("Live queue is empty", "--", "normal"),
             )
+        } else {
+            queueItems
         }
-
-        // Mock ML Ops logs
-        val mockMLLogs = remember {
+        val logs = if (mlLogs.isEmpty()) {
             listOf(
-                "✓ Triage classify: 12ms | Confidence: 98%",
-                "✓ Patient flow model: 45ms | Prediction: ER",
-                "✓ Specialty predict: 23ms | Match: Cardiology",
-                "⚠ Retry attempt 1 of 3 for API latency",
+                "No live ML logs yet",
             )
+        } else {
+            mlLogs
         }
 
         Scaffold(
@@ -144,21 +142,21 @@ fun AdminDashboardScreen(
                     ) {
                         AnimatedStatCard(
                             label = "Waiting",
-                            value = queueCount.toString(),
+                            value = queueCountValue.toString(),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(100.dp),
                         )
                         AnimatedStatCard(
                             label = "Completed",
-                            value = completedCount.toString(),
+                            value = completedCountValue.toString(),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(100.dp),
                         )
                         AnimatedStatCard(
                             label = "Avg Wait",
-                            value = "12m",
+                            value = avgWaitValue,
                             modifier = Modifier
                                 .weight(1f)
                                 .height(100.dp),
@@ -175,9 +173,8 @@ fun AdminDashboardScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         AnimatedPrimaryButton(
-                            text = if (isPaused) "▶ Resume" else "⏸ Pause",
+                            text = if (pausedState) "▶ Resume" else "⏸ Pause",
                             onClick = {
-                                isPaused = !isPaused
                                 onPauseToggle()
                             },
                             modifier = Modifier.weight(1f),
@@ -185,10 +182,9 @@ fun AdminDashboardScreen(
                         AnimatedPrimaryButton(
                             text = "Call Next",
                             onClick = {
-                                isLoadingQueue = true
                                 onCallNext()
                             },
-                            isLoading = isLoadingQueue,
+                            isLoading = isQueueLoading,
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -228,7 +224,7 @@ fun AdminDashboardScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "Queue (${queueCount})",
+                            "Queue (${queueCountValue})",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.SemiBold
                             ),
@@ -239,7 +235,7 @@ fun AdminDashboardScreen(
                 }
 
                 // Queue Items with animations
-                itemsIndexed(mockQueue) { index, (name, id, priority) ->
+                itemsIndexed(queue) { index, (name, id, priority) ->
                     QueueItemCard(
                         patientName = name,
                         patientId = id,
@@ -267,7 +263,6 @@ fun AdminDashboardScreen(
                         )
                         IconButton(
                             onClick = {
-                                mlOpsRefreshing = true
                                 onRefreshML()
                             },
                             modifier = Modifier.size(28.dp),
@@ -275,7 +270,7 @@ fun AdminDashboardScreen(
                             Icon(
                                 imageVector = Icons.Filled.Refresh,
                                 contentDescription = "Refresh ML Ops",
-                                tint = if (mlOpsRefreshing) {
+                                tint = if (isMlRefreshing) {
                                     MaterialTheme.colorScheme.primary
                                 } else {
                                     MaterialTheme.colorScheme.onSurfaceVariant
@@ -329,7 +324,7 @@ fun AdminDashboardScreen(
                             )
 
                             // Recent Logs
-                            mockMLLogs.forEachIndexed { index, log ->
+                            logs.forEachIndexed { index, log ->
                                 Text(
                                     log,
                                     style = MaterialTheme.typography.labelSmall.copy(

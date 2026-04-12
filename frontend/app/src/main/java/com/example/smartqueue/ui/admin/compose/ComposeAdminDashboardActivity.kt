@@ -15,7 +15,9 @@ import com.example.smartqueue.network.ApiService
 import com.example.smartqueue.ui.auth.LoginActivity
 import com.example.smartqueue.ui.theme.SmartQTheme
 import com.example.smartqueue.utils.SessionManager
+import retrofit2.Call
 import retrofit2.Callback
+import retrofit2.Response
 
 /**
  * Compose-based Admin Dashboard Activity
@@ -31,8 +33,8 @@ class ComposeAdminDashboardActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         sessionManager = SessionManager(this)
-        apiService = ApiClient.getInstance().create(ApiService.class)
-        doctorId = sessionManager.getUserId()
+        apiService = ApiClient.getInstance().create(ApiService::class.java)
+        doctorId = sessionManager.userId.orEmpty()
 
         setContent {
             var adminName by remember { mutableStateOf(sessionManager.getName()) }
@@ -42,7 +44,7 @@ class ComposeAdminDashboardActivity : ComponentActivity() {
                 AdminDashboardScreen(
                     adminName = adminName,
                     onLogout = {
-                        sessionManager.logout()
+                        sessionManager.clearSession()
                         startActivity(Intent(this@ComposeAdminDashboardActivity, LoginActivity::class.java))
                         finish()
                     },
@@ -63,8 +65,8 @@ class ComposeAdminDashboardActivity : ComponentActivity() {
     private fun callNextPatient() {
         apiService.callNextPatient(doctorId).enqueue(object : Callback<com.example.smartqueue.models.response.MessageResponse> {
             override fun onResponse(
-                call: retrofit2.Call<com.example.smartqueue.models.response.MessageResponse>,
-                response: retrofit2.Response<com.example.smartqueue.models.response.MessageResponse>,
+                call: Call<com.example.smartqueue.models.response.MessageResponse>,
+                response: Response<com.example.smartqueue.models.response.MessageResponse>,
             ) {
                 if (response.isSuccessful && response.body() != null) {
                     Toast.makeText(
@@ -75,7 +77,7 @@ class ComposeAdminDashboardActivity : ComponentActivity() {
                 }
             }
 
-            override fun onFailure(call: retrofit2.Call<com.example.smartqueue.models.response.MessageResponse>, t: Throwable) {
+            override fun onFailure(call: Call<com.example.smartqueue.models.response.MessageResponse>, t: Throwable) {
                 Toast.makeText(
                     this@ComposeAdminDashboardActivity,
                     "Network error: ${t.message}",
