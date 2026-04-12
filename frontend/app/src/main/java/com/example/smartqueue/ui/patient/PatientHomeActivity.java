@@ -481,8 +481,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     private JoinQueueRequest buildJoinQueueRequest() {
         String symptoms = etSymptoms.getText() != null
                 ? etSymptoms.getText().toString().trim() : "";
-        JoinQueueRequest req = new JoinQueueRequest(symptoms, selectedVisitType, followUpTokenId, "en");
-        return req;
+        return new JoinQueueRequest(symptoms, selectedVisitType, followUpTokenId, "en");
     }
 
     private void checkExistingToken() {

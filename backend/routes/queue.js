@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
+const rateLimit = require('express-rate-limit');
 const { protect, staffOnly } = require('../middleware/authMiddleware');
 const { Token } = require('../models/Queue');
 const { buildVisitSnapshot, determineTriageDecision, getAgeBaselineScore, mapPriorityClassToScore } = require('../services/triageService');
@@ -19,6 +21,23 @@ const {
 
 // Minimum predicted wait time (minutes) before test recommendations are surfaced.
 const HIGH_WAIT_THRESHOLD_MIN = Number(process.env.TEST_SUGGEST_WAIT_THRESHOLD_MIN || 30);
+
+// Helper: check whether a value is a valid MongoDB ObjectId string.
+const isValidObjectId = (value) =>
+  typeof value === 'string' && mongoose.Types.ObjectId.isValid(value);
+
+// Rate limiters for the two staff-facing endpoints added by this feature.
+const nurseTriageLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { success: false, message: 'Too many nurse-triage requests, please try again later.' },
+});
+
+const emergencyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { success: false, message: 'Too many emergency-token requests, please try again later.' },
+});
 
 const buildTokenResponse = (token) => ({
   tokenId: token._id,
@@ -144,9 +163,12 @@ router.post('/join', protect, async (req, res) => {
     let followUpTokenId = null;
     if (visitType === 'follow_up') {
       if (req.body.followUpTokenId) {
-        // Explicit reference provided by the client — validate it belongs to this patient
+        // Explicit reference provided by the client — validate ObjectId before querying
+        if (!isValidObjectId(req.body.followUpTokenId)) {
+          return res.status(400).json({ success: false, message: 'Invalid followUpTokenId: must be a valid MongoDB ObjectId' });
+        }
         const priorToken = await Token.findOne({
-          _id: req.body.followUpTokenId,
+          _id: new mongoose.Types.ObjectId(req.body.followUpTokenId),
           patient: patient._id,
           status: 'completed',
         }).lean();
@@ -538,7 +560,7 @@ router.get('/history', protect, async (req, res) => {
 // Nurse submits actual vitals and updates the token's triage.
 // Allowed roles: nurse, admin, doctor.
 // ─────────────────────────────────────────────────────────────
-router.patch('/nurse-triage/:tokenId', protect, staffOnly, async (req, res) => {
+router.patch('/nurse-triage/:tokenId', nurseTriageLimiter, protect, staffOnly, async (req, res) => {
   try {
     const { tokenId } = req.params;
 
@@ -644,7 +666,7 @@ router.patch('/nurse-triage/:tokenId', protect, staffOnly, async (req, res) => {
 // The patient account must already exist (use POST /api/auth/register
 // to pre-create a record if the patient is new to the system).
 // ─────────────────────────────────────────────────────────────
-router.post('/emergency', protect, staffOnly, async (req, res) => {
+router.post('/emergency', emergencyLimiter, protect, staffOnly, async (req, res) => {
   try {
     const { patientId, doctorId, reportedSymptoms, estimatedAge } = req.body;
 
@@ -655,24 +677,28 @@ router.post('/emergency', protect, staffOnly, async (req, res) => {
       });
     }
 
+    if (!isValidObjectId(patientId)) {
+      return res.status(400).json({ success: false, message: 'Invalid patientId: must be a valid MongoDB ObjectId' });
+    }
+
     const User = require('../models/User');
-    const patient = await User.findById(patientId);
+    const patient = await User.findById(new mongoose.Types.ObjectId(patientId));
     if (!patient || patient.role !== 'patient') {
       return res.status(404).json({ success: false, message: 'Patient not found' });
     }
 
     // Auto-route to first available doctor if none specified
-    let targetDoctorId = doctorId;
-    if (!targetDoctorId) {
-      const anyDoctor = await User.findOne({ role: 'doctor' }).select('_id');
-      if (!anyDoctor) {
+    let assignedDoctorId = doctorId;
+    if (!assignedDoctorId) {
+      const firstAvailableDoctor = await User.findOne({ role: 'doctor' }).select('_id');
+      if (!firstAvailableDoctor) {
         return res.status(400).json({ success: false, message: 'No doctors available for routing' });
       }
-      targetDoctorId = anyDoctor._id.toString();
+      assignedDoctorId = firstAvailableDoctor._id.toString();
     }
 
     const today = getTodayDateString();
-    const queue = await getTodayQueue(targetDoctorId);
+    const queue = await getTodayQueue(assignedDoctorId);
 
     if (!queue.isActive) {
       return res.status(400).json({ success: false, message: 'The target queue is not active today' });
@@ -696,7 +722,7 @@ router.post('/emergency', protect, staffOnly, async (req, res) => {
 
     const token = await Token.create({
       patient: patient._id,
-      doctor: targetDoctorId,
+      doctor: assignedDoctorId,
       tokenNumber,
       position: 0,
       etaMinutes: 0,

@@ -50,7 +50,7 @@
     <string name="visit_type_new">New Visit</string>
     <string name="visit_type_follow_up">Follow-up</string>
     <string name="visit_type_label">Visit Type</string>
-    <string name="follow_up_note">We\'ll continue care from your most recent visit and route you to the same specialty.</string>
+    <string name="follow_up_note">We will continue care from your most recent visit and route you to the same specialty.</string>
     <string name="follow_up_note_linked">Continuing from: </string>
 
     <!-- Test recommendations -->

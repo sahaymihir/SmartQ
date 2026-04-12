@@ -614,7 +614,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
     private void submitEmergencyToken(String patientId, String symptoms) {
         com.example.smartqueue.models.request.EmergencyRequest req =
                 new com.example.smartqueue.models.request.EmergencyRequest(
-                        patientId, doctorId, symptoms.isEmpty() ? null : symptoms);
+                        patientId, doctorId, symptoms);
 
         apiService.createEmergencyToken(req).enqueue(
                 new Callback<com.example.smartqueue.models.response.TokenResponse>() {
