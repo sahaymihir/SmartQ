@@ -18,6 +18,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const axios = require('axios');
+const rateLimit = require('express-rate-limit');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 const { Queue, Token } = require('../models/Queue');
 const {
@@ -26,12 +27,20 @@ const {
   savePrescriptionForToken,
 } = require('../services/prescriptionService');
 const {
+  ACTIVE_TOKEN_STATUSES,
   diffMinutes,
   recomputeWaitingQueue,
 } = require('../utils/queueHelpers');
 
 const OCR_SERVICE_URL = process.env.OCR_SERVICE_URL || null;
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'prescriptions');
+const MAX_TRACKED_CONSULTATION_MINUTES = 60;
+
+const prescriptionWriteLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { success: false, message: 'Too many prescription updates, please try again shortly.' },
+});
 
 // Ensure upload directory exists
 if (!fs.existsSync(UPLOAD_DIR)) {
@@ -359,7 +368,7 @@ router.get('/:tokenId', protect, async (req, res) => {
   }
 });
 
-router.put('/:tokenId', protect, adminOnly, async (req, res) => {
+router.put('/:tokenId', prescriptionWriteLimiter, protect, adminOnly, async (req, res) => {
   try {
     const token = await Token.findById(req.params.tokenId)
       .populate('patient', 'name')
@@ -385,7 +394,7 @@ router.put('/:tokenId', protect, adminOnly, async (req, res) => {
 
     const prescription = await savePrescriptionForToken(token, req.user, req.body || {});
 
-    if (prescription.status === 'finalized' && ['waiting', 'called', 'arrived'].includes(token.status)) {
+    if (prescription.status === 'finalized' && ACTIVE_TOKEN_STATUSES.includes(token.status)) {
       const now = new Date();
       const startedAt = token.consultationStartedAt || token.calledAt || token.joinedAt || token.createdAt;
       const consultationDuration = diffMinutes(startedAt, now);
@@ -412,7 +421,11 @@ router.put('/:tokenId', protect, adminOnly, async (req, res) => {
         if (queue.currentToken === token.tokenNumber) {
           queue.currentToken = 0;
         }
-        if (Number.isFinite(consultationDuration) && consultationDuration > 0 && consultationDuration < 60) {
+        if (
+          Number.isFinite(consultationDuration)
+          && consultationDuration > 0
+          && consultationDuration < MAX_TRACKED_CONSULTATION_MINUTES
+        ) {
           queue.updateAvgConsultation(consultationDuration);
         }
         await queue.save();

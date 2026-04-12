@@ -54,6 +54,12 @@ const joinLimiter = rateLimit({
   message: { success: false, message: 'Too many queue-join requests, please try again shortly.' },
 });
 
+const noShowLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { success: false, message: 'Too many no-show updates, please try again shortly.' },
+});
+
 const buildTokenResponse = (token) => ({
   tokenId: token._id,
   tokenNumber: token.tokenNumber,
@@ -576,11 +582,17 @@ router.post('/leave', protect, async (req, res) => {
 // POST /api/queue/noshow?tokenId=xxx
 // Staff clears a no-show patient from the active queue
 // ─────────────────────────────────────────────────────────────
-router.post('/noshow', protect, staffOnly, async (req, res) => {
+router.post('/noshow', noShowLimiter, protect, staffOnly, async (req, res) => {
   try {
     const { tokenId } = req.query;
     if (!tokenId) {
       return res.status(400).json({ success: false, message: 'tokenId is required' });
+    }
+    if (!isValidObjectId(tokenId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid tokenId: must be a valid MongoDB ObjectId',
+      });
     }
 
     const token = await Token.findById(tokenId);
