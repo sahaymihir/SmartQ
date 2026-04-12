@@ -325,12 +325,18 @@ def canonicalize_category_token(value: str) -> str:
 
 def resolve_artifact_path(filename: str) -> Path:
     candidates = [
-        PROJECT_ROOT / filename,
-        PROJECT_ROOT / "ml_service" / "models" / filename,
+        # New structure: models/triage_v3/model/ (versioned artifact location)
+        SERVICE_DIR / "models" / "triage_v3" / "model" / filename,
+        # Fallback to models/ (for backward compatibility)
         SERVICE_DIR / "models" / filename,
+        # Legacy: project root
+        PROJECT_ROOT / filename,
+        # Legacy: ml_service/models/
+        PROJECT_ROOT / "ml_service" / "models" / filename,
     ]
     for path in candidates:
         if path.exists():
+            logger.info(f"Found artifact at: {path}")
             return path
     raise FileNotFoundError(f"Could not locate required artifact: {filename}")
 

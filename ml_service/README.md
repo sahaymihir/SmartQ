@@ -1,57 +1,56 @@
 # SmartQ ML Service
 
-FastAPI inference service for SmartQ triage priority prediction using the saved v3 KTAS/XGBoost bundle.
+FastAPI inference service with three specialized machine learning models for healthcare triage and diagnostics.
 
-## What This Folder Contains
+## Overview
 
-- `main.py`
-  The live FastAPI inference service used by the Node backend.
-- `auto_ml_pipeline_v3.py`
-  The retained v3 training pipeline that produced the current saved bundle.
-- `evaluate_saved_model.py`
-  Offline evaluation script that regenerates metrics, figures, and a markdown report from the saved v3 model.
-- `models/triage_model_v3.pkl`
-  Saved model bundle with selected features, encoders, scaler metadata, and headline metrics.
-- `models/feature_cols_v3.pkl`
-  Ordered list of the 40 selected model features.
-- `models/scaler_v3.pkl`
-  StandardScaler fitted on the numeric subset of the training split.
-- `data/`
-  The local tabular triage dataset package retained for reproducibility and future retraining.
-- `reports/`
-  Generated model evaluation outputs, including graphs and a markdown summary.
+SmartQ's ML pipeline consists of **three complementary models**:
 
-## What Was Removed
+1. **Triage Model (v3)** — Symptoms → Urgency/Priority ✅ Production
+2. **Specialty Model (v2)** — Symptoms → Medical Specialty 🔨 In Development  
+3. **Diagnostic Tests (v1)** — Symptoms → Recommended Tests 🎯 Planned
 
-The folder has been cleaned to remove obsolete prototype assets that no longer support the current service:
+See `models/README.md` for detailed documentation on each model.
 
-- legacy NLP-style service code
-- legacy v1/v2 training scripts
-- old non-v3 model artifacts
-- the old synthetic prototype dataset files
+## Service Structure
 
-## Runtime Endpoints
-
-- `POST /predict`
-- `GET /health`
-
-## Local Runtime Setup
-
-```bash
-cd ml_service
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+ml_service/
+├── main.py                      # FastAPI inference service
+├── auto_ml_pipeline_v3.py       # v3 training pipeline (reference)
+├── evaluate_saved_model.py      # v3 offline evaluation script
+├── requirements.txt             # Production dependencies
+├── requirements-dev.txt         # Dev + training dependencies
+├── Dockerfile                   # Container build
+├── models/
+│   ├── config.py                # Shared configuration
+│   ├── __init__.py
+│   ├── README.md                # Model documentation
+│   ├── triage_v3/
+│   │   ├── training/
+│   │   │   └── train_triage_v3.py
+│   │   └── model/               # Production artifacts
+│   │       ├── triage_model_v3.pkl ✅
+│   │       ├── scaler_v3.pkl ✅
+│   │       └── feature_cols_v3.pkl ✅
+│   ├── specialty_v2/
+│   │   ├── training/
+│   │   │   └── train_specialty_v2.py
+│   │   └── model/               # (coming soon)
+│   └── tests_v1/
+│       ├── training/
+│       │   └── train_tests_v1.py
+│       └── model/               # (coming soon)
+└── src/                         # Utility modules (tracked)
+    └── (future utilities)
 ```
 
-The service resolves the v3 artifacts from:
+## Current Production Endpoints
 
-- `ml_service/models/`
-- the project root, if a deployment layout places them there
+### `POST /predict` — Triage Prediction
+Predicts KTAS priority class (1-5) from patient vitals and symptoms.
 
-## Example Request
-
+**Request:**
 ```bash
 curl -X POST http://localhost:8000/predict \
   -H "Content-Type: application/json" \
@@ -72,8 +71,7 @@ curl -X POST http://localhost:8000/predict \
   }'
 ```
 
-Example response:
-
+**Response:**
 ```json
 {
   "priority_class": 2,
@@ -90,13 +88,111 @@ Example response:
 }
 ```
 
-## Health Check
-
+### `GET /health` — Health Check
 ```bash
 curl http://localhost:8000/health
 ```
 
-Expected response:
+Response:
+```json
+{
+  "status": "ok",
+  "model_version": "v3"
+}
+```
+
+### `GET /` — Service Info
+Root endpoint with service metadata and available endpoints.
+
+## Future Endpoints (In Development)
+
+- `POST /specialty` — Route patient to appropriate specialty
+- `POST /tests` — Get recommended diagnostic tests
+
+## Local Setup
+
+```bash
+cd ml_service
+
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run service
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+## Retraining Models
+
+To retrain any model locally, place dataset CSV files in the respective training directory:
+
+```bash
+# Triage model
+cd models/triage_v3/training
+mkdir -p datasets/
+# Place train.csv, chief_complaints.csv, patient_history.csv in datasets/
+python train_triage_v3.py --data-dir datasets/ --output-dir ../model/
+
+# Specialty model (in development)
+cd models/specialty_v2/training
+mkdir -p datasets/
+# Place specialty_train.csv in datasets/
+python train_specialty_v2.py --data-dir datasets/ --output-dir ../model/
+
+# Diagnostic tests model (planned)
+cd models/tests_v1/training
+mkdir -p datasets/
+python train_tests_v1.py --data-dir datasets/ --output-dir ../model/
+```
+
+## Development
+
+### Install Dev Dependencies
+```bash
+pip install -r requirements-dev.txt
+```
+
+### Run Evaluation
+```bash
+python evaluate_saved_model.py
+```
+
+Generates:
+- `models/evaluation/latest_metrics.json` — Numeric metrics
+- `models/evaluation/latest_report.md` — Full evaluation report
+- `models/evaluation/figures/` — Plots and visualizations
+
+## Data Policy
+
+**Training datasets are NOT committed to the repository** to keep it lean:
+- Raw CSV data lives locally in `{model}/training/datasets/`
+- Only final model artifacts (`.pkl` files) are version-controlled
+- `.gitignore` automatically excludes all dataset directories
+
+To retrain locally without affecting the repo, simply place datasets in the training directory and run the training script.
+
+## Docker Deployment
+
+```bash
+# Build from repository root
+docker build -f ml_service/Dockerfile -t smartq-ml-service .
+
+# Run
+docker run --rm -p 8000:8000 smartq-ml-service
+
+# Verify
+curl http://localhost:8000/health
+```
+
+## Deployment Notes
+
+- Model artifacts are lightweight (~3 MB total for v3)
+- Service starts in ~2-3 seconds
+- No GPU required for inference
+- Supports horizontal scaling (stateless FastAPI app)
 
 ```json
 {
