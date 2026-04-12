@@ -26,6 +26,9 @@ def train_tests_model(data_dir: Path, output_dir: Path):
     logger.info(f"  Data directory: {data_dir}")
     logger.info(f"  Output directory: {output_dir}")
     
+    # The live SmartQ /test-recommendations endpoint currently uses the
+    # rule-based engine in ml_service/main.py, not a trained model here.
+    #
     # TODO: Implement phase 1 (rule-based) and phase 2 (supervised)
     #
     # Phase 1: Rule-based engine

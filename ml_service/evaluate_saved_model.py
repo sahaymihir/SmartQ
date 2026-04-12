@@ -26,12 +26,13 @@ import matplotlib.pyplot as plt
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 MODELS_DIR = BASE_DIR / "models"
+TRIAGE_MODEL_DIR = MODELS_DIR / "triage_v3" / "model"
 REPORTS_DIR = BASE_DIR / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
 
-MODEL_PATH = MODELS_DIR / "triage_model_v3.pkl"
-FEATURES_PATH = MODELS_DIR / "feature_cols_v3.pkl"
-SCALER_PATH = MODELS_DIR / "scaler_v3.pkl"
+MODEL_PATH = TRIAGE_MODEL_DIR / "triage_model_v3.pkl"
+FEATURES_PATH = TRIAGE_MODEL_DIR / "feature_cols_v3.pkl"
+SCALER_PATH = TRIAGE_MODEL_DIR / "scaler_v3.pkl"
 REPORT_PATH = REPORTS_DIR / "latest_model_evaluation.md"
 METRICS_PATH = REPORTS_DIR / "latest_model_metrics.json"
 

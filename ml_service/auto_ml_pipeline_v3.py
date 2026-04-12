@@ -29,9 +29,10 @@ warnings.filterwarnings("ignore")
 BASE_DIR = Path(__file__).resolve().parent
 DATA_PATH = BASE_DIR / "data" / "train.csv"
 MODELS_DIR = BASE_DIR / "models"
-MODEL_PATH = MODELS_DIR / "triage_model_v3.pkl"
-FEATURES_PATH = MODELS_DIR / "feature_cols_v3.pkl"
-SCALER_PATH = MODELS_DIR / "scaler_v3.pkl"
+TRIAGE_MODEL_DIR = MODELS_DIR / "triage_v3" / "model"
+MODEL_PATH = TRIAGE_MODEL_DIR / "triage_model_v3.pkl"
+FEATURES_PATH = TRIAGE_MODEL_DIR / "feature_cols_v3.pkl"
+SCALER_PATH = TRIAGE_MODEL_DIR / "scaler_v3.pkl"
 
 TARGET_COL = "triage_acuity"
 DROP_COLUMNS = ["triage_nurse_id", "patient_id", "disposition", "ed_los_hours"]
@@ -302,6 +303,7 @@ def build_xgboost(n_classes: int, use_gpu: bool) -> XGBClassifier:
 
 def main() -> None:
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    TRIAGE_MODEL_DIR.mkdir(parents=True, exist_ok=True)
     gpu_available = detect_gpu_available()
 
     print_header("STEP 1 - LOAD & CLEAN")

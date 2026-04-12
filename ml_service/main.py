@@ -12,11 +12,18 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from specialty_hybrid import (
-    SpecialtyPredictionRequest,
-    SpecialtyPredictionResponse,
-    predict_specialty,
-)
+try:
+    from specialty_hybrid import (
+        SpecialtyPredictionRequest,
+        SpecialtyPredictionResponse,
+        predict_specialty,
+    )
+except ModuleNotFoundError:
+    from .specialty_hybrid import (
+        SpecialtyPredictionRequest,
+        SpecialtyPredictionResponse,
+        predict_specialty,
+    )
 
 
 logging.basicConfig(level=logging.INFO)

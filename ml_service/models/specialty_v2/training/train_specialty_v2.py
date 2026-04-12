@@ -22,10 +22,13 @@ def train_specialty_model(data_dir: Path, output_dir: Path):
         data_dir: Directory containing specialty-labeled dataset (specialty_train.csv)
         output_dir: Directory to save model artifacts (pkl files)
     """
-    logger.info("Specialty model v2 training pipeline (IN DEVELOPMENT)")
+    logger.info("Specialty model v2 training pipeline (placeholder)")
     logger.info(f"  Data directory: {data_dir}")
     logger.info(f"  Output directory: {output_dir}")
     
+    # The live SmartQ /specialty endpoint currently uses the rule-based
+    # specialty_hybrid.py engine in ml_service/, not a trained model here.
+    #
     # TODO: Complete implementation
     # 
     # Steps:

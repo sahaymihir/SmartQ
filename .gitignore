@@ -32,4 +32,11 @@ venv/
 __pycache__/
 *.pyc
 ml_service/data/
+ml_service/src/
+ml_service/logs/
+ml_service/results/
+ml_service/reports/
+ml_service/models/bert_specialty/
+ml_service/models/**/training/datasets/
+ml_service/*.pid
 .codex
