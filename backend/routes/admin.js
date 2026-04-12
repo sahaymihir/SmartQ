@@ -302,7 +302,7 @@ const parseOptionalNumber = (value, fieldLabel, { min, max, integer = false } = 
 };
 
 const buildAdminEvalPayload = (body = {}) => {
-  const scenarioKey = parseOptionalText(body.scenario_key || body.scenarioKey);
+  const scenarioKey = parseOptionalText(body.scenario_key);
   const selectedScenario = resolveAdminEvalScenario(scenarioKey);
   // Scenario defaults are merge-first to provide a one-click walkthrough baseline,
   // while still allowing explicit request fields to override for ad-hoc what-if simulation.
