@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
 const { protect, staffOnly } = require('../middleware/authMiddleware');
 const { Token } = require('../models/Queue');
+const User = require('../models/User');
 const {
   buildPrescriptionView,
   hasLegacyPrescription,
@@ -19,12 +20,16 @@ const {
   getTodayQueue,
   isImmediateReviewToken,
   promoteTokenByPriority,
+  reorderWaitingQueueByUrgency,
   recomputeWaitingQueue,
   getPriorityLabel,
 } = require('../utils/queueHelpers');
 
 // Minimum predicted wait time (minutes) before test recommendations are surfaced.
 const HIGH_WAIT_THRESHOLD_MIN = Number(process.env.TEST_SUGGEST_WAIT_THRESHOLD_MIN || 30);
+const PATIENTS_AHEAD_THRESHOLD = Number(
+  process.env.TEST_SUGGEST_PATIENTS_AHEAD_THRESHOLD || 3
+);
 
 // Helper: check whether a value is a valid MongoDB ObjectId string.
 const isValidObjectId = (value) =>
@@ -41,6 +46,12 @@ const emergencyLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
   message: { success: false, message: 'Too many emergency-token requests, please try again later.' },
+});
+
+const joinLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 40,
+  message: { success: false, message: 'Too many queue-join requests, please try again shortly.' },
 });
 
 const buildTokenResponse = (token) => ({
@@ -124,20 +135,17 @@ const buildJoinMessage = (token) => {
 // POST /api/queue/join?doctorId=xxx
 // Patient joins the queue for a specific doctor
 // ─────────────────────────────────────────────────────────────
-router.post('/join', protect, async (req, res) => {
+router.post('/join', joinLimiter, protect, async (req, res) => {
   try {
-    const { doctorId } = req.query;
+    const requestedDoctorId = req.query.doctorId;
     const { symptoms } = req.body;
     const patient = req.user;
+    let doctorId = requestedDoctorId;
 
     // Visit intent: 'new' (default) or 'follow_up'
     const visitType = ['new', 'follow_up'].includes(req.body.visitType)
       ? req.body.visitType
       : 'new';
-
-    if (!doctorId) {
-      return res.status(400).json({ success: false, message: 'doctorId is required' });
-    }
 
     if (patient.role !== 'patient') {
       return res.status(403).json({
@@ -195,6 +203,39 @@ router.post('/join', protect, async (req, res) => {
       }
 
       followUpTokenId = priorToken._id;
+      doctorId = priorToken.doctor?.toString();
+
+      if (!doctorId) {
+        return res.status(409).json({
+          success: false,
+          followUpDoctorUnavailable: true,
+          requiresManualAssignment: true,
+          message: 'Previous follow-up doctor is unavailable. Please ask nurse desk for manual assignment.',
+        });
+      }
+
+      if (requestedDoctorId && requestedDoctorId !== doctorId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Follow-up visits must continue with the same doctor from the selected prior visit.',
+        });
+      }
+    }
+
+    if (!doctorId) {
+      return res.status(400).json({ success: false, message: 'doctorId is required' });
+    }
+    if (!isValidObjectId(doctorId)) {
+      return res.status(400).json({ success: false, message: 'Invalid doctorId: must be a valid MongoDB ObjectId' });
+    }
+    const doctorObjectId = new mongoose.Types.ObjectId(doctorId);
+
+    const assignedDoctor = await User.findById(doctorObjectId).select('_id role name').lean();
+    if (!assignedDoctor || assignedDoctor.role !== 'doctor') {
+      return res.status(404).json({
+        success: false,
+        message: 'Selected doctor was not found',
+      });
     }
 
     const queue = await getTodayQueue(doctorId);
@@ -203,6 +244,14 @@ router.post('/join', protect, async (req, res) => {
       return res.status(400).json({ success: false, message: 'This queue is not active today' });
     }
     if (queue.isPaused) {
+      if (visitType === 'follow_up') {
+        return res.status(409).json({
+          success: false,
+          followUpDoctorUnavailable: true,
+          requiresManualAssignment: true,
+          message: 'Your previous doctor is currently unavailable. Please ask nurse desk for manual assignment.',
+        });
+      }
       return res.status(400).json({ success: false, message: 'This queue is currently paused' });
     }
 
@@ -210,7 +259,7 @@ router.post('/join', protect, async (req, res) => {
     const routingLane = triageDecision.routingLane || 'normal';
 
     const waitingCount = await Token.countDocuments({
-      doctor: doctorId,
+      doctor: doctorObjectId,
       status: 'waiting',
       routingLane: { $ne: IMMEDIATE_REVIEW_LANE },
       createdAt: buildDayQuery(today),
@@ -228,14 +277,12 @@ router.post('/join', protect, async (req, res) => {
     const mlTestRecs = Array.isArray(triageDecision.testRecommendations)
       ? triageDecision.testRecommendations
       : [];
-    const shouldSuggestTests =
-      predictedWaitMinutes >= HIGH_WAIT_THRESHOLD_MIN && mlTestRecs.length > 0;
-    const testRecommendations = shouldSuggestTests ? mlTestRecs : [];
-    const testSuggestedAt = shouldSuggestTests ? new Date() : null;
+    const testRecommendations = [];
+    const testSuggestedAt = null;
 
     const token = await Token.create({
       patient: patient._id,
-      doctor: doctorId,
+      doctor: doctorObjectId,
       tokenNumber,
       position,
       etaMinutes: predictedWaitMinutes,
@@ -285,9 +332,25 @@ router.post('/join', protect, async (req, res) => {
     await queue.save();
 
     if (routingLane !== IMMEDIATE_REVIEW_LANE) {
-      await promoteTokenByPriority(doctorId, token._id, queue.avgConsultationMinutes, today);
+      await reorderWaitingQueueByUrgency(doctorObjectId, queue.avgConsultationMinutes, today);
+      await promoteTokenByPriority(doctorObjectId, token._id, queue.avgConsultationMinutes, today);
     }
     const updatedToken = await Token.findById(token._id);
+
+    // Apply pre-doctor test suggestions only after final queue placement is known.
+    if (updatedToken && routingLane !== IMMEDIATE_REVIEW_LANE && mlTestRecs.length > 0) {
+      const patientsAhead = Math.max(0, Number(updatedToken.position ?? 1) - 1);
+      const livePredictedWaitMinutes = computeETA(updatedToken.position, queue.avgConsultationMinutes);
+      const shouldSuggestTests =
+        patientsAhead >= PATIENTS_AHEAD_THRESHOLD ||
+        livePredictedWaitMinutes >= HIGH_WAIT_THRESHOLD_MIN;
+
+      if (shouldSuggestTests) {
+        updatedToken.testRecommendations = mlTestRecs;
+        updatedToken.testSuggestedAt = new Date();
+        await updatedToken.save();
+      }
+    }
 
     res.status(201).json({
       success: true,
@@ -611,7 +674,11 @@ router.patch('/nurse-triage/:tokenId', nurseTriageLimiter, protect, staffOnly, a
     const mergedBody = {
       symptoms: token.symptoms || '',
       symptomsText: token.symptoms || '',
+      symptomsVoiceTranscript: token.symptomsVoiceTranscript || '',
       intakeLanguage: token.intakeLanguage || 'en',
+      sex: token.visitSnapshot?.sex,
+      chief_complaint_system: token.visitSnapshot?.chief_complaint_system,
+      mental_status_triage: token.visitSnapshot?.mental_status_triage,
       ...nurseVitals,
     };
 
@@ -659,9 +726,7 @@ router.patch('/nurse-triage/:tokenId', nurseTriageLimiter, protect, staffOnly, a
     // Re-sort the queue since priority may have changed
     const today = getTodayDateString();
     const queue = await getTodayQueue(token.doctor, today);
-    if (token.routingLane !== IMMEDIATE_REVIEW_LANE) {
-      await promoteTokenByPriority(token.doctor, token._id, queue.avgConsultationMinutes, today);
-    }
+    await reorderWaitingQueueByUrgency(token.doctor, queue.avgConsultationMinutes, today);
 
     const updatedToken = await Token.findById(token._id);
     res.json({

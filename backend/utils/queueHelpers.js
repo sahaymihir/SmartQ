@@ -229,6 +229,16 @@ const recomputeWaitingQueue = async (doctorId, avgConsultationMinutes, dateStrin
   return persistWaitingOrder(tokens, avgConsultationMinutes);
 };
 
+const reorderWaitingQueueByUrgency = async (
+  doctorId,
+  avgConsultationMinutes,
+  dateString = getTodayDateString()
+) => {
+  const tokens = await loadWaitingTokens(doctorId, dateString);
+  const orderedTokens = [...tokens].sort((left, right) => compareTokensByUrgency(left, right));
+  return persistWaitingOrder(orderedTokens, avgConsultationMinutes);
+};
+
 const promoteTokenByPriority = async (
   doctorId,
   tokenId,
@@ -287,6 +297,7 @@ module.exports = {
   isImmediateReviewToken,
   persistWaitingOrder,
   promoteTokenByPriority,
+  reorderWaitingQueueByUrgency,
   recomputeWaitingQueue,
   sortActiveQueueTokens,
   sortWaitingTokensForCall,
