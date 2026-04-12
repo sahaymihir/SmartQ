@@ -41,6 +41,9 @@ dependencies {
 
     // Lottie — Premium Animations
     implementation 'com.airbnb.android:lottie:6.4.0'
+    
+    // Core Splash Screen for smooth launch transition
+    implementation 'androidx.core:core-splashscreen:1.0.1'
 
     // Networking — Retrofit + OkHttp
     implementation libs.retrofit

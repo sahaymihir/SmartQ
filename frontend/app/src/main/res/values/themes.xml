@@ -39,6 +39,13 @@
         <item name="android:windowLightStatusBar">false</item>
     </style>
 
+    <!-- Android 12+ Core Splash Screen Theme for Seamless Launch -->
+    <style name="Theme.SmartQ.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/surface</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_app_logo_large</item>
+        <item name="postSplashScreenTheme">@style/Theme.SmartQ.Splash</item>
+    </style>
+
     <!-- ── Card Styles ─────────────────────────────────── -->
 
     <!-- Dark Glass Card -->

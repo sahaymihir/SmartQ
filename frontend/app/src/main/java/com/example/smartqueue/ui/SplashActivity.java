@@ -11,6 +11,7 @@ import android.view.animation.AnimationUtils;
 import android.view.animation.OvershootInterpolator;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.splashscreen.SplashScreen;
 
 import com.airbnb.lottie.LottieAnimationView;
 import com.example.smartqueue.R;
@@ -31,6 +32,8 @@ public class SplashActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Tie into Android 12+ native splash screen for smooth boot
+        SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
 
