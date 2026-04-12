@@ -20,6 +20,47 @@ const predictLimiter = rateLimit({
   message: { success: false, message: 'Too many prediction requests, please try again later.' },
 });
 
+const SPECIALTY_SYNONYM_MAP = {
+  cardiologist: 'Cardiology',
+  cardiology: 'Cardiology',
+  orthopedician: 'Orthopaedics',
+  orthopedics: 'Orthopaedics',
+  orthopaedics: 'Orthopaedics',
+  neurologist: 'Neurology',
+  neurology: 'Neurology',
+  dermatologist: 'Dermatology',
+  dermatology: 'Dermatology',
+  gastroenterologist: 'Gastroenterology',
+  gastroenterology: 'Gastroenterology',
+  pediatrician: 'Paediatrics',
+  paediatrics: 'Paediatrics',
+  pediatrics: 'Paediatrics',
+  pulmonologist: 'Pulmonology',
+  pulmonology: 'Pulmonology',
+  ent: 'Otolaryngology (ENT)',
+  otolaryngology: 'Otolaryngology (ENT)',
+  hematologist: 'Hematology',
+  hematology: 'Hematology',
+  endocrinologist: 'Endocrinology',
+  endocrinology: 'Endocrinology',
+  nephrologist: 'Nephrology / Urology',
+  urologist: 'Nephrology / Urology',
+  'nephrology / urology': 'Nephrology / Urology',
+  emergency: 'Emergency Medicine',
+  'emergency medicine': 'Emergency Medicine',
+  'general opd': 'General OPD',
+  'general practice': 'General OPD',
+};
+
+const normalizeSpecialty = (value) => {
+  const text = String(value || '').trim();
+  if (!text) {
+    return '';
+  }
+
+  return SPECIALTY_SYNONYM_MAP[text.toLowerCase()] || text;
+};
+
 router.get('/', listDoctorsLimiter, protect, async (req, res) => {
   try {
     const doctors = await User.find({ role: 'doctor' })
@@ -58,18 +99,20 @@ router.post('/symptom-predict', predictLimiter, protect, async (req, res) => {
 
     const routedSpecialty = specialtyPrediction.routedSpecialty || 'General OPD';
 
+    const canonicalRoute = normalizeSpecialty(routedSpecialty);
+
     let recommendedDoc = await User.findOne({
       role: 'doctor',
-      specialty: routedSpecialty,
+      specialty: { $regex: `^${canonicalRoute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
     }).select('name specialty _id');
 
     let doctorRoutingNote = '';
-    if (!recommendedDoc && routedSpecialty !== 'General OPD') {
+    if (!recommendedDoc && canonicalRoute !== 'General OPD') {
       recommendedDoc = await User.findOne({
         role: 'doctor',
         specialty: 'General OPD',
       }).select('name specialty _id');
-      doctorRoutingNote = ` No exact ${routedSpecialty} doctor was available, so SmartQ fell back to General OPD.`;
+      doctorRoutingNote = ` No exact ${canonicalRoute} doctor was available, so SmartQ fell back to General OPD.`;
     }
 
     if (!recommendedDoc) {
@@ -83,12 +126,12 @@ router.post('/symptom-predict', predictLimiter, protect, async (req, res) => {
       ? {
           id: recommendedDoc._id,
           name: recommendedDoc.name,
-          specialty: recommendedDoc.specialty || routedSpecialty,
+          specialty: normalizeSpecialty(recommendedDoc.specialty || canonicalRoute),
         }
       : {
           id: null,
           name: 'No doctor available',
-          specialty: routedSpecialty,
+            specialty: canonicalRoute,
         };
 
     const reasoning = `${specialtyPrediction.reasoning}${doctorRoutingNote}`.trim();

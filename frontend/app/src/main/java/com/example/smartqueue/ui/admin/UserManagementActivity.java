@@ -8,6 +8,7 @@ import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.AutoCompleteTextView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -36,7 +37,10 @@ import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -52,6 +56,7 @@ import retrofit2.Response;
 public class UserManagementActivity extends AppCompatActivity {
 
     private static final String ELEVATED_ROLE_FILTER = "__elevated__";
+    private static final Map<String, String> SPECIALTY_CANONICAL_MAP = buildSpecialtyCanonicalMap();
 
     private ChipGroup chipGroupFilter;
     private Chip chipAll, chipDoctors, chipNurses, chipPatients, chipAdmins;
@@ -335,8 +340,40 @@ public class UserManagementActivity extends AppCompatActivity {
         TextInputEditText etPassword = dialogView.findViewById(R.id.etDuPassword);
         Spinner spinnerRole          = dialogView.findViewById(R.id.spinnerRole);
         TextInputLayout tilSpecialty = dialogView.findViewById(R.id.tilDuSpecialty);
-        TextInputEditText etSpecialty = dialogView.findViewById(R.id.etDuSpecialty);
+        AutoCompleteTextView etSpecialty = dialogView.findViewById(R.id.etDuSpecialty);
+        MaterialButton btnCreate = dialogView.findViewById(R.id.btnDuCreate);
+        MaterialButton btnCancel = dialogView.findViewById(R.id.btnDuCancel);
         etPhone.setFilters(new InputFilter[]{ new InputFilter.LengthFilter(10) });
+
+        List<String> specialtyOptions = Arrays.asList(
+            "Cardiology",
+            "Orthopaedics",
+            "Neurology",
+            "Dermatology",
+            "Gastroenterology",
+            "Paediatrics",
+            "Pulmonology",
+            "General OPD",
+            "Infectious Disease",
+            "Otolaryngology (ENT)",
+            "Hematology",
+            "Endocrinology",
+            "Nephrology / Urology",
+            "Emergency Medicine"
+        );
+        ArrayAdapter<String> specialtyAdapter = new ArrayAdapter<>(
+            this,
+            android.R.layout.simple_dropdown_item_1line,
+            specialtyOptions
+        );
+        etSpecialty.setAdapter(specialtyAdapter);
+        etSpecialty.setThreshold(0);
+        etSpecialty.setOnClickListener(v -> etSpecialty.showDropDown());
+        etSpecialty.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                etSpecialty.showDropDown();
+            }
+        });
 
         // Populate role spinner based on current user's permission level
         List<String> roles = new ArrayList<>();
@@ -363,16 +400,22 @@ public class UserManagementActivity extends AppCompatActivity {
             @Override public void onNothingSelected(AdapterView<?> parent) {}
         });
 
-        new AlertDialog.Builder(this)
+        AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Add New User")
                 .setView(dialogView)
-                .setPositiveButton("Create", (dialog, which) -> {
+            .setCancelable(true)
+            .create();
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        btnCreate.setOnClickListener(v -> {
                     String name      = etName.getText()     != null ? etName.getText().toString().trim()     : "";
                     String email     = etEmail.getText()    != null ? etEmail.getText().toString().trim()    : "";
                     String phone     = etPhone.getText()    != null ? etPhone.getText().toString().trim()    : "";
                     String ageStr    = etAge.getText()      != null ? etAge.getText().toString().trim()      : "";
                     String password  = etPassword.getText() != null ? etPassword.getText().toString().trim() : "";
-                    String specialty = etSpecialty.getText() != null ? etSpecialty.getText().toString().trim() : "";
+                String specialty = canonicalizeSpecialty(
+                    etSpecialty.getText() != null ? etSpecialty.getText().toString().trim() : ""
+                );
                     String role      = roles.get(spinnerRole.getSelectedItemPosition());
 
                     if (TextUtils.isEmpty(name) || TextUtils.isEmpty(email)
@@ -404,9 +447,49 @@ public class UserManagementActivity extends AppCompatActivity {
 
                     submitCreateUser(new CreateUserRequest(name, email, password, phone, age, role,
                             "doctor".equals(role) ? specialty : null));
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+                    dialog.dismiss();
+                });
+
+        dialog.show();
+    }
+
+    private String canonicalizeSpecialty(String specialty) {
+        if (TextUtils.isEmpty(specialty)) {
+            return "";
+        }
+
+        String trimmed = specialty.trim();
+        String mapped = SPECIALTY_CANONICAL_MAP.get(trimmed.toLowerCase(Locale.US));
+        return mapped != null ? mapped : trimmed;
+    }
+
+    private static Map<String, String> buildSpecialtyCanonicalMap() {
+        Map<String, String> map = new HashMap<>();
+        map.put("cardiologist", "Cardiology");
+        map.put("cardiology", "Cardiology");
+        map.put("orthopedics", "Orthopaedics");
+        map.put("orthopaedics", "Orthopaedics");
+        map.put("neurologist", "Neurology");
+        map.put("neurology", "Neurology");
+        map.put("dermatologist", "Dermatology");
+        map.put("dermatology", "Dermatology");
+        map.put("gastroenterologist", "Gastroenterology");
+        map.put("gastroenterology", "Gastroenterology");
+        map.put("pediatrician", "Paediatrics");
+        map.put("paediatrics", "Paediatrics");
+        map.put("paediatrics", "Paediatrics");
+        map.put("pulmonologist", "Pulmonology");
+        map.put("pulmonology", "Pulmonology");
+        map.put("ent", "Otolaryngology (ENT)");
+        map.put("otolaryngology (ent)", "Otolaryngology (ENT)");
+        map.put("hematology", "Hematology");
+        map.put("endocrinology", "Endocrinology");
+        map.put("nephrology", "Nephrology / Urology");
+        map.put("urology", "Nephrology / Urology");
+        map.put("emergency medicine", "Emergency Medicine");
+        map.put("general opd", "General OPD");
+        map.put("general practice", "General OPD");
+        return map;
     }
 
     private void submitCreateUser(CreateUserRequest req) {

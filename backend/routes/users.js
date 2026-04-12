@@ -15,6 +15,7 @@ const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
 const { protect, superuserOrAdmin } = require('../middleware/authMiddleware');
 const User = require('../models/User');
+const { routeToSupportedSpecialty } = require('../services/specialtyService');
 const {
   buildDuplicateFieldMessage,
   isValidEmail,
@@ -182,7 +183,8 @@ router.post('/', writeLimiter, async (req, res) => {
     };
 
     if (normalizedRole === 'doctor' && specialty) {
-      userData.specialty = String(specialty).trim();
+      const canonicalSpecialty = routeToSupportedSpecialty(String(specialty).trim(), String(specialty).trim());
+      userData.specialty = canonicalSpecialty || String(specialty).trim();
     }
 
     const user = await User.create(userData);

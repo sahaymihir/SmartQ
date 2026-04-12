@@ -15,6 +15,16 @@
         android:background="@drawable/bg_ambient_glow"
         android:alpha="0.3"/>
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRefreshQueue"
+                    style="@style/SmartQ.Button.Text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Refresh"
+                    android:textAllCaps="false"
+                    android:textSize="12sp"
+                    android:layout_marginEnd="8dp"/>
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -344,6 +354,16 @@
                     android:text="Loading"
                     android:textSize="12sp"
                     android:textColor="@color/on_surface_variant"
+                    android:layout_marginEnd="8dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRefreshQueue"
+                    style="@style/SmartQ.Button.Text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Refresh"
+                    android:textAllCaps="false"
+                    android:textSize="12sp"
                     android:layout_marginEnd="8dp"/>
 
                 <ProgressBar

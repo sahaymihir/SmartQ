@@ -43,7 +43,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
     private TextView tvDoctorGreeting, tvDoctorName, tvCurrentPatientName, tvCurrentPatientToken, tvViewHistory;
     private TextView tvQueueSize, tvQueueSummary, tvQueueEmpty;
     private SwitchMaterial switchAvailability;
-    private MaterialButton btnCallNext, btnPrescribe, btnLogout;
+    private MaterialButton btnCallNext, btnPrescribe, btnLogout, btnRefreshQueue;
     private RecyclerView rvQueue;
     private ProgressBar progressBar;
 
@@ -109,6 +109,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
         switchAvailability = findViewById(R.id.switchAvailability);
         btnCallNext = findViewById(R.id.btnCallNext);
         btnPrescribe = findViewById(R.id.btnPrescribe);
+        btnRefreshQueue = findViewById(R.id.btnRefreshQueue);
         rvQueue = findViewById(R.id.rvQueue);
         progressBar = findViewById(R.id.progressBar);
         btnLogout = findViewById(R.id.btnLogout);
@@ -157,6 +158,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
         });
 
         btnPrescribe.setOnClickListener(v -> openPrescriptionEditor(currentTokenId));
+        btnRefreshQueue.setOnClickListener(v -> fetchQueueData(true));
 
         tvCurrentPatientName.setOnClickListener(v -> openCurrentPatientHistoryActivity());
         tvCurrentPatientToken.setOnClickListener(v -> openCurrentPatientHistoryActivity());
@@ -243,6 +245,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
         rvQueue.setVisibility(queue.isEmpty() ? View.GONE : View.VISIBLE);
         tvQueueEmpty.setVisibility(queue.isEmpty() ? View.VISIBLE : View.GONE);
         tvQueueEmpty.setText("No patients are waiting right now.");
+        btnRefreshQueue.setEnabled(true);
 
         int waitingCount = 0;
         int calledCount = 0;
@@ -301,6 +304,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
         tvQueueSize.setText("--");
         tvQueueSummary.setText("Unavailable");
         resetCurrentPatientUI();
+        btnRefreshQueue.setEnabled(true);
         if (showToast) {
             Toast.makeText(DoctorHomeActivity.this, message, Toast.LENGTH_SHORT).show();
         }

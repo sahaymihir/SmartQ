@@ -120,14 +120,38 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Specialty (e.g. Cardiology)"
+            app:endIconMode="dropdown_menu"
             android:visibility="gone">
-            <com.google.android.material.textfield.TextInputEditText
+            <AutoCompleteTextView
                 android:id="@+id/etDuSpecialty"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textCapWords"
+                android:inputType="none"
                 android:textSize="14sp"/>
         </com.google.android.material.textfield.TextInputLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end"
+            android:layout_marginTop="20dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDuCancel"
+                style="@style/SmartQ.Button.Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cancel"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDuCreate"
+                style="@style/SmartQ.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="Create"/>
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>

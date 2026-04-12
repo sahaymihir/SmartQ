@@ -75,7 +75,7 @@ router.get('/queue', async (req, res) => {
 
     const tokens = await Token.find({
       doctor: doctorId,
-      status: { $in: ['waiting_doctor', 'called', 'arrived'] },
+      status: { $in: ['waiting', 'waiting_doctor', 'called', 'arrived'] },
       createdAt: buildDayQuery(today())
     })
     .populate('patient', 'name age phone');

@@ -22,11 +22,55 @@ const ROUTE_MAP = {
   'Emergency Medicine': 'General OPD',
 };
 
-const routeToSupportedSpecialty = (specialist, preferredRoute) => {
-  if (preferredRoute && Object.values(ROUTE_MAP).includes(preferredRoute)) {
-    return preferredRoute;
+const SPECIALTY_SYNONYM_MAP = {
+  cardiologist: 'Cardiology',
+  cardiology: 'Cardiology',
+  orthopedician: 'Orthopaedics',
+  orthopedics: 'Orthopaedics',
+  orthopaedics: 'Orthopaedics',
+  neurologist: 'Neurology',
+  neurology: 'Neurology',
+  dermatologist: 'Dermatology',
+  dermatology: 'Dermatology',
+  gastroenterologist: 'Gastroenterology',
+  gastroenterology: 'Gastroenterology',
+  pediatrician: 'Paediatrics',
+  paediatrics: 'Paediatrics',
+  pediatrics: 'Paediatrics',
+  pulmonologist: 'Pulmonology',
+  pulmonology: 'Pulmonology',
+  ent: 'Otolaryngology (ENT)',
+  otolaryngology: 'Otolaryngology (ENT)',
+  hematologist: 'Hematology',
+  hematology: 'Hematology',
+  endocrinologist: 'Endocrinology',
+  endocrinology: 'Endocrinology',
+  nephrologist: 'Nephrology / Urology',
+  urologist: 'Nephrology / Urology',
+  'nephrology / urology': 'Nephrology / Urology',
+  emergency: 'Emergency Medicine',
+  'emergency medicine': 'Emergency Medicine',
+  'general opd': 'General OPD',
+  'general practice': 'General OPD',
+};
+
+const normalizeSpecialtyName = (value) => {
+  const text = String(value || '').trim();
+  if (!text) {
+    return '';
   }
-  return ROUTE_MAP[specialist] || 'General OPD';
+
+  const canonical = SPECIALTY_SYNONYM_MAP[text.toLowerCase()];
+  return canonical || text;
+};
+
+const routeToSupportedSpecialty = (specialist, preferredRoute) => {
+  const normalizedPreferredRoute = normalizeSpecialtyName(preferredRoute);
+  if (normalizedPreferredRoute && Object.values(ROUTE_MAP).includes(normalizedPreferredRoute)) {
+    return normalizedPreferredRoute;
+  }
+  const normalizedSpecialist = normalizeSpecialtyName(specialist);
+  return ROUTE_MAP[normalizedSpecialist] || 'General OPD';
 };
 
 const buildFallbackPrediction = (symptoms = '') => ({
@@ -55,6 +99,7 @@ const buildSpecialtyScores = (alternatives = []) =>
   alternatives
     .map((entry) => {
       const specialty = entry.specialist || entry.specialty || 'General Practice';
+      const normalizedSpecialty = normalizeSpecialtyName(specialty);
       const matchedSignals = Array.isArray(entry.matchedSignals)
         ? entry.matchedSignals
         : Array.isArray(entry.matchedKeywords)
@@ -62,8 +107,8 @@ const buildSpecialtyScores = (alternatives = []) =>
           : [];
 
       return {
-        specialty,
-        routedSpecialty: routeToSupportedSpecialty(specialty, entry.routedSpecialty),
+        specialty: normalizedSpecialty,
+        routedSpecialty: routeToSupportedSpecialty(normalizedSpecialty, entry.routedSpecialty),
         score: Number(entry.confidence || entry.score || 0),
         matchedKeywords: matchedSignals,
         matchedSignals,
@@ -109,7 +154,7 @@ const predictSpecialty = async (payload = {}) => {
       return buildFallbackPrediction(symptoms);
     }
 
-    const primarySpecialist = data.primarySpecialist;
+    const primarySpecialist = normalizeSpecialtyName(data.primarySpecialist);
     const routedSpecialty = routeToSupportedSpecialty(primarySpecialist, data.routedSpecialty);
     const specialtyScores = buildSpecialtyScores(data.alternatives || []);
 
