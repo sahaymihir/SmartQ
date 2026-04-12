@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/background">
+    android:background="@color/surface">
 
     <!-- ── Top Bar ──────────────────────────────────────────── -->
     <LinearLayout
@@ -16,8 +16,8 @@
         android:paddingEnd="16dp"
         android:paddingTop="12dp"
         android:paddingBottom="12dp"
-        android:background="@color/white"
-        app:elevation="4dp">
+        android:background="@color/surface_container_low"
+        android:elevation="4dp">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnBack"
@@ -46,7 +46,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="AI symptom scoring &amp; doctor recommendation"
+                android:text="ML symptom scoring and doctor recommendation"
                 android:textSize="12sp"
                 android:textColor="@color/text_secondary"/>
         </LinearLayout>
@@ -94,7 +94,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="🧪"
+                            android:text="ML"
                             android:textSize="20sp"
                             android:layout_marginEnd="8dp"/>
 
@@ -165,7 +165,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="🔍 Extracted Factors"
+                            android:text="Extracted Factors"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary"
@@ -183,7 +183,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="📊 Top Specialty Matches"
+                            android:text="Top Specialty Matches"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary"
@@ -199,7 +199,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="👨‍⚕️ Recommended Doctor"
+                            android:text="Recommended Doctor"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary"
@@ -267,7 +267,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="🤖"
+                    android:text="ML"
                     android:textSize="48sp"
                     android:gravity="center"/>
 

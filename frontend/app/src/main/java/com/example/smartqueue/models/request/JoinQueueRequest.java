@@ -1,7 +1,7 @@
 package com.example.smartqueue.models.request;
 
 /**
- * Request body for joining a queue with AI triage.
+ * Request body for joining a queue with ML triage.
  *
  * Extended for multimodal symptom intake:
  *   - symptomsText:             free-text typed by the patient

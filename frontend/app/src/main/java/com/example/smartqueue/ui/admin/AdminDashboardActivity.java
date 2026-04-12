@@ -128,6 +128,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
                         .setPositiveButton("Logout", (d, w) -> {
                             sessionManager.clearSession();
                             startActivity(new Intent(this, LoginActivity.class));
+                            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
                             finish();
                         })
                         .setNegativeButton("Cancel", null)
@@ -135,9 +136,10 @@ public class AdminDashboardActivity extends AppCompatActivity {
         );
 
         // ── Model Evaluation ──────────────────────────────
-        btnModelEval.setOnClickListener(v ->
-                startActivity(new Intent(this, ModelEvalActivity.class))
-        );
+        btnModelEval.setOnClickListener(v -> {
+            startActivity(new Intent(this, ModelEvalActivity.class));
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+        });
 
         // ── Seed Dummy Data ───────────────────────────────
         btnSeedData.setOnClickListener(v ->
@@ -195,7 +197,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
 
         if (queue.isEmpty()) {
             TextView tv = new TextView(this);
-            tv.setText("🎉 Queue is empty!");
+            tv.setText("Queue is empty.");
             tv.setTextSize(16f);
             tv.setPadding(0, 80, 0, 80);
             tv.setGravity(android.view.Gravity.CENTER);

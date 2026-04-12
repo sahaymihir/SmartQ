@@ -23,6 +23,9 @@ public interface ApiService {
     @POST("auth/login")
     Call<AuthResponse> login(@Body LoginRequest body);
 
+    @POST("notifications/register-device")
+    Call<MessageResponse> registerDeviceToken(@Body com.example.smartqueue.models.request.NotificationRegistrationRequest body);
+
     @POST("queue/join")
     Call<TokenResponse> joinQueue(@Query("doctorId") String doctorId);
 

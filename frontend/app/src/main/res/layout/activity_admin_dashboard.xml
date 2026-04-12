@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/background">
+    android:background="@color/surface">
 
     <!-- ── Top Bar ──────────────────────────────────────── -->
     <LinearLayout
@@ -16,8 +16,7 @@
         android:paddingEnd="12dp"
         android:paddingTop="16dp"
         android:paddingBottom="12dp"
-        android:background="@color/white"
-        app:elevation="4dp">
+        android:background="@color/surface_container_low">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -79,7 +78,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="🔬 Model Eval"
+            android:text="Model Eval"
             android:textSize="13sp"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"
@@ -91,7 +90,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="🌱 Seed Data"
+            android:text="Seed Data"
             android:textSize="13sp"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"/>
@@ -235,7 +234,7 @@
                     android:text="Token #10 — Arjun Mehta"
                     android:textSize="16sp"
                     android:textStyle="bold"
-                    android:textColor="@color/white"
+                    android:textColor="@color/on_surface"
                     android:layout_marginTop="2dp"/>
 
                 <!-- Paused badge -->
@@ -255,13 +254,14 @@
                 android:id="@+id/btnCallNext"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/white"
-                android:textColor="@color/primary"
+                android:background="@drawable/bg_cta_gradient"
+                android:textColor="@color/primary_container"
                 android:text="Call Next ▶"
                 android:textStyle="bold"
                 android:textSize="13sp"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
+                app:backgroundTint="@null"
                 app:cornerRadius="10dp"/>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
@@ -307,6 +307,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
+            android:animateLayoutChanges="true"
             android:paddingBottom="16dp"/>
     </ScrollView>
 

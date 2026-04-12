@@ -18,9 +18,12 @@
         <!-- Status Bar -->
         <item name="android:statusBarColor">@color/surface</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:forceDarkAllowed">false</item>
 
         <!-- Navigation Bar -->
         <item name="android:navigationBarColor">@color/surface_container_lowest</item>
+        <item name="android:navigationBarDividerColor">@color/surface_container_lowest</item>
 
         <!-- Activity Transitions -->
         <item name="android:windowActivityTransitions">true</item>

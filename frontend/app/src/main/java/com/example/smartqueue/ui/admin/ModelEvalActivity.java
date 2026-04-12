@@ -67,7 +67,10 @@ public class ModelEvalActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
-        btnBack.setOnClickListener(v -> finish());
+        btnBack.setOnClickListener(v -> {
+            finish();
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
+        });
 
         btnRefreshHistory.setOnClickListener(v -> loadHistory());
 
@@ -80,6 +83,12 @@ public class ModelEvalActivity extends AppCompatActivity {
             }
             runTestPrediction(symptoms);
         });
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
     }
 
     // ── Run a test prediction and show inline result ───────────

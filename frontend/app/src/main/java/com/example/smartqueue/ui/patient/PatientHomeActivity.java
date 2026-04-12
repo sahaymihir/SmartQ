@@ -129,7 +129,7 @@ public class PatientHomeActivity extends AppCompatActivity {
 
     private void setupClickListeners() {
 
-        // Find Doctor (AI prediction)
+        // Find doctor using prediction
         btnFindDoctor.setOnClickListener(v -> {
             String symptoms = etSymptoms.getText() != null
                     ? etSymptoms.getText().toString().trim() : "";
@@ -341,7 +341,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             tvCheck.setVisibility(isSelected ? View.VISIBLE : View.GONE);
             tvAiBadge.setVisibility(isAiPick ? View.VISIBLE : View.GONE);
             card.setCardBackgroundColor(getResources().getColor(
-                    isSelected ? R.color.primary_light : R.color.white));
+                    isSelected ? R.color.primary_container : R.color.surface_container_low));
 
             final String docId   = doctor.getId();
             final String docName = doctor.getName();
@@ -350,7 +350,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                 selectedDoctorId   = docId;
                 selectedDoctorName = docName;
                 tvSelectedDoctor.setText(docName);
-                // Keep AI badge but user has overridden if different doctor selected
+                // Keep predicted badge but user may override selection
                 filterAndRenderDoctors(
                         etDoctorSearch.getText() != null
                                 ? etDoctorSearch.getText().toString().trim().toLowerCase() : "");
@@ -384,7 +384,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                                 selectedDoctorName = rec.getName();
                                 tvSelectedDoctor.setText(rec.getName());
                             }
-                            tvAiPickTitle.setText("🤖 AI Pick: "
+                                tvAiPickTitle.setText("Prediction: "
                                     + (rec != null ? rec.getName() : "—")
                                     + " (" + (rec != null ? rec.getSpecialty() : "") + ")");
                             tvAiPickReasoning.setText(body.getReasoning());
@@ -480,6 +480,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             Intent intent = new Intent(this, LoginActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
             finish();
         }
     }
@@ -496,7 +497,7 @@ public class PatientHomeActivity extends AppCompatActivity {
 
     private void updateCheckinUI(boolean isCheckedIn) {
         if (isCheckedIn) {
-            tvCheckinTitle.setText("✓ Checked in at hospital");
+            tvCheckinTitle.setText("Checked in at hospital");
             tvCheckinSubtitle.setText("Hospital has been notified of your arrival");
             btnCheckIn.setEnabled(false);
             btnCheckIn.setText("Done");
@@ -552,6 +553,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                     Intent intent = new Intent(this, LoginActivity.class);
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(intent);
+                    overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
                     finish();
                 })
                 .setNegativeButton("Cancel", null)

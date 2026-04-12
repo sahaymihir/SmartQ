@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="@color/surface"
     android:fillViewport="true">
 
     <LinearLayout
@@ -58,6 +58,7 @@
         <!-- ── NOT IN QUEUE STATE ────────────────────────── -->
         <LinearLayout
             android:id="@+id/layoutNotInQueue"
+            android:animateLayoutChanges="true"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -80,7 +81,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="🏥"
+                        android:text="Queue"
                         android:textSize="56sp"/>
 
                     <TextView
@@ -126,7 +127,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="🤖"
+                            android:text="ML"
                             android:textSize="18sp"
                             android:layout_marginEnd="8dp"/>
 
@@ -147,7 +148,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="AI will suggest the best doctor"
+                                android:text="Predictions suggest the best doctor"
                                 android:textSize="12sp"
                                 android:textColor="@color/text_secondary"/>
                         </LinearLayout>
@@ -178,14 +179,14 @@
                         android:text="Find Best Doctor"
                         android:layout_marginTop="10dp"/>
 
-                    <!-- AI result (hidden until prediction runs) -->
+                    <!-- Prediction result (hidden until prediction runs) -->
                     <LinearLayout
                         android:id="@+id/layoutAiResult"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:background="@color/primary_light"
+                        android:background="@drawable/bg_frosted_card"
                         android:padding="10dp"
                         android:layout_marginTop="10dp"
                         android:visibility="gone">
@@ -193,7 +194,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="✨"
+                            android:text="ML"
                             android:textSize="16sp"
                             android:layout_marginEnd="8dp"/>
 
@@ -207,7 +208,7 @@
                                 android:id="@+id/tvAiPickTitle"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="AI Recommended"
+                                android:text="Prediction"
                                 android:textSize="12sp"
                                 android:textStyle="bold"
                                 android:textColor="@color/primary"/>
@@ -318,6 +319,7 @@
         <!-- ── IN QUEUE STATE ────────────────────────────── -->
         <LinearLayout
             android:id="@+id/layoutInQueue"
+            android:animateLayoutChanges="true"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -365,7 +367,7 @@
                                 android:text="#42"
                                 android:textSize="36sp"
                                 android:textStyle="bold"
-                                android:textColor="@color/white"/>
+                                android:textColor="@color/on_surface"/>
 
                             <TextView
                                 android:id="@+id/tvDoctorName"
@@ -392,7 +394,7 @@
                                 android:text="4"
                                 android:textSize="28sp"
                                 android:textStyle="bold"
-                                android:textColor="@color/white"/>
+                                android:textColor="@color/on_surface"/>
 
                             <TextView
                                 android:layout_width="wrap_content"
@@ -431,7 +433,7 @@
                                 android:text="~24 min"
                                 android:textSize="22sp"
                                 android:textStyle="bold"
-                                android:textColor="@color/white"/>
+                                android:textColor="@color/on_surface"/>
 
                             <TextView
                                 android:layout_width="wrap_content"
@@ -460,7 +462,7 @@
                                 android:text="Waiting"
                                 android:textSize="22sp"
                                 android:textStyle="bold"
-                                android:textColor="@color/white"/>
+                                android:textColor="@color/on_surface"/>
 
                             <TextView
                                 android:layout_width="wrap_content"
@@ -491,7 +493,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="📍"
+                        android:text="Check-in"
                         android:textSize="24sp"
                         android:layout_marginEnd="12dp"/>
 
@@ -549,7 +551,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="⏰"
+                        android:text="Delay"
                         android:textSize="24sp"
                         android:layout_marginEnd="12dp"/>
 
@@ -607,7 +609,7 @@
             android:layout_height="wrap_content"
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
-            app:cardBackgroundColor="@color/accent"
+                app:cardBackgroundColor="@color/primary_container"
             android:visibility="gone">
 
             <LinearLayout
@@ -620,7 +622,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="🔔"
+                    android:text="Alert"
                     android:textSize="48sp"/>
 
                 <TextView
@@ -629,7 +631,7 @@
                     android:text="It's Your Turn!"
                     android:textSize="24sp"
                     android:textStyle="bold"
-                    android:textColor="@color/white"
+                    android:textColor="@color/on_surface"
                     android:layout_marginTop="16dp"/>
 
                 <TextView
@@ -637,7 +639,7 @@
                     android:layout_height="wrap_content"
                     android:text="Please proceed to the consultation room now."
                     android:textSize="14sp"
-                    android:textColor="#CCFFFFFF"
+                    android:textColor="#CCDAE2FD"
                     android:gravity="center"
                     android:layout_marginTop="8dp"/>
 
@@ -645,10 +647,11 @@
                     android:id="@+id/btnDone"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:backgroundTint="@color/white"
-                    android:textColor="@color/accent"
+                    android:background="@drawable/bg_cta_gradient"
+                    android:textColor="@color/primary_container"
                     android:text="Done — Leave Queue"
                     android:layout_marginTop="24dp"
+                    app:backgroundTint="@null"
                     app:cornerRadius="12dp"/>
             </LinearLayout>
         </androidx.cardview.widget.CardView>

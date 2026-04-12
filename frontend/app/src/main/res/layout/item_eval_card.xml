@@ -6,7 +6,7 @@
     android:layout_height="wrap_content"
     app:cardCornerRadius="12dp"
     app:cardElevation="0dp"
-    app:cardBackgroundColor="@color/white"
+    app:cardBackgroundColor="@color/surface_container_low"
     app:strokeColor="@color/divider"
     app:strokeWidth="1dp"
     android:layout_marginBottom="12dp">
@@ -55,7 +55,7 @@
                 android:layout_height="wrap_content"
                 android:text="87% match"
                 android:textSize="11sp"
-                android:textColor="@color/white"
+                android:textColor="@color/on_primary_container"
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
                 android:paddingTop="4dp"
@@ -67,7 +67,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="📋 Symptoms"
+            android:text="Symptoms"
             android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="@color/text_secondary"
@@ -86,7 +86,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🔍 Extracted Factors"
+            android:text="Extracted Factors"
             android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="@color/text_secondary"
@@ -105,7 +105,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="📊 Specialty Scores"
+            android:text="Specialty Scores"
             android:textSize="11sp"
             android:textStyle="bold"
             android:textColor="@color/text_secondary"
@@ -136,7 +136,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="👨‍⚕️ Recommended: "
+                android:text="Recommended: "
                 android:textSize="13sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary"/>
