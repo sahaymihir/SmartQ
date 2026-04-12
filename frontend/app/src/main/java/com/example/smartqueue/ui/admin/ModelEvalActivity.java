@@ -34,6 +34,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class ModelEvalActivity extends AppCompatActivity {
+    private static final int IMMEDIATE_ESCALATION_PRIORITY_THRESHOLD = 2;
 
     private static final String[] SEX_OPTIONS = {"Female", "Male", "Other"};
     private static final String[] CHIEF_COMPLAINT_OPTIONS = {
@@ -1276,7 +1277,8 @@ public class ModelEvalActivity extends AppCompatActivity {
         boolean requiresImmediateEscalation = false;
         ArrayList<String> lines = new ArrayList<>();
         for (SymptomPredictResponse.SafetyMatch match : safetyMatches) {
-            if (match.getForcedPriorityClass() != null && match.getForcedPriorityClass() <= 2) {
+            if (match.getForcedPriorityClass() != null
+                    && match.getForcedPriorityClass() <= IMMEDIATE_ESCALATION_PRIORITY_THRESHOLD) {
                 requiresImmediateEscalation = true;
             }
             lines.add((!TextUtils.isEmpty(match.getRuleId()) ? match.getRuleId() : "rule")
@@ -1301,7 +1303,8 @@ public class ModelEvalActivity extends AppCompatActivity {
         boolean requiresImmediateEscalation = false;
         ArrayList<String> lines = new ArrayList<>();
         for (ModelEvalHistoryResponse.SafetyMatch match : safetyMatches) {
-            if (match.getForcedPriorityClass() != null && match.getForcedPriorityClass() <= 2) {
+            if (match.getForcedPriorityClass() != null
+                    && match.getForcedPriorityClass() <= IMMEDIATE_ESCALATION_PRIORITY_THRESHOLD) {
                 requiresImmediateEscalation = true;
             }
             lines.add((!TextUtils.isEmpty(match.getRuleId()) ? match.getRuleId() : "rule")
