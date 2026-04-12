@@ -299,7 +299,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Department / Route"
+                android:text="Likely department"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_secondary"
@@ -313,6 +313,33 @@
                 android:textSize="12sp"
                 android:textColor="@color/text_primary"
                 android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Route confidence"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="2dp"/>
+
+            <TextView
+                android:id="@+id/tvEvalRouteConfidence"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="—"
+                android:textSize="11sp"
+                android:textColor="@color/text_primary"
+                android:layout_marginBottom="4dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Confidence label"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="2dp"/>
 
             <TextView
                 android:id="@+id/tvEvalConfidenceLabel"
@@ -335,12 +362,31 @@
                 android:visibility="gone"/>
 
             <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Assigned queue / department"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="2dp"/>
+
+            <TextView
                 android:id="@+id/tvEvalAssignedQueue"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="—"
                 android:textSize="11sp"
                 android:textColor="@color/primary"
+                android:layout_marginBottom="6dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEvalOverrideRoute"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Override Route"
+                android:textAllCaps="false"
+                android:enabled="false"
                 android:layout_marginBottom="8dp"/>
 
             <TextView
@@ -364,7 +410,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Department matches"
+                android:text="Top department matches"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_secondary"
@@ -387,7 +433,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Recommended: "
+                    android:text="Recommended Doctor: "
                     android:textSize="12sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_primary"/>
@@ -428,7 +474,25 @@
                 android:text="—"
                 android:textSize="11sp"
                 android:textColor="@color/text_secondary"
-                android:textStyle="italic"/>
+                android:textStyle="italic"
+                android:layout_marginBottom="6dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Source tags"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_secondary"
+                android:layout_marginBottom="2dp"/>
+
+            <TextView
+                android:id="@+id/tvEvalModelSource"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="—"
+                android:textSize="11sp"
+                android:textColor="@color/text_secondary"/>
         </LinearLayout>
 
     </LinearLayout>

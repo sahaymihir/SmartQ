@@ -1,7 +1,13 @@
 package com.example.smartqueue.ui.admin;
 
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.text.TextUtils;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -64,7 +70,7 @@ public class ModelEvalActivity extends AppCompatActivity {
     private TextView tvTestPrimarySpecialist, tvTestRoutedSpecialty, tvTestNormalizedSymptoms;
     private TextView tvTestPatientWait;
     private TextView tvTestFactors, tvTestDoctor, tvTestReasoning, tvTestModelSource, tvHistoryCount,
-            tvTestConfidenceLabel, tvTestManualReviewFlag;
+            tvTestRouteConfidence, tvTestConfidenceLabel, tvTestManualReviewFlag;
     private final List<DoctorsResponse.Doctor> doctorsDirectory = new ArrayList<>();
     private SymptomPredictResponse lastShownResult;
 
@@ -124,6 +130,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         tvTestDoctor = findViewById(R.id.tvTestDoctor);
         tvTestReasoning = findViewById(R.id.tvTestReasoning);
         tvTestModelSource = findViewById(R.id.tvTestModelSource);
+        tvTestRouteConfidence = findViewById(R.id.tvTestRouteConfidence);
         tvTestConfidenceLabel = findViewById(R.id.tvTestConfidenceLabel);
         tvTestManualReviewFlag = findViewById(R.id.tvTestManualReviewFlag);
         tvHistoryCount = findViewById(R.id.tvHistoryCount);
@@ -550,13 +557,15 @@ public class ModelEvalActivity extends AppCompatActivity {
                 : "Queue rationale unavailable");
 
         // ── 🟥 DOCTOR CLINICAL ──────────────────────────────────────────
-        tvTestPrimarySpecialist.setText(!TextUtils.isEmpty(body.getRoutedSpecialty())
-                ? body.getRoutedSpecialty()
-                : "General OPD");
+        tvTestPrimarySpecialist.setText(getLikelyDepartment(
+                body.getRoutedSpecialty(),
+                body.getPrimarySpecialist()
+        ));
+        tvTestRouteConfidence.setText(formatConfidencePercent(body.getConfidence()));
         tvTestConfidenceLabel.setText(buildDoctorConfidenceLabel(body.getConfidence()));
-        tvTestManualReviewFlag.setVisibility(body.getConfidence() < 0.5d ? View.VISIBLE : View.GONE);
-        tvTestRoutedSpecialty.setText("Assigned queue: "
-                + (!TextUtils.isEmpty(body.getQueueSelectedRoute()) ? body.getQueueSelectedRoute() : "General OPD"));
+        tvTestManualReviewFlag.setVisibility(requiresManualReview(body.getConfidence())
+                ? View.VISIBLE : View.GONE);
+        tvTestRoutedSpecialty.setText(buildAssignedQueueText(body.getQueueSelectedRoute()));
 
         List<String> factors = body.getExtractedSignals();
         tvTestFactors.setText(factors != null && !factors.isEmpty()
@@ -565,6 +574,7 @@ public class ModelEvalActivity extends AppCompatActivity {
 
         renderDoctorMatches(
                 body.getPrimarySpecialist(),
+                body.getConfidence(),
                 body.getAlternativeSpecialists(),
                 layoutTestScores
         );
@@ -576,7 +586,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         tvTestDoctor.setText(resolveDoctorForSpecialty(body.getPrimarySpecialist(), fallbackDocText));
         tvTestSuggestedTests.setText(buildPredictionTestSummary(body.getTestRecommendations()));
         tvTestReasoning.setText(body.getReasoning() != null ? body.getReasoning() : "—");
-        tvTestModelSource.setText("Sources: " + buildSourceTags(
+        tvTestModelSource.setText(buildSourceTags(
                 body.getModelSource(),
                 body.getTestSource(),
                 body.getTriageSource(),
@@ -659,6 +669,7 @@ public class ModelEvalActivity extends AppCompatActivity {
             LinearLayout layoutSafetyAlertBlock = card.findViewById(R.id.layoutEvalSafetyAlertBlock);
             TextView tvSafetyAlert = card.findViewById(R.id.tvEvalSafetyAlert);
             TextView tvRouteSummary = card.findViewById(R.id.tvEvalRouteSummary);
+            TextView tvRouteConfidence = card.findViewById(R.id.tvEvalRouteConfidence);
             TextView tvConfidenceLabel = card.findViewById(R.id.tvEvalConfidenceLabel);
             TextView tvManualReviewFlag = card.findViewById(R.id.tvEvalManualReviewFlag);
             TextView tvAssignedQueue = card.findViewById(R.id.tvEvalAssignedQueue);
@@ -668,6 +679,7 @@ public class ModelEvalActivity extends AppCompatActivity {
             TextView tvDoctor = card.findViewById(R.id.tvEvalDoctor);
             TextView tvSuggestedTests = card.findViewById(R.id.tvEvalSuggestedTests);
             TextView tvReasoning = card.findViewById(R.id.tvEvalReasoning);
+            TextView tvModelSource = card.findViewById(R.id.tvEvalModelSource);
 
             String patientLabel = !TextUtils.isEmpty(entry.getPatientName())
                     ? entry.getPatientName() : "Unknown";
@@ -723,13 +735,15 @@ public class ModelEvalActivity extends AppCompatActivity {
                     entry.getGuardrailedRecommendation()
             ));
 
-            tvRouteSummary.setText(!TextUtils.isEmpty(entry.getRoutedSpecialty())
-                    ? entry.getRoutedSpecialty() : "General OPD");
+            tvRouteSummary.setText(getLikelyDepartment(
+                    entry.getRoutedSpecialty(),
+                    entry.getPrimarySpecialist()
+            ));
+            tvRouteConfidence.setText(formatConfidencePercent(entry.getConfidence()));
             tvConfidenceLabel.setText(buildDoctorConfidenceLabel(entry.getConfidence()));
-            tvManualReviewFlag.setVisibility(entry.getConfidence() < 0.5d ? View.VISIBLE : View.GONE);
-            tvAssignedQueue.setText("Assigned queue: "
-                    + (!TextUtils.isEmpty(entry.getQueueSelectedRoute())
-                    ? entry.getQueueSelectedRoute() : "General OPD"));
+            tvManualReviewFlag.setVisibility(requiresManualReview(entry.getConfidence())
+                    ? View.VISIBLE : View.GONE);
+            tvAssignedQueue.setText(buildAssignedQueueText(entry.getQueueSelectedRoute()));
             tvQueueSummary.setText(buildQueueSummary(
                     entry.getQueueSelectedRoute(),
                     entry.getQueueRouteType(),
@@ -741,7 +755,12 @@ public class ModelEvalActivity extends AppCompatActivity {
                     ? entry.getQueueRationale()
                     : "Queue rationale unavailable");
 
-            renderDoctorMatches(entry.getPrimarySpecialist(), entry.getAlternativeSpecialists(), lScores);
+            renderHistoryDoctorMatches(
+                    entry.getPrimarySpecialist(),
+                    entry.getConfidence(),
+                    entry.getAlternativeSpecialists(),
+                    lScores
+            );
 
             ModelEvalHistoryResponse.RecommendedDoctor doc = entry.getRecommendedDoctor();
             String fallbackDoctorText = doc != null
@@ -750,6 +769,12 @@ public class ModelEvalActivity extends AppCompatActivity {
             tvDoctor.setText(resolveDoctorForSpecialty(entry.getPrimarySpecialist(), fallbackDoctorText));
             tvSuggestedTests.setText(buildHistoryTestSummary(entry.getTestRecommendations()));
             tvReasoning.setText(entry.getReasoning() != null ? entry.getReasoning() : "—");
+            tvModelSource.setText(buildSourceTags(
+                    entry.getModelSource(),
+                    entry.getTestSource(),
+                    entry.getTriageSource(),
+                    null
+            ));
 
             layoutEvalHistory.addView(card);
         }
@@ -808,6 +833,7 @@ public class ModelEvalActivity extends AppCompatActivity {
     }
 
     private void renderDoctorMatches(String primarySpecialist,
+                                     double primaryConfidence,
                                      List<SymptomPredictResponse.AlternativeSpecialist> alternatives,
                                      LinearLayout container) {
         container.removeAllViews();
@@ -831,7 +857,11 @@ public class ModelEvalActivity extends AppCompatActivity {
                         buildMatchedSignalsMeta(primary.getMatchedSignals()),
                         false, false);
             } else {
-                addScoreRow(container, primarySpecialist + " —%", null, false, false);
+                addScoreRow(container,
+                        primarySpecialist + " " + Math.round(primaryConfidence * 100) + "%",
+                        null,
+                        false,
+                        false);
             }
             shown++;
         }
@@ -839,6 +869,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         if (alternatives != null) {
             for (SymptomPredictResponse.AlternativeSpecialist alt : alternatives) {
                 if (shown >= 3 || alt == null) break;
+                if (TextUtils.isEmpty(alt.getSpecialist())) continue;
                 if (!TextUtils.isEmpty(primarySpecialist)
                         && primarySpecialist.equalsIgnoreCase(alt.getSpecialist())) {
                     continue;
@@ -856,9 +887,10 @@ public class ModelEvalActivity extends AppCompatActivity {
         }
     }
 
-    private void renderDoctorMatches(String primarySpecialist,
-                                     List<ModelEvalHistoryResponse.AlternativeSpecialist> alternatives,
-                                     LinearLayout container) {
+    private void renderHistoryDoctorMatches(String primarySpecialist,
+                                            double primaryConfidence,
+                                            List<ModelEvalHistoryResponse.AlternativeSpecialist> alternatives,
+                                            LinearLayout container) {
         container.removeAllViews();
 
         int shown = 0;
@@ -880,7 +912,11 @@ public class ModelEvalActivity extends AppCompatActivity {
                         buildMatchedSignalsMeta(primary.getMatchedSignals()),
                         true, false);
             } else {
-                addScoreRow(container, primarySpecialist + " —%", null, true, false);
+                addScoreRow(container,
+                        primarySpecialist + " " + Math.round(primaryConfidence * 100) + "%",
+                        null,
+                        true,
+                        false);
             }
             shown++;
         }
@@ -888,6 +924,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         if (alternatives != null) {
             for (ModelEvalHistoryResponse.AlternativeSpecialist alt : alternatives) {
                 if (shown >= 3 || alt == null) break;
+                if (TextUtils.isEmpty(alt.getSpecialist())) continue;
                 if (!TextUtils.isEmpty(primarySpecialist)
                         && primarySpecialist.equalsIgnoreCase(alt.getSpecialist())) {
                     continue;
@@ -1175,26 +1212,15 @@ public class ModelEvalActivity extends AppCompatActivity {
             Double avgWaitMinutes
     ) {
         ArrayList<String> parts = new ArrayList<>();
-        if (!TextUtils.isEmpty(selectedRoute)) {
-            parts.add(selectedRoute);
-        }
-        if (!TextUtils.isEmpty(routeType)) {
-            parts.add(routeType.replace('_', ' '));
-        }
-        if (queueLength != null) {
-            parts.add("queue " + queueLength);
-        }
-        if (availableDoctors != null) {
-            parts.add("doctors " + availableDoctors);
-        }
-        if (avgWaitMinutes != null) {
-            parts.add("wait " + formatScore(avgWaitMinutes) + "m");
-        }
-
-        return parts.isEmpty() ? "Queue routing unavailable" : TextUtils.join("  •  ", parts);
+        parts.add(buildAssignedQueueText(selectedRoute));
+        parts.add(!TextUtils.isEmpty(routeType) ? routeType.replace('_', ' ') : "—");
+        parts.add("queue " + (queueLength != null ? queueLength : "—"));
+        parts.add("doctors " + (availableDoctors != null ? availableDoctors : "—"));
+        parts.add("wait " + (avgWaitMinutes != null ? formatScore(avgWaitMinutes) : "—") + "m");
+        return TextUtils.join(" · ", parts);
     }
 
-    private String buildPredictionTestSummary(List<SymptomPredictResponse.TestRecommendation> recommendations) {
+    private CharSequence buildPredictionTestSummary(List<SymptomPredictResponse.TestRecommendation> recommendations) {
         if (recommendations == null || recommendations.isEmpty()) {
             return "No test suggestions returned";
         }
@@ -1202,7 +1228,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         return buildGroupedTestRowsForPrediction(recommendations);
     }
 
-    private String buildHistoryTestSummary(List<ModelEvalHistoryResponse.TestRecommendation> recommendations) {
+    private CharSequence buildHistoryTestSummary(List<ModelEvalHistoryResponse.TestRecommendation> recommendations) {
         if (recommendations == null || recommendations.isEmpty()) {
             return "No test suggestions returned";
         }
@@ -1210,26 +1236,27 @@ public class ModelEvalActivity extends AppCompatActivity {
         return buildGroupedTestRowsForHistory(recommendations);
     }
 
-    private String buildGroupedTestRowsForPrediction(List<SymptomPredictResponse.TestRecommendation> recommendations) {
-        ArrayList<String> lines = new ArrayList<>();
-        appendPredictionTestsByUrgency(lines, recommendations, "immediate", "‼ IMMEDIATE: ");
-        appendPredictionTestsByUrgency(lines, recommendations, "urgent", "URGENT: ");
-        appendPredictionTestsByUrgency(lines, recommendations, "routine", "Routine: ");
-        return TextUtils.join("\n", lines);
+    private CharSequence buildGroupedTestRowsForPrediction(List<SymptomPredictResponse.TestRecommendation> recommendations) {
+        SpannableStringBuilder lines = new SpannableStringBuilder();
+        appendPredictionTestsByUrgency(lines, recommendations, "immediate", "IMMEDIATE: ", true);
+        appendPredictionTestsByUrgency(lines, recommendations, "urgent", "URGENT: ", false);
+        appendPredictionTestsByUrgency(lines, recommendations, "routine", "Routine: ", false);
+        return lines.length() > 0 ? lines : "No test suggestions returned";
     }
 
-    private String buildGroupedTestRowsForHistory(List<ModelEvalHistoryResponse.TestRecommendation> recommendations) {
-        ArrayList<String> lines = new ArrayList<>();
-        appendHistoryTestsByUrgency(lines, recommendations, "immediate", "‼ IMMEDIATE: ");
-        appendHistoryTestsByUrgency(lines, recommendations, "urgent", "URGENT: ");
-        appendHistoryTestsByUrgency(lines, recommendations, "routine", "Routine: ");
-        return TextUtils.join("\n", lines);
+    private CharSequence buildGroupedTestRowsForHistory(List<ModelEvalHistoryResponse.TestRecommendation> recommendations) {
+        SpannableStringBuilder lines = new SpannableStringBuilder();
+        appendHistoryTestsByUrgency(lines, recommendations, "immediate", "IMMEDIATE: ", true);
+        appendHistoryTestsByUrgency(lines, recommendations, "urgent", "URGENT: ", false);
+        appendHistoryTestsByUrgency(lines, recommendations, "routine", "Routine: ", false);
+        return lines.length() > 0 ? lines : "No test suggestions returned";
     }
 
-    private void appendPredictionTestsByUrgency(ArrayList<String> lines,
+    private void appendPredictionTestsByUrgency(SpannableStringBuilder lines,
                                                 List<SymptomPredictResponse.TestRecommendation> recommendations,
                                                 String urgency,
-                                                String prefix) {
+                                                String prefix,
+                                                boolean highlight) {
         for (int i = 0; i < recommendations.size(); i++) {
             SymptomPredictResponse.TestRecommendation recommendation = recommendations.get(i);
             if (!urgency.equalsIgnoreCase(recommendation.getUrgency())) continue;
@@ -1237,14 +1264,15 @@ public class ModelEvalActivity extends AppCompatActivity {
             if (!TextUtils.isEmpty(recommendation.getRationale())) {
                 line += " — " + recommendation.getRationale();
             }
-            lines.add(line);
+            appendStyledTestLine(lines, line, highlight);
         }
     }
 
-    private void appendHistoryTestsByUrgency(ArrayList<String> lines,
+    private void appendHistoryTestsByUrgency(SpannableStringBuilder lines,
                                              List<ModelEvalHistoryResponse.TestRecommendation> recommendations,
                                              String urgency,
-                                             String prefix) {
+                                             String prefix,
+                                             boolean highlight) {
         for (int i = 0; i < recommendations.size(); i++) {
             ModelEvalHistoryResponse.TestRecommendation recommendation = recommendations.get(i);
             if (!urgency.equalsIgnoreCase(recommendation.getUrgency())) continue;
@@ -1252,21 +1280,45 @@ public class ModelEvalActivity extends AppCompatActivity {
             if (!TextUtils.isEmpty(recommendation.getRationale())) {
                 line += " — " + recommendation.getRationale();
             }
-            lines.add(line);
+            appendStyledTestLine(lines, line, highlight);
         }
     }
 
+    private void appendStyledTestLine(SpannableStringBuilder builder, String line, boolean highlight) {
+        if (builder.length() > 0) {
+            builder.append('\n');
+        }
+
+        int start = builder.length();
+        builder.append(line);
+        if (!highlight) {
+            return;
+        }
+
+        builder.setSpan(
+                new StyleSpan(Typeface.BOLD),
+                start,
+                builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        );
+        builder.setSpan(
+                new ForegroundColorSpan(Color.parseColor("#C62828")),
+                start,
+                builder.length(),
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        );
+    }
+
     private String buildPatientWaitText(String route, Integer queueLength, Double avgWaitMinutes) {
-        String selectedRoute = TextUtils.isEmpty(route) ? "the assigned department" : route;
-        int currentQueueLength = queueLength != null ? queueLength : -1;
-        double wait = avgWaitMinutes != null ? avgWaitMinutes : -1d;
-        if (currentQueueLength == 0 && Math.round(wait) == 0) {
+        String selectedRoute = buildAssignedQueueText(route);
+        if (queueLength != null && queueLength == 0
+                && avgWaitMinutes != null && Double.compare(avgWaitMinutes, 0d) == 0) {
             return "Seen immediately at " + selectedRoute;
         }
         if (avgWaitMinutes == null) {
             return "Estimated wait: —m at " + selectedRoute;
         }
-        return "Estimated wait: " + Math.round(avgWaitMinutes) + "m at " + selectedRoute;
+        return "Estimated wait: " + formatScore(avgWaitMinutes) + "m at " + selectedRoute;
     }
 
     private String buildPredictionSafetyAlertText(List<SymptomPredictResponse.SafetyMatch> safetyMatches) {
@@ -1284,7 +1336,7 @@ public class ModelEvalActivity extends AppCompatActivity {
             lines.add((!TextUtils.isEmpty(match.getRuleId()) ? match.getRuleId() : "rule")
                     + " · "
                     + (!TextUtils.isEmpty(match.getSeverity()) ? match.getSeverity() : "unknown")
-                    + " · KTAS "
+                    + " · "
                     + (match.getForcedPriorityClass() != null ? match.getForcedPriorityClass() : "—")
                     + " · "
                     + (!TextUtils.isEmpty(match.getRationale()) ? match.getRationale() : "No rationale"));
@@ -1310,7 +1362,7 @@ public class ModelEvalActivity extends AppCompatActivity {
             lines.add((!TextUtils.isEmpty(match.getRuleId()) ? match.getRuleId() : "rule")
                     + " · "
                     + (!TextUtils.isEmpty(match.getSeverity()) ? match.getSeverity() : "unknown")
-                    + " · KTAS "
+                    + " · "
                     + (match.getForcedPriorityClass() != null ? match.getForcedPriorityClass() : "—")
                     + " · "
                     + (!TextUtils.isEmpty(match.getRationale()) ? match.getRationale() : "No rationale"));
@@ -1352,20 +1404,41 @@ public class ModelEvalActivity extends AppCompatActivity {
         parts.add("complaint " + (!TextUtils.isEmpty(derivedComplaint) ? derivedComplaint : "unknown"));
         parts.add("KTAS " + (guardrailedPriorityClass != null ? guardrailedPriorityClass : "—"));
         parts.add("score " + Math.round(modelConfidence * 10d));
-        if (!TextUtils.isEmpty(source)) parts.add(source);
-        if (!TextUtils.isEmpty(recommendation)) parts.add(recommendation);
-        return TextUtils.join("  ·  ", parts);
+        parts.add(!TextUtils.isEmpty(source) ? source : "—");
+        parts.add(!TextUtils.isEmpty(recommendation) ? recommendation : "—");
+        return TextUtils.join(" · ", parts);
     }
 
     private String buildDoctorConfidenceLabel(double confidence) {
-        int pct = (int) Math.round(confidence * 100d);
-        if (pct >= 70) {
-            return "Route confidence: " + pct + "%  •  High";
+        if (confidence >= 0.7d) {
+            return "High";
         }
-        if (pct >= 50) {
-            return "Route confidence: " + pct + "%  •  Medium  •  Review suggested";
+        if (confidence >= 0.5d) {
+            return "Medium · Review suggested";
         }
-        return "Route confidence: " + pct + "%  •  Low";
+        return "Low";
+    }
+
+    private String formatConfidencePercent(double confidence) {
+        return Math.round(confidence * 100d) + "%";
+    }
+
+    private boolean requiresManualReview(double confidence) {
+        return confidence < 0.5d;
+    }
+
+    private String buildAssignedQueueText(String selectedRoute) {
+        return !TextUtils.isEmpty(selectedRoute) ? selectedRoute : "General OPD";
+    }
+
+    private String getLikelyDepartment(String routedSpecialty, String primarySpecialist) {
+        if (!TextUtils.isEmpty(routedSpecialty)) {
+            return routedSpecialty;
+        }
+        if (!TextUtils.isEmpty(primarySpecialist)) {
+            return primarySpecialist;
+        }
+        return "General OPD";
     }
 
     private String resolveDoctorForSpecialty(String primarySpecialty, String fallback) {
@@ -1387,7 +1460,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         if (!TextUtils.isEmpty(testsSource)) tags.add(testsSource);
         if (!TextUtils.isEmpty(prioritySource)) tags.add(prioritySource);
         if (!TextUtils.isEmpty(fallback)) tags.add(fallback);
-        return tags.isEmpty() ? "—" : TextUtils.join("  •  ", tags);
+        return tags.isEmpty() ? "—" : TextUtils.join(" · ", tags);
     }
 
     private String formatScore(double value) {
