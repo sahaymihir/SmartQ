@@ -17,6 +17,7 @@ public class QueueResponse {
     private Integer triagePriorityClass;
     private int avgConsultationMinutes;
     private boolean isPaused;
+    private int currentToken;
     private List<QueueEntry> queue;
 
     // Getters
@@ -34,6 +35,7 @@ public class QueueResponse {
     public Integer getTriagePriorityClass()     { return triagePriorityClass; }
     public int getAvgConsultationMinutes()      { return avgConsultationMinutes == 0 ? 8 : avgConsultationMinutes; }
     public boolean isPaused()                   { return isPaused; }
+    public int getCurrentToken()                { return currentToken; }
     public List<QueueEntry> getQueue()          { return queue; }
 
     // Setters
@@ -50,12 +52,15 @@ public class QueueResponse {
     public void setEscalationReason(String v)           { this.escalationReason = v; }
     public void setTriagePriorityClass(Integer v)       { this.triagePriorityClass = v; }
     public void setAvgConsultationMinutes(int v)        { this.avgConsultationMinutes = v; }
+    public void setCurrentToken(int v)                   { this.currentToken = v; }
     public void setQueue(List<QueueEntry> v)            { this.queue = v; }
 
     public static class QueueEntry {
         private String tokenId;
         private String patientId; // Added
         private String patientName;
+        private int patientAge;
+        private String patientPhone;
         private int tokenNumber; // Added
         private int position;
         private int etaMinutes;
@@ -74,6 +79,8 @@ public class QueueResponse {
         public String getTokenId()      { return tokenId; }
         public String getPatientId()    { return patientId; }
         public String getPatientName()  { return patientName; }
+        public int getPatientAge()      { return patientAge; }
+        public String getPatientPhone() { return patientPhone; }
         public int getTokenNumber()     { return tokenNumber; }
         public int getPosition()        { return position; }
         public int getEtaMinutes()      { return etaMinutes; }
@@ -92,6 +99,8 @@ public class QueueResponse {
         public void setTokenId(String v)     { this.tokenId = v; }
         public void setPatientId(String v)   { this.patientId = v; }
         public void setPatientName(String v) { this.patientName = v; }
+        public void setPatientAge(int v)     { this.patientAge = v; }
+        public void setPatientPhone(String v){ this.patientPhone = v; }
         public void setTokenNumber(int v)    { this.tokenNumber = v; }
         public void setPosition(int v)       { this.position = v; }
         public void setEtaMinutes(int v)     { this.etaMinutes = v; }

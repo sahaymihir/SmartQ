@@ -52,12 +52,12 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/app_name"
-                        android:textSize="18sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/primary"
-                        android:fontFamily="sans-serif-black"
-                        android:letterSpacing="-0.03"
-                        android:layout_marginStart="8dp"/>
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/primary"
+                    android:fontFamily="sans-serif-black"
+                    android:letterSpacing="0"
+                    android:layout_marginStart="8dp"/>
                 </LinearLayout>
 
                 <View
@@ -71,7 +71,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Logout"
-                    android:textColor="@color/text_secondary"
+                    android:textColor="@color/primary"
                     android:textSize="12sp"
                     android:textAllCaps="false"/>
             </LinearLayout>
@@ -92,7 +92,7 @@
                     android:textStyle="bold"
                     android:textColor="@color/on_surface"
                     android:fontFamily="sans-serif-black"
-                    android:letterSpacing="-0.03"
+                    android:letterSpacing="0"
                     android:lineSpacingMultiplier="0.9"/>
 
                 <LinearLayout
@@ -108,7 +108,7 @@
                         android:textStyle="bold"
                         android:textColor="@color/primary"
                         android:fontFamily="sans-serif-black"
-                        android:letterSpacing="-0.03"/>
+                        android:letterSpacing="0"/>
 
                     <TextView
                         android:id="@+id/tvDoctorName"
@@ -119,7 +119,7 @@
                         android:textStyle="bold"
                         android:textColor="@color/primary"
                         android:fontFamily="sans-serif-black"
-                        android:letterSpacing="-0.03"/>
+                        android:letterSpacing="0"/>
                 </LinearLayout>
 
                 <TextView
@@ -162,9 +162,9 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="STATUS"
-                            android:textSize="9sp"
+                            android:textSize="10sp"
                             android:textStyle="bold"
-                            android:textColor="@color/text_secondary"
+                            android:textColor="@color/on_surface_variant"
                             android:letterSpacing="0.15"/>
 
                         <com.google.android.material.switchmaterial.SwitchMaterial
@@ -203,12 +203,13 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="QUEUE SIZE"
-                            android:textSize="9sp"
+                            android:textSize="10sp"
                             android:textStyle="bold"
-                            android:textColor="@color/text_secondary"
+                            android:textColor="@color/on_surface_variant"
                             android:letterSpacing="0.15"/>
 
                         <TextView
+                            android:id="@+id/tvQueueSize"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Loading..."
@@ -236,8 +237,8 @@
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="0dp"
-                app:cardBackgroundColor="@color/primary_container"
-                app:strokeColor="#1A89CEFF"
+                app:cardBackgroundColor="@color/surface_container_low"
+                app:strokeColor="@color/primary"
                 app:strokeWidth="1dp"
                 android:layout_marginBottom="16dp">
 
@@ -264,7 +265,9 @@
                             android:layout_height="match_parent"
                             android:text="P"
                             android:gravity="center"
-                            android:textSize="20sp"/>
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/primary"/>
                     </FrameLayout>
 
                     <LinearLayout
@@ -280,7 +283,7 @@
                             android:text="No patient called"
                             android:textSize="16sp"
                             android:textStyle="bold"
-                            android:textColor="@color/on_surface"/>
+                            android:textColor="@color/text_primary"/>
 
                         <TextView
                             android:id="@+id/tvCurrentPatientToken"
@@ -295,14 +298,10 @@
                         android:id="@+id/btnPrescribe"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:background="@drawable/bg_cta_gradient"
+                        style="@style/SmartQ.Button"
                         android:text="Prescribe"
-                        android:textColor="@color/primary_container"
                         android:textSize="12sp"
                         android:textStyle="bold"
-                        android:textAllCaps="false"
-                        app:backgroundTint="@null"
-                        app:cornerRadius="10dp"
                         android:visibility="gone"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -310,16 +309,12 @@
             <!-- ═══ CALL NEXT ═══ -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCallNext"
+                style="@style/SmartQ.Button"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:background="@drawable/bg_cta_gradient"
-                android:text="Call Next Patient →"
-                android:textColor="@color/primary_container"
+                android:text="Call Next Patient"
                 android:textSize="15sp"
                 android:textStyle="bold"
-                android:textAllCaps="false"
-                app:backgroundTint="@null"
-                app:cornerRadius="12dp"
                 android:layout_marginBottom="20dp"/>
 
             <!-- ═══ LIVE QUEUE ═══ -->
@@ -340,6 +335,15 @@
                     android:textColor="@color/on_surface"
                     android:fontFamily="sans-serif-medium"/>
 
+                <TextView
+                    android:id="@+id/tvQueueSummary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Loading"
+                    android:textSize="12sp"
+                    android:textColor="@color/on_surface_variant"
+                    android:layout_marginEnd="8dp"/>
+
                 <ProgressBar
                     android:id="@+id/progressBar"
                     android:layout_width="20dp"
@@ -355,6 +359,18 @@
                 android:layout_height="wrap_content"
                 android:nestedScrollingEnabled="false"
                 android:clipToPadding="false"/>
+
+            <TextView
+                android:id="@+id/tvQueueEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="No patients are waiting right now."
+                android:textSize="15sp"
+                android:textColor="@color/on_surface_variant"
+                android:gravity="center"
+                android:paddingTop="40dp"
+                android:paddingBottom="40dp"
+                android:visibility="gone"/>
 
         </LinearLayout>
     </ScrollView>

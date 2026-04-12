@@ -21,6 +21,9 @@ const {
 } = require('../utils/queueHelpers');
 
 const today = () => new Date().toISOString().split('T')[0];
+const resolveDoctorId = (req) =>
+  req.user?.role === 'doctor' ? req.user._id : (req.query.doctorId || req.user._id);
+
 const requireSeedAccess = (req, res, next) => {
   return protect(req, res, () => {
     if (req.user && req.user.role === 'superuser') {
@@ -42,7 +45,7 @@ router.use(protect, adminOnly);
 // ─────────────────────────────────────────────────────────────
 router.get('/queue', async (req, res) => {
   try {
-    const doctorId = req.query.doctorId || req.user._id;
+    const doctorId = resolveDoctorId(req);
 
     const tokens = await Token.find({
       doctor: doctorId,
@@ -61,9 +64,9 @@ router.get('/queue', async (req, res) => {
         tokenId: t._id,
         patientId: t.patient?._id,
         tokenNumber: t.tokenNumber,
-        patientName: t.patient.name,
-        patientAge: t.patient.age,
-        patientPhone: t.patient.phone,
+        patientName: t.patient?.name || 'Unknown patient',
+        patientAge: t.patient?.age || 0,
+        patientPhone: t.patient?.phone || '',
         position: t.position,
         etaMinutes: t.etaMinutes,
         priority: t.priority,
@@ -95,7 +98,7 @@ router.get('/queue', async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.post('/next', async (req, res) => {
   try {
-    const doctorId = req.query.doctorId || req.user._id;
+    const doctorId = resolveDoctorId(req);
 
     // Mark current "called" token as completed
     const currentToken = await Token.findOne({
@@ -138,6 +141,8 @@ router.post('/next', async (req, res) => {
     }
 
     if (!nextToken) {
+      queue.currentToken = 0;
+      await queue.save();
       return res.json({ success: true, message: 'Queue is empty — no more patients' });
     }
 
@@ -146,16 +151,19 @@ router.post('/next', async (req, res) => {
     nextToken.consultationStartedAt = new Date();
     await nextToken.save();
 
+    queue.currentToken = nextToken.tokenNumber;
+    await queue.save();
     await recomputeWaitingQueue(doctorId, queue.avgConsultationMinutes, today());
 
     res.json({
       success: true,
       message: isImmediateReviewToken(nextToken)
-        ? `Immediate review: Token #${nextToken.tokenNumber} — ${nextToken.patient.name}`
-        : `Now calling Token #${nextToken.tokenNumber} — ${nextToken.patient.name}`,
+        ? `Immediate review: Token #${nextToken.tokenNumber} — ${nextToken.patient?.name || 'patient'}`
+        : `Now calling Token #${nextToken.tokenNumber} — ${nextToken.patient?.name || 'patient'}`,
       calledToken: {
+        tokenId: nextToken._id,
         tokenNumber: nextToken.tokenNumber,
-        patientName: nextToken.patient.name,
+        patientName: nextToken.patient?.name || 'patient',
         routingLane: nextToken.routingLane || 'normal',
         requiresImmediateReview: Boolean(nextToken.requiresImmediateReview),
       }
@@ -174,16 +182,37 @@ router.post('/next', async (req, res) => {
 router.post('/noshow', async (req, res) => {
   try {
     const { tokenId } = req.query;
+    if (!tokenId) {
+      return res.status(400).json({ success: false, message: 'tokenId is required' });
+    }
 
     const token = await Token.findById(tokenId);
     if (!token) {
       return res.status(404).json({ success: false, message: 'Token not found' });
     }
 
+    if (req.user.role === 'doctor' && token.doctor.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only manage patients in your own queue',
+      });
+    }
+
+    if (!ACTIVE_TOKEN_STATUSES.includes(token.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Only active queue tokens can be marked as no-show',
+      });
+    }
+
     token.status = 'no_show';
     await token.save();
 
     const queue = await getTodayQueue(token.doctor, today());
+    if (queue.currentToken === token.tokenNumber) {
+      queue.currentToken = 0;
+      await queue.save();
+    }
     await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, today());
 
     res.json({ success: true, message: 'Patient marked as no-show' });
@@ -200,13 +229,10 @@ router.post('/noshow', async (req, res) => {
 // ─────────────────────────────────────────────────────────────
 router.post('/pause', async (req, res) => {
   try {
-    const doctorId = req.query.doctorId || req.user._id;
+    const doctorId = resolveDoctorId(req);
     const paused = req.query.paused === 'true';
 
-    const queue = await Queue.findOne({ doctor: doctorId, date: today() });
-    if (!queue) {
-      return res.status(404).json({ success: false, message: 'No queue found for today' });
-    }
+    const queue = await getTodayQueue(doctorId, today());
 
     queue.isPaused = paused;
     await queue.save();

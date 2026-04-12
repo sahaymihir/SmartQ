@@ -52,9 +52,45 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Age: 40 | Priority: Normal"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp"
+                android:textColor="@color/on_surface_variant"
+                android:textSize="13sp"
                 android:layout_marginTop="2dp" />
+
+            <LinearLayout
+                android:id="@+id/layoutQueueActions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnQueuePrescription"
+                    style="@style/SmartQ.Button.Outlined"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="Prescription"
+                    android:textSize="12sp"
+                    android:textAllCaps="false"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnQueueNoShow"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="8dp"
+                    android:text="No-show"
+                    android:textColor="@color/error"
+                    android:textSize="12sp"
+                    android:textAllCaps="false"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"/>
+            </LinearLayout>
         </LinearLayout>
 
         <TextView
