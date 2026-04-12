@@ -60,6 +60,7 @@ public class ModelEvalActivity extends AppCompatActivity {
     private TextView tvTestPrioritySummary, tvTestPriorityBreakdown, tvTestSafetySummary,
             tvTestQueueSummary, tvTestSuggestedTests;
     private TextView tvTestPrimarySpecialist, tvTestRoutedSpecialty, tvTestNormalizedSymptoms;
+    private TextView tvTestPatientWait;
     private TextView tvTestFactors, tvTestDoctor, tvTestReasoning, tvTestModelSource, tvHistoryCount;
 
     @Override
@@ -108,6 +109,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         tvTestPrimarySpecialist = findViewById(R.id.tvTestPrimarySpecialist);
         tvTestRoutedSpecialty = findViewById(R.id.tvTestRoutedSpecialty);
         tvTestNormalizedSymptoms = findViewById(R.id.tvTestNormalizedSymptoms);
+        tvTestPatientWait = findViewById(R.id.tvTestPatientWait);
         tvTestFactors = findViewById(R.id.tvTestFactors);
         tvTestDoctor = findViewById(R.id.tvTestDoctor);
         tvTestReasoning = findViewById(R.id.tvTestReasoning);
@@ -476,6 +478,15 @@ public class ModelEvalActivity extends AppCompatActivity {
     }
 
     private void showTestResult(SymptomPredictResponse body) {
+        // ── 🟦 PATIENT SUMMARY ──────────────────────────────────────────
+        tvTestNormalizedSymptoms.setText(!TextUtils.isEmpty(body.getNormalizedSymptoms())
+                ? body.getNormalizedSymptoms() : "—");
+        tvTestPatientWait.setText(buildPatientWaitText(
+                body.getQueueSelectedRoute(),
+                body.getQueueAvgWaitMinutes()
+        ));
+
+        // ── 🟩 NURSE / TRIAGE ───────────────────────────────────────────
         tvTestPrioritySummary.setText(buildPrioritySummary(body));
         tvTestPriorityBreakdown.setText(buildPriorityBreakdown(
                 body.getPriorityComponents(),
@@ -495,14 +506,9 @@ public class ModelEvalActivity extends AppCompatActivity {
                 body.getQueueAvgWaitMinutes(),
                 body.getQueueRationale()
         ));
-        tvTestSuggestedTests.setText(buildPredictionTestSummary(
-                body.getTestRecommendations(),
-                body.getTestSource(),
-                body.isTestLowConfidence()
-        ));
 
+        // ── 🟥 DOCTOR CLINICAL ──────────────────────────────────────────
         int confidencePct = (int) Math.round(body.getConfidence() * 100);
-
         String primary = !TextUtils.isEmpty(body.getPrimarySpecialist())
                 ? body.getPrimarySpecialist() : "General Practice";
         if (body.isLowConfidence()) {
@@ -519,9 +525,6 @@ public class ModelEvalActivity extends AppCompatActivity {
         }
         tvTestRoutedSpecialty.setText(routed);
 
-        tvTestNormalizedSymptoms.setText(!TextUtils.isEmpty(body.getNormalizedSymptoms())
-                ? body.getNormalizedSymptoms() : "—");
-
         List<String> factors = body.getExtractedFactors();
         tvTestFactors.setText(factors != null && !factors.isEmpty()
                 ? TextUtils.join(", ", factors)
@@ -533,6 +536,11 @@ public class ModelEvalActivity extends AppCompatActivity {
         tvTestDoctor.setText(doc != null
                 ? doc.getName() + " (" + doc.getSpecialty() + ")"
                 : "—");
+        tvTestSuggestedTests.setText(buildPredictionTestSummary(
+                body.getTestRecommendations(),
+                body.getTestSource(),
+                body.isTestLowConfidence()
+        ));
         tvTestReasoning.setText(body.getReasoning() != null ? body.getReasoning() : "—");
         tvTestModelSource.setText("Sources: " + buildModelSourceText(
                 body.getFlowSource(),
@@ -1101,6 +1109,18 @@ public class ModelEvalActivity extends AppCompatActivity {
             lines.add("source " + testSource + (lowConfidence ? " • low confidence" : ""));
         }
         return TextUtils.join("\n", lines);
+    }
+
+    private String buildPatientWaitText(String route, Double avgWaitMinutes) {
+        if (avgWaitMinutes == null) {
+            return "Wait time not yet available";
+        }
+        long mins = Math.round(avgWaitMinutes);
+        String dept = TextUtils.isEmpty(route) ? "the assigned department" : route;
+        if (mins == 0) {
+            return "Seen immediately at " + dept;
+        }
+        return "Seen within ~" + mins + " minute" + (mins == 1 ? "" : "s") + " at " + dept;
     }
 
     private String formatScore(double value) {

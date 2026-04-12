@@ -484,7 +484,9 @@
                         android:text="Run Prediction"
                         android:layout_marginTop="12dp"/>
 
-                    <!-- Test result (hidden until prediction runs) -->
+                    <!-- ═══════════════════════════════════════════════ -->
+                    <!-- Result panels (hidden until prediction runs)  -->
+                    <!-- ═══════════════════════════════════════════════ -->
                     <LinearLayout
                         android:id="@+id/layoutTestResult"
                         android:layout_width="match_parent"
@@ -497,215 +499,288 @@
                             android:layout_width="match_parent"
                             android:layout_height="1dp"
                             android:background="@color/divider"
-                            android:layout_marginBottom="12dp"/>
+                            android:layout_marginBottom="14dp"/>
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Priority Model"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="4dp"/>
-
-                        <TextView
-                            android:id="@+id/tvTestPrioritySummary"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="—"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_primary"
-                            android:layout_marginBottom="6dp"/>
-
-                        <TextView
-                            android:id="@+id/tvTestPriorityBreakdown"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="—"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="12dp"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Safety Rules"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="4dp"/>
-
-                        <TextView
-                            android:id="@+id/tvTestSafetySummary"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="—"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="12dp"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Likely department"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="4dp"/>
-
-                        <TextView
-                            android:id="@+id/tvTestPrimarySpecialist"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="—"
-                            android:textSize="14sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_primary"
-                            android:layout_marginBottom="10dp"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Assigned queue / department"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="4dp"/>
-
-                        <TextView
-                            android:id="@+id/tvTestRoutedSpecialty"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="—"
-                            android:textSize="13sp"
-                            android:textColor="@color/primary"
-                            android:layout_marginBottom="10dp"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Queue assignment"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="4dp"/>
-
-                        <TextView
-                            android:id="@+id/tvTestQueueSummary"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="—"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="10dp"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="What the system understood"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="4dp"/>
-
-                        <TextView
-                            android:id="@+id/tvTestNormalizedSymptoms"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="—"
-                            android:textSize="13sp"
-                            android:textColor="@color/text_primary"
-                            android:layout_marginBottom="10dp"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Key signals detected"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="4dp"/>
-
-                        <TextView
-                            android:id="@+id/tvTestFactors"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="—"
-                            android:textSize="13sp"
-                            android:textColor="@color/primary"
-                            android:layout_marginBottom="10dp"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Top department matches"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="4dp"/>
-
+                        <!-- ── 🟦 PATIENT SUMMARY ─────────────────── -->
                         <LinearLayout
-                            android:id="@+id/layoutTestScores"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:layout_marginBottom="10dp"/>
+                            android:background="#0D1565C0"
+                            android:padding="12dp"
+                            android:layout_marginBottom="12dp">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Recommended Doctor"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="4dp"/>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="🟦  Patient Summary"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:textColor="#1565C0"
+                                android:layout_marginBottom="10dp"/>
 
-                        <TextView
-                            android:id="@+id/tvTestDoctor"
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="What the system understood"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="3dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestNormalizedSymptoms"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="13sp"
+                                android:textColor="@color/text_primary"
+                                android:layout_marginBottom="10dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Estimated wait time"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="3dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestPatientWait"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="13sp"
+                                android:textColor="@color/text_primary"/>
+                        </LinearLayout>
+
+                        <!-- ── 🟩 NURSE / TRIAGE ──────────────────── -->
+                        <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="—"
-                            android:textSize="14sp"
-                            android:textColor="@color/text_primary"
-                            android:textStyle="bold"
-                            android:layout_marginBottom="8dp"/>
+                            android:orientation="vertical"
+                            android:background="#0D2E7D32"
+                            android:padding="12dp"
+                            android:layout_marginBottom="12dp">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Suggested Tests"
-                            android:textSize="12sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="4dp"/>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="🟩  Nurse / Triage"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:textColor="#2E7D32"
+                                android:layout_marginBottom="10dp"/>
 
-                        <TextView
-                            android:id="@+id/tvTestSuggestedTests"
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Priority Assessment"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="3dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestPrioritySummary"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_primary"
+                                android:layout_marginBottom="4dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestPriorityBreakdown"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="10dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Safety Rules"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="3dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestSafetySummary"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="10dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Queue Assignment"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="3dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestQueueSummary"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_secondary"/>
+                        </LinearLayout>
+
+                        <!-- ── 🟥 DOCTOR CLINICAL ─────────────────── -->
+                        <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="—"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginBottom="8dp"/>
+                            android:orientation="vertical"
+                            android:background="#0DC62828"
+                            android:padding="12dp"
+                            android:layout_marginBottom="4dp">
 
-                        <TextView
-                            android:id="@+id/tvTestReasoning"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="—"
-                            android:textSize="12sp"
-                            android:textColor="@color/text_secondary"
-                            android:textStyle="italic"/>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="🟥  Doctor Clinical"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:textColor="#C62828"
+                                android:layout_marginBottom="10dp"/>
 
-                        <TextView
-                            android:id="@+id/tvTestModelSource"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="—"
-                            android:textSize="11sp"
-                            android:textColor="@color/text_secondary"
-                            android:layout_marginTop="8dp"/>
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Likely department"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="3dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestPrimarySpecialist"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_primary"
+                                android:layout_marginBottom="6dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Assigned queue / department"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="3dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestRoutedSpecialty"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="13sp"
+                                android:textColor="@color/primary"
+                                android:layout_marginBottom="10dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Key signals detected"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="3dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestFactors"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="13sp"
+                                android:textColor="@color/primary"
+                                android:layout_marginBottom="10dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Top department matches"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="4dp"/>
+
+                            <LinearLayout
+                                android:id="@+id/layoutTestScores"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:layout_marginBottom="10dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Recommended Doctor"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="3dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestDoctor"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="14sp"
+                                android:textColor="@color/text_primary"
+                                android:textStyle="bold"
+                                android:layout_marginBottom="10dp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Suggested Tests"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="3dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestSuggestedTests"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_secondary"
+                                android:layout_marginBottom="10dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestReasoning"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="12sp"
+                                android:textColor="@color/text_secondary"
+                                android:textStyle="italic"
+                                android:layout_marginBottom="6dp"/>
+
+                            <TextView
+                                android:id="@+id/tvTestModelSource"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="—"
+                                android:textSize="11sp"
+                                android:textColor="@color/text_secondary"/>
+                        </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
