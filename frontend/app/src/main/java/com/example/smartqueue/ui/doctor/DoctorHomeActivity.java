@@ -4,27 +4,25 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.smartqueue.R;
-import com.example.smartqueue.models.request.PrescriptionRequest;
 import com.example.smartqueue.models.response.MessageResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
 import com.example.smartqueue.ui.auth.LoginActivity;
+import com.example.smartqueue.ui.prescription.PrescriptionActivity;
+import com.example.smartqueue.utils.ApiErrorParser;
 import com.example.smartqueue.utils.RoleNavigationHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
@@ -74,6 +72,12 @@ public class DoctorHomeActivity extends AppCompatActivity {
         fetchQueueData();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        fetchQueueData();
+    }
+
     private void initViews() {
         tvDoctorName = findViewById(R.id.tvDoctorName);
         tvCurrentPatientName = findViewById(R.id.tvCurrentPatientName);
@@ -117,7 +121,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
                     }).start();
         });
 
-        btnPrescribe.setOnClickListener(v -> showPrescriptionDialog());
+        btnPrescribe.setOnClickListener(v -> openPrescriptionEditor(currentTokenId));
 
         switchAvailability.setOnCheckedChangeListener((buttonView, isChecked) -> {
             toggleAvailability(!isChecked); // paused = !available
@@ -190,7 +194,18 @@ public class DoctorHomeActivity extends AppCompatActivity {
                     Toast.makeText(DoctorHomeActivity.this, "Next patient called", Toast.LENGTH_SHORT).show();
                     fetchQueueData();
                 } else {
-                    Toast.makeText(DoctorHomeActivity.this, "Queue is empty", Toast.LENGTH_SHORT).show();
+                    MessageResponse error = ApiErrorParser.parseMessage(response);
+                    if (error != null && error.isRequiresPrescription() && error.getTokenId() != null) {
+                        Toast.makeText(DoctorHomeActivity.this,
+                                error.getMessage(), Toast.LENGTH_SHORT).show();
+                        openPrescriptionEditor(error.getTokenId());
+                    } else {
+                        Toast.makeText(DoctorHomeActivity.this,
+                                error != null && error.getMessage() != null
+                                        ? error.getMessage()
+                                        : "Queue is empty",
+                                Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
 
@@ -218,42 +233,14 @@ public class DoctorHomeActivity extends AppCompatActivity {
         });
     }
 
-    private void showPrescriptionDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_prescription, null);
-        builder.setView(dialogView);
-
-        EditText etDiagnosis = dialogView.findViewById(R.id.etDiagnosis);
-        EditText etMedicines = dialogView.findViewById(R.id.etMedicines);
-        EditText etNotes = dialogView.findViewById(R.id.etNotes);
-
-        builder.setTitle("Write Prescription")
-               .setPositiveButton("Save", (dialog, which) -> {
-                   String diagnosis = etDiagnosis.getText().toString();
-                   String medicines = etMedicines.getText().toString();
-                   String notes = etNotes.getText().toString();
-                   savePrescription(diagnosis, medicines, notes);
-               })
-               .setNegativeButton("Cancel", null)
-               .show();
-    }
-
-    private void savePrescription(String diagnosis, String medicines, String notes) {
-        if (currentTokenId == null) return;
-
-        PrescriptionRequest request = new PrescriptionRequest(currentTokenId, diagnosis, medicines, notes);
-        apiService.savePrescription(request).enqueue(new Callback<MessageResponse>() {
-            @Override
-            public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
-                if (response.isSuccessful()) {
-                    Toast.makeText(DoctorHomeActivity.this, "Prescription saved", Toast.LENGTH_SHORT).show();
-                }
-            }
-
-            @Override
-            public void onFailure(Call<MessageResponse> call, Throwable t) {
-                Toast.makeText(DoctorHomeActivity.this, "Failed to save", Toast.LENGTH_SHORT).show();
-            }
-        });
+    private void openPrescriptionEditor(String tokenId) {
+        if (tokenId == null) {
+            Toast.makeText(this, "No active patient selected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent intent = new Intent(this, PrescriptionActivity.class);
+        intent.putExtra(PrescriptionActivity.EXTRA_TOKEN_ID, tokenId);
+        intent.putExtra(PrescriptionActivity.EXTRA_READ_ONLY, false);
+        startActivity(intent);
     }
 }

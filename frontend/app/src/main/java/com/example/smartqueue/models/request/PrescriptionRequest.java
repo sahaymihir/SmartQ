@@ -1,20 +1,27 @@
 package com.example.smartqueue.models.request;
 
 public class PrescriptionRequest {
-    private String tokenId;
-    private String diagnosis;
-    private String medicines;
-    private String notes;
+    private String symptomsSummary;
+    private String testsDone;
+    private String medications;
+    private String conclusion;
+    private String adviceNotes;
+    private String status;
 
-    public PrescriptionRequest(String tokenId, String diagnosis, String medicines, String notes) {
-        this.tokenId = tokenId;
-        this.diagnosis = diagnosis;
-        this.medicines = medicines;
-        this.notes = notes;
+    public PrescriptionRequest(String symptomsSummary, String testsDone, String medications,
+                               String conclusion, String adviceNotes, String status) {
+        this.symptomsSummary = symptomsSummary;
+        this.testsDone = testsDone;
+        this.medications = medications;
+        this.conclusion = conclusion;
+        this.adviceNotes = adviceNotes;
+        this.status = status;
     }
 
-    public String getTokenId() { return tokenId; }
-    public String getDiagnosis() { return diagnosis; }
-    public String getMedicines() { return medicines; }
-    public String getNotes() { return notes; }
+    public String getSymptomsSummary() { return symptomsSummary; }
+    public String getTestsDone() { return testsDone; }
+    public String getMedications() { return medications; }
+    public String getConclusion() { return conclusion; }
+    public String getAdviceNotes() { return adviceNotes; }
+    public String getStatus() { return status; }
 }

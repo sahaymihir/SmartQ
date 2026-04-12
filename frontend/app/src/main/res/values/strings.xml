@@ -50,8 +50,28 @@
     <string name="visit_type_new">New Visit</string>
     <string name="visit_type_follow_up">Follow-up</string>
     <string name="visit_type_label">Visit Type</string>
-    <string name="follow_up_note">We will continue care from your most recent visit and route you to the same specialty.</string>
+    <string name="follow_up_note">Select a previous completed visit so SmartQ can continue the same care plan.</string>
     <string name="follow_up_note_linked">Continuing from: </string>
+    <string name="follow_up_choose_visit">Choose Previous Visit</string>
+    <string name="follow_up_none">No previous completed visits available yet.</string>
+    <string name="history_title">Recent Visits</string>
+    <string name="history_empty">Your completed visits will appear here.</string>
+    <string name="history_view_prescription">View prescription</string>
+    <string name="prescription_title">Consultation Prescription</string>
+    <string name="prescription_read_only">Read-only visit record</string>
+    <string name="prescription_editable">Doctor or admin can complete this prescription.</string>
+    <string name="prescription_save_draft">Save Draft</string>
+    <string name="prescription_finalize">Finalize Prescription</string>
+    <string name="prescription_symptoms_summary">Symptoms Summary</string>
+    <string name="prescription_tests_done">Tests Done</string>
+    <string name="prescription_medications">Medications</string>
+    <string name="prescription_conclusion">Conclusion</string>
+    <string name="prescription_advice_notes">Doctor Notes and Advice</string>
+    <string name="prescription_status_draft">Draft</string>
+    <string name="prescription_status_finalized">Finalized</string>
+    <string name="prescription_open">Prescription</string>
+    <string name="prescription_missing_token">Missing visit token.</string>
+    <string name="prescription_empty_error">Add at least one prescription detail before saving.</string>
 
     <!-- Test recommendations -->
     <string name="test_recs_title">Suggested While You Wait</string>

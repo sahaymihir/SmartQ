@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 const { Token, Queue } = require('../models/Queue');
 const User = require('../models/User');
+const { hasFinalizedPrescription } = require('../services/prescriptionService');
 const predictionHistory = require('../store/predictionStore');
 const { getMlOpsLogs, getMlOpsSummary } = require('../store/mlOpsLogStore');
 const { mapPriorityClassToScore } = require('../services/triageService');
@@ -104,6 +105,16 @@ router.post('/next', async (req, res) => {
     });
 
     if (currentToken) {
+      const prescriptionReady = await hasFinalizedPrescription(currentToken);
+      if (!prescriptionReady) {
+        return res.status(409).json({
+          success: false,
+          requiresPrescription: true,
+          tokenId: currentToken._id,
+          message: 'Finalize this patient’s prescription before completing the visit.',
+        });
+      }
+
       const consultationStart = currentToken.updatedAt;
       const durationMinutes = Math.round((Date.now() - consultationStart) / 60000);
 

@@ -20,6 +20,7 @@ import androidx.cardview.widget.CardView;
 import com.example.smartqueue.R;
 import com.example.smartqueue.models.request.JoinQueueRequest;
 import com.example.smartqueue.models.request.SymptomRequest;
+import com.example.smartqueue.models.response.ConsultationHistoryResponse;
 import com.example.smartqueue.models.response.DoctorsResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.models.response.MessageResponse;
@@ -29,6 +30,8 @@ import com.example.smartqueue.models.response.TokenResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
 import com.example.smartqueue.ui.auth.LoginActivity;
+import com.example.smartqueue.ui.prescription.PrescriptionActivity;
+import com.example.smartqueue.utils.ApiErrorParser;
 import com.example.smartqueue.utils.RoleNavigationHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
@@ -64,6 +67,9 @@ public class PatientHomeActivity extends AppCompatActivity {
     private RadioGroup rgVisitType;
     private LinearLayout layoutFollowUpNote;
     private TextView tvFollowUpNote;
+    private MaterialButton btnChooseFollowUp;
+    private LinearLayout layoutHistoryList;
+    private TextView tvHistoryEmpty;
 
     // Test recommendations views (shown when wait is high after joining)
     private CardView cardTestRecs;
@@ -78,10 +84,12 @@ public class PatientHomeActivity extends AppCompatActivity {
     private String selectedDoctorId   = null;
     private String selectedDoctorName = null;
     private String autoRecommendedId  = null;
+    private final List<ConsultationHistoryResponse.Consultation> consultationHistory = new ArrayList<>();
 
     // Visit intent state
     private String selectedVisitType  = "new";     // "new" or "follow_up"
-    private String followUpTokenId    = null;       // linked prior token (auto-detected or user-selected)
+    private String followUpTokenId    = null;       // linked prior token chosen by the patient
+    private ConsultationHistoryResponse.Consultation selectedFollowUpConsultation = null;
 
     // Polling handler
     private Handler pollHandler = new Handler(Looper.getMainLooper());
@@ -107,6 +115,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         setupGreeting();
         setupClickListeners();
         loadDoctors();
+        loadConsultationHistory(false);
         checkExistingToken();
     }
 
@@ -150,6 +159,9 @@ public class PatientHomeActivity extends AppCompatActivity {
         rgVisitType         = findViewById(R.id.rgVisitType);
         layoutFollowUpNote  = findViewById(R.id.layoutFollowUpNote);
         tvFollowUpNote      = findViewById(R.id.tvFollowUpNote);
+        btnChooseFollowUp   = findViewById(R.id.btnChooseFollowUp);
+        layoutHistoryList   = findViewById(R.id.layoutHistoryList);
+        tvHistoryEmpty      = findViewById(R.id.tvHistoryEmpty);
 
         // Test recommendations views
         cardTestRecs        = findViewById(R.id.cardTestRecs);
@@ -170,12 +182,25 @@ public class PatientHomeActivity extends AppCompatActivity {
             if (checkedId == R.id.rbVisitFollowUp) {
                 selectedVisitType = "follow_up";
                 layoutFollowUpNote.setVisibility(View.VISIBLE);
-                // Attempt to auto-detect prior visit for continuity info
-                loadLastVisitForFollowUp();
+                if (consultationHistory.isEmpty()) {
+                    loadConsultationHistory(true);
+                } else {
+                    showFollowUpPicker();
+                }
             } else {
                 selectedVisitType = "new";
                 followUpTokenId = null;
+                selectedFollowUpConsultation = null;
+                tvFollowUpNote.setText(getString(R.string.follow_up_note));
                 layoutFollowUpNote.setVisibility(View.GONE);
+            }
+        });
+
+        btnChooseFollowUp.setOnClickListener(v -> {
+            if (consultationHistory.isEmpty()) {
+                loadConsultationHistory(true);
+            } else {
+                showFollowUpPicker();
             }
         });
 
@@ -209,6 +234,10 @@ public class PatientHomeActivity extends AppCompatActivity {
                 Toast.makeText(this, "Please select a doctor first", Toast.LENGTH_SHORT).show();
                 return;
             }
+            if ("follow_up".equals(selectedVisitType) && followUpTokenId == null) {
+                Toast.makeText(this, "Please choose a previous visit for follow-up", Toast.LENGTH_SHORT).show();
+                return;
+            }
             btnJoinQueue.setEnabled(false);
             btnJoinQueue.setText("Joining...");
 
@@ -236,8 +265,12 @@ public class PatientHomeActivity extends AppCompatActivity {
                     } else {
                         btnJoinQueue.setEnabled(true);
                         btnJoinQueue.setText("Join Queue");
+                        MessageResponse error = ApiErrorParser.parseMessage(response);
                         Toast.makeText(PatientHomeActivity.this,
-                                "Could not join queue. Try again.", Toast.LENGTH_SHORT).show();
+                                error != null && error.getMessage() != null
+                                        ? error.getMessage()
+                                        : "Could not join queue. Try again.",
+                                Toast.LENGTH_SHORT).show();
                     }
                 }
                 @Override
@@ -341,6 +374,9 @@ public class PatientHomeActivity extends AppCompatActivity {
                     tvDoctorListLoading.setVisibility(View.GONE);
                     layoutDoctorList.setVisibility(View.VISIBLE);
                     filterAndRenderDoctors("");
+                    if (selectedFollowUpConsultation != null) {
+                        applyDoctorSelectionForFollowUp(selectedFollowUpConsultation, false);
+                    }
                 } else {
                     tvDoctorListLoading.setText("No doctors found. Ask admin to run Seed Data.");
                 }
@@ -664,40 +700,180 @@ public class PatientHomeActivity extends AppCompatActivity {
                 .show();
     }
 
-    /**
-     * Load the most recent completed consultation and populate the follow-up note.
-     * Stores the token ID for submission in the join request.
-     */
-    private void loadLastVisitForFollowUp() {
-        apiService.getConsultationHistory().enqueue(
-                new Callback<com.example.smartqueue.models.response.ConsultationHistoryResponse>() {
-                    @Override
-                    public void onResponse(
-                            Call<com.example.smartqueue.models.response.ConsultationHistoryResponse> call,
-                            Response<com.example.smartqueue.models.response.ConsultationHistoryResponse> response) {
-                        if (response.isSuccessful() && response.body() != null
-                                && response.body().isSuccess()
-                                && response.body().getHistory() != null
-                                && !response.body().getHistory().isEmpty()) {
+    private void loadConsultationHistory(boolean openPickerAfterLoad) {
+        apiService.getConsultationHistory().enqueue(new Callback<ConsultationHistoryResponse>() {
+            @Override
+            public void onResponse(Call<ConsultationHistoryResponse> call, Response<ConsultationHistoryResponse> response) {
+                if (response.isSuccessful() && response.body() != null
+                        && response.body().isSuccess() && response.body().getHistory() != null) {
+                    consultationHistory.clear();
+                    consultationHistory.addAll(response.body().getHistory());
+                    renderConsultationHistory();
 
-                            com.example.smartqueue.models.response.ConsultationHistoryResponse.Consultation last =
-                                    response.body().getHistory().get(0);
-
-                            String note = getString(R.string.follow_up_note_linked)
-                                    + (last.getDoctorName() != null ? last.getDoctorName() : "prior visit");
-                            tvFollowUpNote.setText(note);
+                    if ("follow_up".equals(selectedVisitType)) {
+                        if (consultationHistory.isEmpty()) {
+                            tvFollowUpNote.setText(getString(R.string.follow_up_none));
+                        } else if (openPickerAfterLoad || selectedFollowUpConsultation == null) {
+                            showFollowUpPicker();
                         }
-                        // followUpTokenId is resolved on the backend using the patient's ID;
-                        // no explicit token reference needed from the client for the auto-detect path.
                     }
+                }
+            }
 
-                    @Override
-                    public void onFailure(
-                            Call<com.example.smartqueue.models.response.ConsultationHistoryResponse> call,
-                            Throwable t) {
-                        // Non-critical: follow-up still works without the history preview.
-                    }
-                });
+            @Override
+            public void onFailure(Call<ConsultationHistoryResponse> call, Throwable t) {
+                tvHistoryEmpty.setText(getString(R.string.history_empty));
+                if ("follow_up".equals(selectedVisitType)) {
+                    tvFollowUpNote.setText(getString(R.string.follow_up_none));
+                }
+            }
+        });
+    }
+
+    private void renderConsultationHistory() {
+        layoutHistoryList.removeAllViews();
+        if (consultationHistory.isEmpty()) {
+            tvHistoryEmpty.setVisibility(View.VISIBLE);
+            return;
+        }
+
+        tvHistoryEmpty.setVisibility(View.GONE);
+        LayoutInflater inflater = LayoutInflater.from(this);
+        for (ConsultationHistoryResponse.Consultation consultation : consultationHistory) {
+            View card = inflater.inflate(R.layout.item_consultation_history, layoutHistoryList, false);
+            TextView tvDate = card.findViewById(R.id.tvHistoryDate);
+            TextView tvDoctor = card.findViewById(R.id.tvHistoryDoctor);
+            TextView tvType = card.findViewById(R.id.tvHistoryType);
+            TextView tvSummary = card.findViewById(R.id.tvHistorySummary);
+            TextView tvOutcome = card.findViewById(R.id.tvHistoryOutcome);
+
+            tvDate.setText(formatHistoryDate(consultation.getDate()));
+            tvDoctor.setText(consultation.getDoctorName());
+            tvType.setText(formatVisitTypeLabel(consultation.getVisitType(), consultation.getDoctorSpecialty()));
+            tvSummary.setText(!isBlank(consultation.getSymptomsSummary())
+                    ? consultation.getSymptomsSummary()
+                    : (!isBlank(consultation.getSymptoms()) ? consultation.getSymptoms() : "No symptom summary recorded."));
+            tvOutcome.setText(!isBlank(consultation.getConclusionPreview())
+                    ? consultation.getConclusionPreview()
+                    : (!isBlank(consultation.getDiagnosis()) ? consultation.getDiagnosis() : "Open for full prescription details."));
+
+            card.setOnClickListener(v -> openPrescriptionScreen(consultation.getTokenId(), true));
+            layoutHistoryList.addView(card);
+        }
+    }
+
+    private void showFollowUpPicker() {
+        if (consultationHistory.isEmpty()) {
+            tvFollowUpNote.setText(getString(R.string.follow_up_none));
+            Toast.makeText(this, getString(R.string.follow_up_none), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        CharSequence[] options = new CharSequence[consultationHistory.size()];
+        for (int i = 0; i < consultationHistory.size(); i++) {
+            ConsultationHistoryResponse.Consultation consultation = consultationHistory.get(i);
+            String doctorName = !isBlank(consultation.getDoctorName()) ? consultation.getDoctorName() : "Previous visit";
+            String conclusion = !isBlank(consultation.getConclusionPreview())
+                    ? consultation.getConclusionPreview()
+                    : (!isBlank(consultation.getDiagnosis()) ? consultation.getDiagnosis() : "Visit details");
+            options[i] = formatHistoryDate(consultation.getDate()) + " • " + doctorName + "\n" + conclusion;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.follow_up_choose_visit))
+                .setItems(options, (dialog, which) -> applyFollowUpSelection(consultationHistory.get(which)))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void applyFollowUpSelection(ConsultationHistoryResponse.Consultation consultation) {
+        selectedFollowUpConsultation = consultation;
+        followUpTokenId = consultation.getTokenId();
+        tvFollowUpNote.setText(getString(R.string.follow_up_note_linked)
+                + consultation.getDoctorName()
+                + " • " + formatHistoryDate(consultation.getDate()));
+        applyDoctorSelectionForFollowUp(consultation, true);
+    }
+
+    private void applyDoctorSelectionForFollowUp(ConsultationHistoryResponse.Consultation consultation,
+                                                 boolean showFeedback) {
+        if (consultation == null || allDoctors == null || allDoctors.isEmpty()) {
+            return;
+        }
+
+        DoctorsResponse.Doctor sameDoctor = null;
+        DoctorsResponse.Doctor sameSpecialtyDoctor = null;
+        for (DoctorsResponse.Doctor doctor : allDoctors) {
+            if (doctor.getId() != null && doctor.getId().equals(consultation.getDoctorId())) {
+                sameDoctor = doctor;
+                break;
+            }
+            if (sameSpecialtyDoctor == null
+                    && !isBlank(consultation.getDoctorSpecialty())
+                    && consultation.getDoctorSpecialty().equalsIgnoreCase(doctor.getSpecialty())) {
+                sameSpecialtyDoctor = doctor;
+            }
+        }
+
+        autoRecommendedId = null;
+        if (sameDoctor != null) {
+            selectedDoctorId = sameDoctor.getId();
+            selectedDoctorName = sameDoctor.getName();
+            tvSelectedDoctor.setText(sameDoctor.getName());
+            if (showFeedback) {
+                Toast.makeText(this, "Follow-up matched to the same doctor", Toast.LENGTH_SHORT).show();
+            }
+        } else if (sameSpecialtyDoctor != null) {
+            selectedDoctorId = sameSpecialtyDoctor.getId();
+            selectedDoctorName = sameSpecialtyDoctor.getName();
+            tvSelectedDoctor.setText(sameSpecialtyDoctor.getName());
+            if (showFeedback) {
+                Toast.makeText(this, "Previous doctor unavailable. Routed to the same specialty.", Toast.LENGTH_SHORT).show();
+            }
+        } else {
+            selectedDoctorId = null;
+            selectedDoctorName = null;
+            tvSelectedDoctor.setText("Select doctor manually");
+            if (showFeedback) {
+                Toast.makeText(this, "Previous doctor unavailable. Please pick a doctor manually.", Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        filterAndRenderDoctors(
+                etDoctorSearch.getText() != null
+                        ? etDoctorSearch.getText().toString().trim().toLowerCase() : "");
+    }
+
+    private void openPrescriptionScreen(String tokenId, boolean readOnly) {
+        if (isBlank(tokenId)) {
+            return;
+        }
+        Intent intent = new Intent(this, PrescriptionActivity.class);
+        intent.putExtra(PrescriptionActivity.EXTRA_TOKEN_ID, tokenId);
+        intent.putExtra(PrescriptionActivity.EXTRA_READ_ONLY, readOnly);
+        startActivity(intent);
+    }
+
+    private String formatHistoryDate(String rawDate) {
+        if (isBlank(rawDate)) {
+            return "Visit";
+        }
+        int separator = rawDate.indexOf('T');
+        return separator > 0 ? rawDate.substring(0, separator) : rawDate;
+    }
+
+    private String formatVisitTypeLabel(String visitType, String specialty) {
+        String label = "follow_up".equals(visitType)
+                ? getString(R.string.visit_type_follow_up)
+                : getString(R.string.visit_type_new);
+        if (!isBlank(specialty)) {
+            label += " • " + specialty;
+        }
+        return label;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     /**
@@ -727,5 +903,13 @@ public class PatientHomeActivity extends AppCompatActivity {
     protected void onDestroy() {
         stopPolling();
         super.onDestroy();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (!isInQueue) {
+            loadConsultationHistory(false);
+        }
     }
 }

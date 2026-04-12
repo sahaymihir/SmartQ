@@ -189,6 +189,11 @@ const tokenSchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  prescriptionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Prescription',
+    default: null
+  },
   prescription: {
     diagnosis: {
       type: String,

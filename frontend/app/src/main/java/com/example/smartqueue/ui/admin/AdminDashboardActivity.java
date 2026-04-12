@@ -22,6 +22,8 @@ import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
 import com.example.smartqueue.ui.admin.UserManagementActivity;
 import com.example.smartqueue.ui.auth.LoginActivity;
+import com.example.smartqueue.ui.prescription.PrescriptionActivity;
+import com.example.smartqueue.utils.ApiErrorParser;
 import com.example.smartqueue.utils.RoleNavigationHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
@@ -42,7 +44,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
     private TextView tvAdminName, tvCurrentlyServing, tvPausedBadge, tvUrgentAlert;
     private TextView tvStatWaiting, tvStatDone, tvStatAvg, tvQueueLabel;
     private TextView tvMlOpsStatus, tvMlOpsSummary, tvMlOpsLastEvent, tvMlOpsLastUpdated, tvMlOpsEmpty;
-    private MaterialButton btnCallNext, btnPause, btnLogout, btnModelEval, btnSeedData, btnRefreshMlOps, btnManageUsers;
+    private MaterialButton btnCallNext, btnPause, btnLogout, btnModelEval, btnSeedData, btnRefreshMlOps, btnManageUsers, btnPrescription;
     private LinearLayout layoutQueueList, layoutMlOpsLogs;
 
     private SessionManager sessionManager;
@@ -54,6 +56,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
     private Runnable queueRefreshRunnable;
     private int lastImmediateReviewCount = 0;
     private long lastMlOpsRefreshAtMs = 0L;
+    private String currentCalledTokenId = null;
 
     private static final long ML_OPS_REFRESH_INTERVAL_MS = 30_000L;
     private static final SimpleDateFormat API_TIMESTAMP_FORMAT =
@@ -98,6 +101,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
         tvQueueLabel       = findViewById(R.id.tvQueueLabel);
         layoutQueueList    = findViewById(R.id.layoutQueueList);
         btnCallNext        = findViewById(R.id.btnCallNext);
+        btnPrescription    = findViewById(R.id.btnPrescription);
         btnPause           = findViewById(R.id.btnPause);
         btnLogout          = findViewById(R.id.btnLogout);
 
@@ -114,6 +118,8 @@ public class AdminDashboardActivity extends AppCompatActivity {
         layoutMlOpsLogs = findViewById(R.id.layoutMlOpsLogs);
 
         btnSeedData.setVisibility(isSuperuser ? View.VISIBLE : View.GONE);
+        btnPrescription.setEnabled(false);
+        btnPrescription.setAlpha(0.6f);
     }
 
     private void setupClickListeners() {
@@ -132,6 +138,19 @@ public class AdminDashboardActivity extends AppCompatActivity {
                         Toast.makeText(AdminDashboardActivity.this,
                                 response.body().getMessage(), Toast.LENGTH_SHORT).show();
                         loadQueue();
+                    } else {
+                        MessageResponse error = ApiErrorParser.parseMessage(response);
+                        if (error != null && error.isRequiresPrescription() && error.getTokenId() != null) {
+                            Toast.makeText(AdminDashboardActivity.this,
+                                    error.getMessage(), Toast.LENGTH_SHORT).show();
+                            openPrescriptionEditor(error.getTokenId());
+                        } else {
+                            Toast.makeText(AdminDashboardActivity.this,
+                                    error != null && !TextUtils.isEmpty(error.getMessage())
+                                            ? error.getMessage()
+                                            : "Could not advance queue",
+                                    Toast.LENGTH_SHORT).show();
+                        }
                     }
                 }
                 @Override
@@ -141,6 +160,8 @@ public class AdminDashboardActivity extends AppCompatActivity {
                 }
             });
         });
+
+        btnPrescription.setOnClickListener(v -> openPrescriptionEditor(currentCalledTokenId));
 
         // ── Pause / Resume ────────────────────────────────
         btnPause.setOnClickListener(v -> {
@@ -232,6 +253,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        loadQueue();
         startQueueRefresh();
     }
 
@@ -257,6 +279,17 @@ public class AdminDashboardActivity extends AppCompatActivity {
         if (queueRefreshRunnable != null) {
             queueRefreshHandler.removeCallbacks(queueRefreshRunnable);
         }
+    }
+
+    private void openPrescriptionEditor(String tokenId) {
+        if (TextUtils.isEmpty(tokenId)) {
+            Toast.makeText(this, "No active consultation selected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent intent = new Intent(this, PrescriptionActivity.class);
+        intent.putExtra(PrescriptionActivity.EXTRA_TOKEN_ID, tokenId);
+        intent.putExtra(PrescriptionActivity.EXTRA_READ_ONLY, false);
+        startActivity(intent);
     }
 
     private void loadQueue() {
@@ -292,6 +325,9 @@ public class AdminDashboardActivity extends AppCompatActivity {
                     tvQueueLabel.setText(immediateReviewCount > 0
                             ? normalWaitingCount + " waiting • " + immediateReviewCount + " immediate review"
                             : totalWaitingCount + " waiting");
+                    currentCalledTokenId = calledPatient != null ? calledPatient.getTokenId() : null;
+                    btnPrescription.setEnabled(currentCalledTokenId != null);
+                    btnPrescription.setAlpha(currentCalledTokenId != null ? 1f : 0.6f);
                     tvCurrentlyServing.setText(calledPatient != null
                             ? "Token #" + calledPatient.getTokenNumber() + " — " + calledPatient.getPatientName()
                             : "No patient currently called");

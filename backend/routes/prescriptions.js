@@ -20,6 +20,11 @@ const multer = require('multer');
 const axios = require('axios');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 const { Token } = require('../models/Queue');
+const {
+  buildPrescriptionView,
+  ensurePrescriptionForToken,
+  savePrescriptionForToken,
+} = require('../services/prescriptionService');
 
 const OCR_SERVICE_URL = process.env.OCR_SERVICE_URL || null;
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads', 'prescriptions');
@@ -63,6 +68,30 @@ const upload = multer({
     files: 1,
   },
 });
+
+const canAccessPrescription = (token, user, { write = false } = {}) => {
+  if (!token || !user) {
+    return false;
+  }
+
+  const tokenDoctorId = String(token.doctor?._id || token.doctor || '');
+  const tokenPatientId = String(token.patient?._id || token.patient || '');
+  const userId = String(user._id || '');
+
+  if (['admin', 'superuser'].includes(user.role)) {
+    return true;
+  }
+
+  if (user.role === 'doctor') {
+    return tokenDoctorId === userId;
+  }
+
+  if (!write && user.role === 'patient') {
+    return tokenPatientId === userId && token.status === 'completed';
+  }
+
+  return false;
+};
 
 // ─── OCR extraction helper ─────────────────────────────────────
 
@@ -277,6 +306,94 @@ router.patch('/:tokenId/confirm', protect, adminOnly, async (req, res) => {
     });
   } catch (err) {
     console.error('Prescription confirm error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.get('/:tokenId', protect, async (req, res) => {
+  try {
+    const token = await Token.findById(req.params.tokenId)
+      .populate('patient', 'name')
+      .populate('doctor', 'name specialty');
+
+    if (!token) {
+      return res.status(404).json({ success: false, message: 'Token not found' });
+    }
+
+    if (!canAccessPrescription(token, req.user, { write: false })) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied to this prescription',
+      });
+    }
+
+    const prescription = await ensurePrescriptionForToken(token);
+    const view = buildPrescriptionView(token, prescription);
+
+    res.json({
+      success: true,
+      message: view.hasPrescription ? 'Prescription loaded' : 'No prescription recorded yet',
+      ...view,
+      patientName: token.patient?.name || 'Patient',
+      doctorName: token.doctor?.name || 'Doctor',
+      doctorSpecialty: token.doctor?.specialty || '',
+      reportedSymptoms: token.symptoms || '',
+      visitType: token.visitType || 'new',
+      completedAt: token.completedAt || null,
+      createdAt: token.createdAt,
+      canEdit: ['admin', 'superuser'].includes(req.user.role) ||
+        (req.user.role === 'doctor' && String(token.doctor?._id || token.doctor) === String(req.user._id)),
+    });
+  } catch (err) {
+    console.error('Prescription fetch error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.put('/:tokenId', protect, adminOnly, async (req, res) => {
+  try {
+    const token = await Token.findById(req.params.tokenId)
+      .populate('patient', 'name')
+      .populate('doctor', 'name specialty');
+
+    if (!token) {
+      return res.status(404).json({ success: false, message: 'Token not found' });
+    }
+
+    if (!canAccessPrescription(token, req.user, { write: true })) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied to this prescription',
+      });
+    }
+
+    if (['cancelled', 'no_show'].includes(token.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot edit prescriptions for cancelled or no-show visits.',
+      });
+    }
+
+    const prescription = await savePrescriptionForToken(token, req.user, req.body || {});
+    const view = buildPrescriptionView(token, prescription);
+
+    res.json({
+      success: true,
+      message: prescription.status === 'finalized'
+        ? `Prescription finalized for ${token.patient?.name || 'patient'}`
+        : `Prescription draft saved for ${token.patient?.name || 'patient'}`,
+      ...view,
+      patientName: token.patient?.name || 'Patient',
+      doctorName: token.doctor?.name || 'Doctor',
+      doctorSpecialty: token.doctor?.specialty || '',
+      reportedSymptoms: token.symptoms || '',
+      visitType: token.visitType || 'new',
+      completedAt: token.completedAt || null,
+      createdAt: token.createdAt,
+      canEdit: true,
+    });
+  } catch (err) {
+    console.error('Prescription save error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

@@ -14,6 +14,7 @@ import com.example.smartqueue.models.response.DoctorsResponse;
 import com.example.smartqueue.models.response.MessageResponse;
 import com.example.smartqueue.models.response.MlOpsLogsResponse;
 import com.example.smartqueue.models.response.ModelEvalHistoryResponse;
+import com.example.smartqueue.models.response.PrescriptionResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.models.response.SymptomPredictResponse;
 import com.example.smartqueue.models.response.TokenResponse;
@@ -86,8 +87,11 @@ public interface ApiService {
     @POST("admin/noshow")
     Call<MessageResponse> markNoShow(@Query("tokenId") String tokenId);
 
-    @POST("admin/prescription")
-    Call<MessageResponse> savePrescription(@Body PrescriptionRequest body);
+    @GET("prescriptions/{tokenId}")
+    Call<PrescriptionResponse> getPrescription(@Path("tokenId") String tokenId);
+
+    @PUT("prescriptions/{tokenId}")
+    Call<PrescriptionResponse> savePrescription(@Path("tokenId") String tokenId, @Body PrescriptionRequest body);
 
     @GET("admin/model-eval-history")
     Call<ModelEvalHistoryResponse> getModelEvalHistory();

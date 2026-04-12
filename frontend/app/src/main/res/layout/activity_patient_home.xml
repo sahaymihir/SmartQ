@@ -181,6 +181,16 @@
                             android:textSize="12sp"
                             android:textColor="@color/text_secondary"
                             android:layout_marginTop="4dp"/>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnChooseFollowUp"
+                            style="@style/Widget.MaterialComponents.Button.TextButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="@string/follow_up_choose_visit"
+                            android:textColor="@color/primary"
+                            android:textSize="12sp"/>
                     </LinearLayout>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -394,6 +404,44 @@
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
                         android:visibility="gone"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/SmartQ.Card"
+                android:layout_marginBottom="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/history_title"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"/>
+
+                    <TextView
+                        android:id="@+id/tvHistoryEmpty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/history_empty"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_secondary"/>
+
+                    <LinearLayout
+                        android:id="@+id/layoutHistoryList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="vertical"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

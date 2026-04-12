@@ -4,6 +4,10 @@ const mongoose = require('mongoose');
 const rateLimit = require('express-rate-limit');
 const { protect, staffOnly } = require('../middleware/authMiddleware');
 const { Token } = require('../models/Queue');
+const {
+  buildPrescriptionView,
+  hasLegacyPrescription,
+} = require('../services/prescriptionService');
 const { buildVisitSnapshot, determineTriageDecision, getAgeBaselineScore, mapPriorityClassToScore } = require('../services/triageService');
 const {
   ACTIVE_TOKEN_STATUSES,
@@ -162,31 +166,34 @@ router.post('/join', protect, async (req, res) => {
     // Resolve the prior token reference for continuity tracking.
     let followUpTokenId = null;
     if (visitType === 'follow_up') {
-      if (req.body.followUpTokenId) {
-        // Explicit reference provided by the client — validate ObjectId before querying
-        if (!isValidObjectId(req.body.followUpTokenId)) {
-          return res.status(400).json({ success: false, message: 'Invalid followUpTokenId: must be a valid MongoDB ObjectId' });
-        }
-        const priorToken = await Token.findOne({
-          _id: new mongoose.Types.ObjectId(req.body.followUpTokenId),
-          patient: patient._id,
-          status: 'completed',
-        }).lean();
-        if (priorToken) {
-          followUpTokenId = priorToken._id;
-        }
-      } else {
-        // Auto-detect: use the most recent completed token for this patient
-        const recentToken = await Token.findOne({
-          patient: patient._id,
-          status: 'completed',
-        })
-          .sort({ completedAt: -1 })
-          .lean();
-        if (recentToken) {
-          followUpTokenId = recentToken._id;
-        }
+      if (!req.body.followUpTokenId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please select a previous completed visit for this follow-up.',
+        });
       }
+
+      if (!isValidObjectId(req.body.followUpTokenId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid followUpTokenId: must be a valid MongoDB ObjectId',
+        });
+      }
+
+      const priorToken = await Token.findOne({
+        _id: new mongoose.Types.ObjectId(req.body.followUpTokenId),
+        patient: patient._id,
+        status: 'completed',
+      }).lean();
+
+      if (!priorToken) {
+        return res.status(400).json({
+          success: false,
+          message: 'The selected follow-up visit was not found in your completed visit history.',
+        });
+      }
+
+      followUpTokenId = priorToken._id;
     }
 
     const queue = await getTodayQueue(doctorId);
@@ -520,29 +527,38 @@ router.get('/history', protect, async (req, res) => {
       patient: req.user._id,
       status: 'completed',
     })
-      .populate('doctor', 'name')
+      .populate('doctor', 'name specialty')
+      .populate('prescriptionId')
       .sort({ completedAt: -1 })
       .limit(limit)
       .lean();
 
-    const history = tokens.map((token) => ({
+    const history = tokens.map((token) => {
+      const prescriptionView = buildPrescriptionView(token, token.prescriptionId);
+      return {
+      ...prescriptionView,
       tokenId: token._id,
       tokenNumber: token.tokenNumber,
       date: token.completedAt || token.createdAt,
       doctorName: token.doctor?.name || 'Unknown doctor',
       doctorId: token.doctor?._id || null,
+      doctorSpecialty: token.doctor?.specialty || '',
       symptoms: token.symptoms || '',
-      diagnosis: token.prescription?.diagnosis || '',
-      medicines: token.prescription?.medicines || '',
-      notes: token.prescription?.notes || '',
+      diagnosis: prescriptionView.conclusion || token.prescription?.diagnosis || '',
+      medicines: prescriptionView.medications || token.prescription?.medicines || '',
+      notes: prescriptionView.adviceNotes || token.prescription?.notes || '',
+      symptomsSummary: prescriptionView.symptomsSummary || token.symptoms || '',
+      conclusionPreview: prescriptionView.conclusion || token.prescription?.diagnosis || '',
       prescriptionSource: token.prescription?.source || 'doctor_typed',
       ocrStatus: token.prescription?.ocrStatus || 'none',
       triageRecommendation: token.triageRecommendation || '',
       priority: token.priority,
       visitType: token.visitType || 'new',
+      hasPrescription: Boolean(token.prescriptionId || hasLegacyPrescription(token)),
       actualWaitMinutes: token.actualWaitMinutes,
       actualConsultMinutes: token.actualConsultMinutes,
-    }));
+    };
+    });
 
     res.json({
       success: true,
