@@ -55,7 +55,7 @@ public class ModelEvalActivity extends AppCompatActivity {
             etTestGcs, etTestNews2;
     private AutoCompleteTextView etTestChiefComplaint, etTestSex, etTestMentalStatus;
     private MaterialButton btnRunTest, btnBack, btnRefreshHistory;
-    private MaterialButton btnExampleCardio, btnExampleFever, btnExampleRash;
+    private MaterialButton btnExampleCardio, btnExampleFever, btnExampleRash, btnExampleTrauma;
     private LinearLayout layoutTestResult, layoutTestScores, layoutEvalHistory, layoutNoHistory;
     private TextView tvTestPrioritySummary, tvTestPriorityBreakdown, tvTestSafetySummary,
             tvTestQueueSummary, tvTestSuggestedTests;
@@ -83,6 +83,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         btnExampleCardio = findViewById(R.id.btnExampleCardio);
         btnExampleFever = findViewById(R.id.btnExampleFever);
         btnExampleRash = findViewById(R.id.btnExampleRash);
+        btnExampleTrauma = findViewById(R.id.btnExampleTrauma);
         etTestSymptoms = findViewById(R.id.etTestSymptoms);
         etTestAge = findViewById(R.id.etTestAge);
         etTestChiefComplaint = findViewById(R.id.etTestChiefComplaint);
@@ -201,6 +202,25 @@ public class ModelEvalActivity extends AppCompatActivity {
                         1.0
                 )));
 
+        btnExampleTrauma.setOnClickListener(v ->
+                applyExample(new EvalScenario(
+                        "trauma_child_polyfracture",
+                        "broken right and left leg and hand and skull",
+                        5,
+                        "Male",
+                        "Alert",
+                        "Injury / bones",
+                        null,
+                        9.0,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        15,
+                        null
+                )));
+
         btnRunTest.setOnClickListener(v -> {
             String symptoms = etTestSymptoms.getText() != null
                     ? etTestSymptoms.getText().toString().trim() : "";
@@ -209,7 +229,7 @@ public class ModelEvalActivity extends AppCompatActivity {
                 return;
             }
 
-            SymptomRequest request = buildAdminEvalRequest();
+            SymptomRequest request = buildAdminEvalRequest(null);
             if (request == null) {
                 return;
             }
@@ -235,7 +255,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         etTestGcs.setText(scenario.gcsTotal != null ? String.valueOf(scenario.gcsTotal) : "");
         etTestNews2.setText(formatOptionalDouble(scenario.news2Score));
 
-        SymptomRequest request = buildAdminEvalRequest();
+        SymptomRequest request = buildAdminEvalRequest(scenario.scenarioKey);
         if (request != null) {
             runTestPrediction(request);
         }
@@ -247,7 +267,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
     }
 
-    private SymptomRequest buildAdminEvalRequest() {
+    private SymptomRequest buildAdminEvalRequest(String scenarioKey) {
         String symptoms = getTextValue(etTestSymptoms);
         if (TextUtils.isEmpty(symptoms)) {
             etTestSymptoms.setError("Required");
@@ -318,7 +338,8 @@ public class ModelEvalActivity extends AppCompatActivity {
                 .setSystolicBp(systolicBp)
                 .setDiastolicBp(diastolicBp)
                 .setGcsTotal(gcsTotal)
-                .setNews2Score(news2);
+                .setNews2Score(news2)
+                .setScenarioKey(emptyToNull(scenarioKey));
     }
 
     private String getTextValue(TextView field) {
@@ -1136,6 +1157,7 @@ public class ModelEvalActivity extends AppCompatActivity {
     }
 
     private static class EvalScenario {
+        final String scenarioKey;
         final String symptoms;
         final int age;
         final String sex;
@@ -1167,6 +1189,43 @@ public class ModelEvalActivity extends AppCompatActivity {
                 Integer gcsTotal,
                 Double news2Score
         ) {
+            this(
+                    null,
+                    symptoms,
+                    age,
+                    sex,
+                    mentalStatus,
+                    chiefComplaint,
+                    temperatureC,
+                    painScore,
+                    spo2,
+                    respiratoryRate,
+                    heartRate,
+                    systolicBp,
+                    diastolicBp,
+                    gcsTotal,
+                    news2Score
+            );
+        }
+
+        EvalScenario(
+                String scenarioKey,
+                String symptoms,
+                int age,
+                String sex,
+                String mentalStatus,
+                String chiefComplaint,
+                Double temperatureC,
+                Double painScore,
+                Double spo2,
+                Double respiratoryRate,
+                Double heartRate,
+                Double systolicBp,
+                Double diastolicBp,
+                Integer gcsTotal,
+                Double news2Score
+        ) {
+            this.scenarioKey = scenarioKey;
             this.symptoms = symptoms;
             this.age = age;
             this.sex = sex;

@@ -39,6 +39,31 @@ const requireSeedAccess = (req, res, next) => {
 // All admin routes require login + admin/doctor role.
 router.use(protect, adminOnly);
 
+const ADMIN_MODEL_EVAL_SCENARIOS = {
+  trauma_child_polyfracture: {
+    key: 'trauma_child_polyfracture',
+    title: 'Trauma child (multiple fractures)',
+    description:
+      'Child age 5 with broken right/left leg, hand, and skull under trauma complaint for clinical flow walkthrough.',
+    payload: {
+      symptoms: 'broken right and left leg and hand and skull',
+      age: 5,
+      chief_complaint_system: 'trauma',
+      sex: 'M',
+      mental_status_triage: 'alert',
+      pain_score: 9,
+      language: 'en',
+    },
+  },
+};
+
+const resolveAdminEvalScenario = (scenarioKey) => {
+  if (!scenarioKey) {
+    return null;
+  }
+  return ADMIN_MODEL_EVAL_SCENARIOS[String(scenarioKey).trim()] || null;
+};
+
 // ─────────────────────────────────────────────────────────────
 // GET /api/admin/queue?doctorId=xxx
 // Get full queue list for admin dashboard
@@ -277,12 +302,18 @@ const parseOptionalNumber = (value, fieldLabel, { min, max, integer = false } = 
 };
 
 const buildAdminEvalPayload = (body = {}) => {
-  const symptoms = parseOptionalText(body.symptoms);
+  const scenarioKey = parseOptionalText(body.scenario_key || body.scenarioKey);
+  const selectedScenario = resolveAdminEvalScenario(scenarioKey);
+  const sourceBody = selectedScenario
+    ? { ...selectedScenario.payload, ...body }
+    : body;
+
+  const symptoms = parseOptionalText(sourceBody.symptoms);
   if (!symptoms) {
     throw new Error('Symptoms text is required');
   }
 
-  const age = parseOptionalNumber(body.age, 'Age', { min: 0, max: 130, integer: true });
+  const age = parseOptionalNumber(sourceBody.age, 'Age', { min: 0, max: 130, integer: true });
   if (age == null) {
     throw new Error('Valid age is required');
   }
@@ -290,19 +321,20 @@ const buildAdminEvalPayload = (body = {}) => {
   return {
     symptoms,
     age,
-    sex: parseOptionalText(body.sex),
-    mental_status_triage: parseOptionalText(body.mental_status_triage),
-    chief_complaint_system: parseOptionalText(body.chief_complaint_system),
-    language: parseOptionalText(body.language || body.intakeLanguage),
-    temperature_c: parseOptionalNumber(body.temperature_c, 'Temperature', { min: 0, max: 50 }),
-    pain_score: parseOptionalNumber(body.pain_score, 'Pain score', { min: 0, max: 10 }),
-    spo2: parseOptionalNumber(body.spo2, 'SpO2', { min: 0, max: 100 }),
-    respiratory_rate: parseOptionalNumber(body.respiratory_rate, 'Respiratory rate', { min: 0, max: 80 }),
-    heart_rate: parseOptionalNumber(body.heart_rate, 'Heart rate', { min: 0, max: 250 }),
-    systolic_bp: parseOptionalNumber(body.systolic_bp, 'Systolic BP', { min: 0, max: 300 }),
-    diastolic_bp: parseOptionalNumber(body.diastolic_bp, 'Diastolic BP', { min: 0, max: 200 }),
-    gcs_total: parseOptionalNumber(body.gcs_total, 'GCS total', { min: 0, max: 15, integer: true }),
-    news2_score: parseOptionalNumber(body.news2_score, 'NEWS2 score', { min: 0, max: 25 }),
+    scenarioKey: selectedScenario?.key,
+    sex: parseOptionalText(sourceBody.sex),
+    mental_status_triage: parseOptionalText(sourceBody.mental_status_triage),
+    chief_complaint_system: parseOptionalText(sourceBody.chief_complaint_system),
+    language: parseOptionalText(sourceBody.language || sourceBody.intakeLanguage),
+    temperature_c: parseOptionalNumber(sourceBody.temperature_c, 'Temperature', { min: 0, max: 50 }),
+    pain_score: parseOptionalNumber(sourceBody.pain_score, 'Pain score', { min: 0, max: 10 }),
+    spo2: parseOptionalNumber(sourceBody.spo2, 'SpO2', { min: 0, max: 100 }),
+    respiratory_rate: parseOptionalNumber(sourceBody.respiratory_rate, 'Respiratory rate', { min: 0, max: 80 }),
+    heart_rate: parseOptionalNumber(sourceBody.heart_rate, 'Heart rate', { min: 0, max: 250 }),
+    systolic_bp: parseOptionalNumber(sourceBody.systolic_bp, 'Systolic BP', { min: 0, max: 300 }),
+    diastolic_bp: parseOptionalNumber(sourceBody.diastolic_bp, 'Diastolic BP', { min: 0, max: 200 }),
+    gcs_total: parseOptionalNumber(sourceBody.gcs_total, 'GCS total', { min: 0, max: 15, integer: true }),
+    news2_score: parseOptionalNumber(sourceBody.news2_score, 'NEWS2 score', { min: 0, max: 25 }),
   };
 };
 
@@ -483,6 +515,20 @@ const buildAdminPriorityComponents = (age, rawPriorityClass, finalPriorityClass)
   };
 };
 
+router.get('/model-eval-scenarios', async (req, res) => {
+  const scenarios = Object.values(ADMIN_MODEL_EVAL_SCENARIOS).map((scenario) => ({
+    key: scenario.key,
+    title: scenario.title,
+    description: scenario.description,
+    payload: scenario.payload,
+  }));
+
+  res.json({
+    success: true,
+    scenarios,
+  });
+});
+
 // ─────────────────────────────────────────────────────────────
 // POST /api/admin/model-eval-run
 // Admin-only simulation of layered patient flow:
@@ -579,6 +625,7 @@ router.post('/model-eval-run', async (req, res) => {
       testRecommendations: flow.tests.recommendations,
       testSource: flow.tests.source,
       testLowConfidence: flow.tests.lowConfidence,
+      scenarioKey: payload.scenarioKey || null,
       availableRoutes: payload.availableRoutes,
       timestamp: new Date().toISOString(),
       patientName: 'Admin simulation',
