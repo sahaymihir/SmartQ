@@ -75,7 +75,7 @@ router.get('/queue', async (req, res) => {
 
     const tokens = await Token.find({
       doctor: doctorId,
-      status: { $in: ['waiting', 'called', 'arrived'] },
+      status: { $in: ['waiting_doctor', 'called', 'arrived'] },
       createdAt: buildDayQuery(today())
     })
     .populate('patient', 'name age phone');
@@ -161,7 +161,7 @@ router.post('/next', async (req, res) => {
     const queue = await getTodayQueue(doctorId, today());
 
     // Immediate-review tokens are called before the normal waiting lane.
-    const nextToken = await getNextWaitingToken(doctorId, today());
+    const nextToken = await getNextWaitingToken(doctorId, today(), 'waiting_doctor');
     if (nextToken) {
       await nextToken.populate('patient', 'name');
     }
@@ -179,7 +179,7 @@ router.post('/next', async (req, res) => {
 
     queue.currentToken = nextToken.tokenNumber;
     await queue.save();
-    await recomputeWaitingQueue(doctorId, queue.avgConsultationMinutes, today());
+    await recomputeWaitingQueue(doctorId, queue.avgConsultationMinutes, today(), 'waiting_doctor');
 
     res.json({
       success: true,
@@ -231,6 +231,7 @@ router.post('/noshow', async (req, res) => {
       });
     }
 
+    const previousStatus = token.status;
     token.status = 'no_show';
     await token.save();
 
@@ -239,7 +240,9 @@ router.post('/noshow', async (req, res) => {
       queue.currentToken = 0;
       await queue.save();
     }
-    await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, today());
+    if (previousStatus === 'waiting_doctor') {
+      await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, today(), 'waiting_doctor');
+    }
 
     res.json({ success: true, message: 'Patient marked as no-show' });
 

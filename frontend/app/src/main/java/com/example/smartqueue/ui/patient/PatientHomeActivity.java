@@ -785,7 +785,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             tvPositionLabel.setText("in line");
             tvETA.setText(eta == 0 ? "Next up!" : "~" + eta + " min");
             tvQueueStatus.setText(formatStatus(status));
-            boolean canSnooze = "waiting".equals(status) && snoozeCount < 2;
+            boolean canSnooze = ("waiting".equals(status) || "waiting_doctor".equals(status)) && snoozeCount < 2;
             btnSnooze.setEnabled(canSnooze);
             cardSnooze.setAlpha(canSnooze ? 1f : 0.6f);
             tvSnoozeCount.setText(snoozeCount >= 2
@@ -835,6 +835,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         if (status == null) return "Waiting";
         switch (status) {
             case "waiting":   return "Waiting";
+            case "waiting_doctor": return "Waiting for doctor";
             case "called":    return "Called!";
             case "arrived":
             case "checkedin": return "Arrived";

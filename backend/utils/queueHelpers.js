@@ -1,6 +1,6 @@
 const { Queue, Token } = require('../models/Queue');
 
-const ACTIVE_TOKEN_STATUSES = ['waiting', 'called', 'arrived'];
+const ACTIVE_TOKEN_STATUSES = ['waiting', 'waiting_doctor', 'called', 'arrived'];
 const NORMAL_ROUTING_LANE = 'normal';
 const IMMEDIATE_REVIEW_LANE = 'immediate_review';
 const TRIAGE_PRIORITY_SCORES = {
@@ -119,7 +119,8 @@ const sortActiveQueueTokens = (tokens = []) => {
   const statusRank = {
     called: 0,
     arrived: 1,
-    waiting: 2,
+    waiting_doctor: 2,
+    waiting: 3,
   };
 
   activeTokens.sort((left, right) => {
@@ -129,7 +130,11 @@ const sortActiveQueueTokens = (tokens = []) => {
       return leftStatus - rightStatus;
     }
 
-    if (left.status === 'waiting' && right.status === 'waiting') {
+    const bothWaitingForQueue =
+      ['waiting', 'waiting_doctor'].includes(left.status) &&
+      ['waiting', 'waiting_doctor'].includes(right.status);
+
+    if (bothWaitingForQueue) {
       const laneDiff =
         (isImmediateReviewToken(left) ? 0 : 1) -
         (isImmediateReviewToken(right) ? 0 : 1);
@@ -169,19 +174,27 @@ const getTodayQueue = async (doctorId, dateString = getTodayDateString()) => {
   return queue;
 };
 
-const loadWaitingTokens = async (doctorId, dateString = getTodayDateString()) => {
+const loadWaitingTokens = async (
+  doctorId,
+  dateString = getTodayDateString(),
+  status = 'waiting'
+) => {
   return Token.find({
     doctor: doctorId,
-    status: 'waiting',
+    status,
     routingLane: { $ne: IMMEDIATE_REVIEW_LANE },
     createdAt: buildDayQuery(dateString),
   }).sort({ position: 1, joinedAt: 1, createdAt: 1 });
 };
 
-const getNextWaitingToken = async (doctorId, dateString = getTodayDateString()) => {
+const getNextWaitingToken = async (
+  doctorId,
+  dateString = getTodayDateString(),
+  status = 'waiting_doctor'
+) => {
   const tokens = await Token.find({
     doctor: doctorId,
-    status: 'waiting',
+    status,
     createdAt: buildDayQuery(dateString),
   });
 
@@ -224,17 +237,23 @@ const persistWaitingOrder = async (tokens, avgConsultationMinutes) => {
   return tokens;
 };
 
-const recomputeWaitingQueue = async (doctorId, avgConsultationMinutes, dateString = getTodayDateString()) => {
-  const tokens = await loadWaitingTokens(doctorId, dateString);
+const recomputeWaitingQueue = async (
+  doctorId,
+  avgConsultationMinutes,
+  dateString = getTodayDateString(),
+  status = 'waiting_doctor'
+) => {
+  const tokens = await loadWaitingTokens(doctorId, dateString, status);
   return persistWaitingOrder(tokens, avgConsultationMinutes);
 };
 
 const reorderWaitingQueueByUrgency = async (
   doctorId,
   avgConsultationMinutes,
-  dateString = getTodayDateString()
+  dateString = getTodayDateString(),
+  status = 'waiting'
 ) => {
-  const tokens = await loadWaitingTokens(doctorId, dateString);
+  const tokens = await loadWaitingTokens(doctorId, dateString, status);
   const orderedTokens = [...tokens].sort((left, right) => compareTokensByUrgency(left, right));
   return persistWaitingOrder(orderedTokens, avgConsultationMinutes);
 };
@@ -243,9 +262,10 @@ const promoteTokenByPriority = async (
   doctorId,
   tokenId,
   avgConsultationMinutes,
-  dateString = getTodayDateString()
+  dateString = getTodayDateString(),
+  status = 'waiting'
 ) => {
-  const tokens = await loadWaitingTokens(doctorId, dateString);
+  const tokens = await loadWaitingTokens(doctorId, dateString, status);
   const currentIndex = tokens.findIndex((token) => token._id.toString() === tokenId.toString());
 
   if (currentIndex === -1) {

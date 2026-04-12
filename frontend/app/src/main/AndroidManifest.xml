@@ -46,6 +46,7 @@
         <activity android:name=".ui.admin.ModelEvalActivity" android:exported="false"/>
         <activity android:name=".ui.prescription.PrescriptionActivity" android:exported="false"/>
         <activity android:name=".ui.doctor.DoctorHomeActivity" android:exported="false"/>
+        <activity android:name=".ui.nurse.NurseHomeActivity" android:exported="false"/>
 
         <!-- Firebase Cloud Messaging service for push notifications -->
         <service

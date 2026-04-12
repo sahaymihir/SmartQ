@@ -72,9 +72,9 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.ViewHolder> 
             info.append(" | Manual review");
         }
         holder.tvPatientInfo.setText(info.toString());
-        holder.tvStatus.setText(immediateReview && "waiting".equals(status)
+        holder.tvStatus.setText(immediateReview && "waiting_doctor".equals(status)
                 ? "IMMEDIATE"
-                : status);
+                : formatStatus(status));
 
         boolean canPrescribe = "called".equals(status) || "arrived".equals(status);
         holder.btnPrescription.setVisibility(canPrescribe ? View.VISIBLE : View.GONE);
@@ -108,5 +108,15 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.ViewHolder> 
 
     private String textOrDefault(String value, String fallback) {
         return value == null || value.trim().isEmpty() ? fallback : value.trim();
+    }
+
+    private String formatStatus(String status) {
+        if (status == null || status.trim().isEmpty()) {
+            return "Waiting";
+        }
+        if ("waiting_doctor".equals(status)) {
+            return "Waiting for doctor";
+        }
+        return status;
     }
 }

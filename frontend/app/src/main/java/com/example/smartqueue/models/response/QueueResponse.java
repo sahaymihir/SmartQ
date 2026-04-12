@@ -61,6 +61,9 @@ public class QueueResponse {
         private String patientName;
         private int patientAge;
         private String patientPhone;
+        private String doctorName;
+        private String doctorSpecialty;
+        private String symptoms;
         private int tokenNumber; // Added
         private int position;
         private int etaMinutes;
@@ -81,6 +84,9 @@ public class QueueResponse {
         public String getPatientName()  { return patientName; }
         public int getPatientAge()      { return patientAge; }
         public String getPatientPhone() { return patientPhone; }
+        public String getDoctorName()   { return doctorName; }
+        public String getDoctorSpecialty() { return doctorSpecialty; }
+        public String getSymptoms()     { return symptoms; }
         public int getTokenNumber()     { return tokenNumber; }
         public int getPosition()        { return position; }
         public int getEtaMinutes()      { return etaMinutes; }
@@ -101,6 +107,9 @@ public class QueueResponse {
         public void setPatientName(String v) { this.patientName = v; }
         public void setPatientAge(int v)     { this.patientAge = v; }
         public void setPatientPhone(String v){ this.patientPhone = v; }
+        public void setDoctorName(String v)  { this.doctorName = v; }
+        public void setDoctorSpecialty(String v) { this.doctorSpecialty = v; }
+        public void setSymptoms(String v)    { this.symptoms = v; }
         public void setTokenNumber(int v)    { this.tokenNumber = v; }
         public void setPosition(int v)       { this.position = v; }
         public void setEtaMinutes(int v)     { this.etaMinutes = v; }

@@ -10,6 +10,7 @@ const {
   hasLegacyPrescription,
 } = require('../services/prescriptionService');
 const { buildVisitSnapshot, determineTriageDecision, getAgeBaselineScore, mapPriorityClassToScore } = require('../services/triageService');
+const { routeToSupportedSpecialty } = require('../services/specialtyService');
 const {
   ACTIVE_TOKEN_STATUSES,
   buildDayQuery,
@@ -23,6 +24,7 @@ const {
   reorderWaitingQueueByUrgency,
   recomputeWaitingQueue,
   getPriorityLabel,
+  sortWaitingTokensForCall,
 } = require('../utils/queueHelpers');
 
 // Minimum predicted wait time (minutes) before test recommendations are surfaced.
@@ -107,6 +109,18 @@ const buildTokenResponse = (token) => ({
   priorityComponents: token.priorityComponents || {},
   priorityFinalScore: token.priorityFinalScore,
   priorityDecisionTrace: token.priorityDecisionTrace || '',
+  derivedChiefComplaintSystem:
+    token.derivedChiefComplaintSystem ||
+    token.visitSnapshot?.derivedChiefComplaintSystem ||
+    token.visitSnapshot?.chief_complaint_system ||
+    '',
+  queueSelectedRoute: token.queueSelectedRoute || '',
+  queueRouteType: token.queueRouteType || '',
+  queueRationale: token.queueRationale || '',
+  queueCurrentLength: Number(token.queueCurrentLength || 0),
+  queueAvailableDoctors: Number(token.queueAvailableDoctors || 0),
+  queueAvgWaitMinutes:
+    token.queueAvgWaitMinutes == null ? null : Number(token.queueAvgWaitMinutes || 0),
   timing: {
     joinedAt: token.joinedAt,
     calledAt: token.calledAt,
@@ -135,6 +149,116 @@ const buildJoinMessage = (token) => {
   }
 
   return `Token #${token.tokenNumber} issued. You are #${token.position} in queue.`;
+};
+
+const getAssignedRoute = (doctorSpecialty, selectedRoute) =>
+  selectedRoute || routeToSupportedSpecialty(doctorSpecialty, doctorSpecialty);
+
+const resolveRouteDoctorIds = async (selectedRoute, assignedDoctorId, isReturningPatient) => {
+  if (isReturningPatient) {
+    return [new mongoose.Types.ObjectId(assignedDoctorId)];
+  }
+
+  const doctors = await User.find({ role: 'doctor' }).select('_id specialty').lean();
+  const matchingDoctorIds = doctors
+    .filter((doctor) => getAssignedRoute(doctor.specialty, '') === selectedRoute)
+    .map((doctor) => doctor._id);
+
+  if (matchingDoctorIds.length > 0) {
+    return matchingDoctorIds;
+  }
+
+  return [new mongoose.Types.ObjectId(assignedDoctorId)];
+};
+
+const computeAverageConsultationAcrossDoctors = async (doctorIds, dateString) => {
+  const queues = await Queue.find({
+    doctor: { $in: doctorIds },
+    date: dateString,
+  }).select('avgConsultationMinutes').lean();
+
+  if (!queues.length) {
+    return 8;
+  }
+
+  const total = queues.reduce((sum, queue) => {
+    return sum + Math.max(0, Number(queue.avgConsultationMinutes) || 0);
+  }, 0);
+
+  return Math.max(1, Math.round(total / queues.length));
+};
+
+const buildDoctorQueueMetrics = async (token, triageDecision, doctorSpecialty, dateString) => {
+  const isReturningPatient = token.visitType === 'follow_up' || Boolean(token.followUpTokenId);
+  const selectedRoute = getAssignedRoute(
+    doctorSpecialty,
+    triageDecision.queueSelectedRoute || token.queueSelectedRoute || ''
+  );
+  const routeType = triageDecision.queueRouteType || (isReturningPatient ? 'follow_up' : 'primary');
+  const rationale = triageDecision.queueRationale || (
+    isReturningPatient
+      ? 'Returning patient kept with the previous doctor after nurse triage.'
+      : 'Patient moved into the doctor-ready queue after nurse vitals were captured.'
+  );
+  const doctorIds = await resolveRouteDoctorIds(
+    selectedRoute,
+    token.doctor?._id || token.doctor,
+    isReturningPatient
+  );
+  const availableDoctors = Math.max(1, doctorIds.length);
+  const avgConsultationMinutes = await computeAverageConsultationAcrossDoctors(doctorIds, dateString);
+  const safetyMatches = Array.isArray(triageDecision.safetyMatches) ? triageDecision.safetyMatches : [];
+  const forcedImmediateReview = safetyMatches.some((match) => {
+    const forcedPriorityClass = Number(match?.forcedPriorityClass);
+    return Number.isFinite(forcedPriorityClass) && forcedPriorityClass <= 2;
+  });
+  const requiresImmediateReview = Boolean(triageDecision.requiresImmediateReview || forcedImmediateReview);
+  const targetPriorityClass = Number(triageDecision.triagePriorityClass || token.triagePriorityClass || 5) || 5;
+  const currentTokenTime = new Date(token.joinedAt || token.createdAt || Date.now()).getTime();
+
+  let currentQueueLength = 0;
+  if (!requiresImmediateReview) {
+    const queuedTokens = await Token.find({
+      doctor: { $in: doctorIds },
+      status: 'waiting_doctor',
+      createdAt: buildDayQuery(dateString),
+      _id: { $ne: token._id },
+    }).select('triagePriorityClass joinedAt createdAt tokenNumber routingLane requiresImmediateReview');
+
+    currentQueueLength = queuedTokens.filter((entry) => {
+      if (entry.requiresImmediateReview || entry.routingLane === IMMEDIATE_REVIEW_LANE) {
+        return true;
+      }
+
+      const entryPriorityClass = Number(entry.triagePriorityClass || 5) || 5;
+      if (entryPriorityClass < targetPriorityClass) {
+        return true;
+      }
+      if (entryPriorityClass > targetPriorityClass) {
+        return false;
+      }
+
+      const entryTime = new Date(entry.joinedAt || entry.createdAt || 0).getTime();
+      if (entryTime !== currentTokenTime) {
+        return entryTime < currentTokenTime;
+      }
+
+      return Number(entry.tokenNumber || 0) < Number(token.tokenNumber || 0);
+    }).length;
+  }
+
+  return {
+    selectedRoute,
+    routeType,
+    rationale,
+    currentQueueLength,
+    availableDoctors,
+    avgWaitMinutes: requiresImmediateReview
+      ? 0
+      : Math.round((currentQueueLength * avgConsultationMinutes) / Math.max(1, availableDoctors)),
+    avgConsultationMinutes,
+    requiresImmediateReview,
+  };
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -236,7 +360,7 @@ router.post('/join', joinLimiter, protect, async (req, res) => {
     }
     const doctorObjectId = new mongoose.Types.ObjectId(doctorId);
 
-    const assignedDoctor = await User.findById(doctorObjectId).select('_id role name').lean();
+    const assignedDoctor = await User.findById(doctorObjectId).select('_id role name specialty').lean();
     if (!assignedDoctor || assignedDoctor.role !== 'doctor') {
       return res.status(404).json({
         success: false,
@@ -285,6 +409,15 @@ router.post('/join', joinLimiter, protect, async (req, res) => {
       : [];
     const testRecommendations = [];
     const testSuggestedAt = null;
+    const queueSelectedRoute = getAssignedRoute(
+      assignedDoctor.specialty,
+      triageDecision.queueSelectedRoute || ''
+    );
+    const queueRouteType = triageDecision.queueRouteType || (visitType === 'follow_up' ? 'follow_up' : 'primary');
+    const queueRationale = triageDecision.queueRationale || 'Awaiting nurse vitals before entering the doctor-ready queue.';
+    const visitSnapshot = buildVisitSnapshot(patient, req.body);
+    visitSnapshot.derivedChiefComplaintSystem =
+      triageDecision.derivedChiefComplaintSystem || req.body.chief_complaint_system || '';
 
     const token = await Token.create({
       patient: patient._id,
@@ -322,7 +455,15 @@ router.post('/join', joinLimiter, protect, async (req, res) => {
       priorityComponents: triageDecision.priorityComponents,
       priorityFinalScore: triageDecision.priorityFinalScore,
       priorityDecisionTrace: triageDecision.priorityDecisionTrace,
-      visitSnapshot: buildVisitSnapshot(patient, req.body),
+      derivedChiefComplaintSystem:
+        triageDecision.derivedChiefComplaintSystem || req.body.chief_complaint_system || '',
+      queueSelectedRoute,
+      queueRouteType,
+      queueRationale,
+      queueCurrentLength: 0,
+      queueAvailableDoctors: 0,
+      queueAvgWaitMinutes: predictedWaitMinutes,
+      visitSnapshot,
       joinedAt,
       predictedWaitMinutes,
       predictedConsultMinutes: queue.avgConsultationMinutes,
@@ -338,8 +479,8 @@ router.post('/join', joinLimiter, protect, async (req, res) => {
     await queue.save();
 
     if (routingLane !== IMMEDIATE_REVIEW_LANE) {
-      await reorderWaitingQueueByUrgency(doctorObjectId, queue.avgConsultationMinutes, today);
-      await promoteTokenByPriority(doctorObjectId, token._id, queue.avgConsultationMinutes, today);
+      await reorderWaitingQueueByUrgency(doctorObjectId, queue.avgConsultationMinutes, today, 'waiting');
+      await promoteTokenByPriority(doctorObjectId, token._id, queue.avgConsultationMinutes, today, 'waiting');
     }
     const updatedToken = await Token.findById(token._id);
 
@@ -392,8 +533,12 @@ router.get('/status', protect, async (req, res) => {
     }
 
     const queue = await getTodayQueue(token.doctor._id);
-    const liveETA = token.status === 'waiting' && !isImmediateReviewToken(token)
-      ? computeETA(token.position, queue.avgConsultationMinutes)
+    const liveETA = ['waiting', 'waiting_doctor'].includes(token.status) && !isImmediateReviewToken(token)
+      ? (
+        token.status === 'waiting_doctor' && token.queueAvgWaitMinutes != null
+          ? Number(token.queueAvgWaitMinutes || 0)
+          : computeETA(token.position, queue.avgConsultationMinutes)
+      )
       : 0;
 
     res.json({
@@ -412,6 +557,56 @@ router.get('/status', protect, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
+// GET /api/queue/nurse-board
+// Nurse-facing list of patients still waiting for vitals capture.
+// Allowed roles: nurse, admin, doctor.
+// ─────────────────────────────────────────────────────────────
+router.get('/nurse-board', protect, staffOnly, async (req, res) => {
+  try {
+    const today = getTodayDateString();
+    const tokens = await Token.find({
+      status: 'waiting',
+      createdAt: buildDayQuery(today),
+    })
+      .populate('patient', 'name age phone')
+      .populate('doctor', 'name specialty');
+
+    const orderedTokens = sortWaitingTokensForCall(tokens);
+
+    res.json({
+      success: true,
+      queue: orderedTokens.map((token) => ({
+        tokenId: token._id,
+        patientId: token.patient?._id,
+        patientName: token.patient?.name || 'Unknown patient',
+        patientAge: token.patient?.age || 0,
+        patientPhone: token.patient?.phone || '',
+        tokenNumber: token.tokenNumber,
+        position: token.position,
+        etaMinutes: token.etaMinutes,
+        priority: token.priority,
+        status: token.status,
+        checkedIn: token.checkedIn,
+        symptoms: token.symptoms || '',
+        doctorName: token.doctor?.name || 'Unassigned doctor',
+        doctorSpecialty: token.doctor?.specialty || '',
+        triagePriorityClass: token.triagePriorityClass,
+        modelPriorityClass: token.modelPriorityClass,
+        priorityFinalScore: token.priorityFinalScore,
+        manualReviewRequired: token.manualReviewRequired,
+        routingLane: token.routingLane || 'normal',
+        requiresImmediateReview: Boolean(token.requiresImmediateReview),
+        escalationReason: token.escalationReason || token.overrideReason || '',
+        overrideReason: token.overrideReason || '',
+      })),
+    });
+  } catch (err) {
+    console.error('Nurse board error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
 // POST /api/queue/snooze?positions=2
 // Push patient back by N positions (default 2)
 // ─────────────────────────────────────────────────────────────
@@ -422,7 +617,7 @@ router.post('/snooze', protect, async (req, res) => {
 
     const token = await Token.findOne({
       patient: req.user._id,
-      status: 'waiting',
+      status: { $in: ['waiting', 'waiting_doctor'] },
       createdAt: buildDayQuery(today),
     });
 
@@ -446,7 +641,7 @@ router.post('/snooze', protect, async (req, res) => {
 
     const totalWaiting = await Token.countDocuments({
       doctor: token.doctor,
-      status: 'waiting',
+      status: token.status,
       routingLane: { $ne: IMMEDIATE_REVIEW_LANE },
       createdAt: buildDayQuery(today),
     });
@@ -465,7 +660,7 @@ router.post('/snooze', protect, async (req, res) => {
     await Token.updateMany(
       {
         doctor: token.doctor,
-        status: 'waiting',
+        status: token.status,
         position: { $gt: oldPosition, $lte: newPosition },
         createdAt: buildDayQuery(today),
       },
@@ -477,7 +672,7 @@ router.post('/snooze', protect, async (req, res) => {
     await token.save();
 
     const queue = await getTodayQueue(token.doctor, today);
-    await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, today);
+    await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, today, token.status);
 
     res.json({
       success: true,
@@ -546,7 +741,8 @@ router.post('/leave', protect, async (req, res) => {
       return res.status(404).json({ success: false, message: 'No active token found' });
     }
 
-    const wasCalled = token.status === 'called';
+    const previousStatus = token.status;
+    const wasCalled = previousStatus === 'called';
     const now = new Date();
     token.status = 'cancelled';
     token.completedAt = now;
@@ -566,7 +762,9 @@ router.post('/leave', protect, async (req, res) => {
       await queue.save();
     }
 
-    await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, today);
+    if (['waiting', 'waiting_doctor'].includes(previousStatus)) {
+      await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, today, previousStatus);
+    }
 
     res.json({
       success: true,
@@ -614,7 +812,8 @@ router.post('/noshow', noShowLimiter, protect, staffOnly, async (req, res) => {
       });
     }
 
-    const wasCalled = token.status === 'called';
+    const previousStatus = token.status;
+    const wasCalled = previousStatus === 'called';
     const now = new Date();
     token.status = 'no_show';
     token.completedAt = now;
@@ -633,7 +832,9 @@ router.post('/noshow', noShowLimiter, protect, staffOnly, async (req, res) => {
         queue.currentToken = 0;
         await queue.save();
       }
-      await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, queueDate);
+      if (['waiting', 'waiting_doctor'].includes(previousStatus)) {
+        await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, queueDate, previousStatus);
+      }
     }
 
     res.json({ success: true, message: 'Patient marked as no-show' });
@@ -714,13 +915,16 @@ router.get('/history', protect, async (req, res) => {
 router.patch('/nurse-triage/:tokenId', nurseTriageLimiter, protect, staffOnly, async (req, res) => {
   try {
     const { tokenId } = req.params;
+    const today = getTodayDateString();
 
-    const token = await Token.findById(tokenId).populate('patient', 'name age phone');
+    const token = await Token.findById(tokenId)
+      .populate('patient', 'name age phone')
+      .populate('doctor', 'name specialty');
     if (!token) {
       return res.status(404).json({ success: false, message: 'Token not found' });
     }
 
-    if (!['waiting', 'called', 'arrived'].includes(token.status)) {
+    if (!['waiting', 'waiting_doctor', 'called', 'arrived'].includes(token.status)) {
       return res.status(400).json({
         success: false,
         message: 'Nurse triage can only be applied to active tokens',
@@ -749,11 +953,17 @@ router.patch('/nurse-triage/:tokenId', nurseTriageLimiter, protect, staffOnly, a
       intakeLanguage: token.intakeLanguage || 'en',
       sex: token.visitSnapshot?.sex,
       chief_complaint_system: token.visitSnapshot?.chief_complaint_system,
-      mental_status_triage: token.visitSnapshot?.mental_status_triage,
+      mental_status_triage: req.body.mental_status_triage || token.visitSnapshot?.mental_status_triage,
       ...nurseVitals,
     };
 
     const triageDecision = await determineTriageDecision(token.patient, mergedBody);
+    const queueMetrics = await buildDoctorQueueMetrics(
+      token,
+      triageDecision,
+      token.doctor?.specialty || '',
+      today
+    );
 
     // Apply optional clinician priority boost (nurse/doctor override)
     const clinicianOverride = Number(req.body.clinicianPriorityOverride || 0);
@@ -765,44 +975,103 @@ router.patch('/nurse-triage/:tokenId', nurseTriageLimiter, protect, staffOnly, a
     token.nurseTriagedAt = new Date();
     token.nurseVitals = nurseVitals;
     token.nurseTriageNote = req.body.nurseTriageNote || '';
+    token.status = 'waiting_doctor';
 
     // Apply new triage decision
     token.priorityScore = overriddenScore;
     token.priority = overriddenLabel;
     token.priorityFinalScore = overriddenScore;
     token.aiConfidence = triageDecision.aiConfidence;
+    token.ageBasedPriorityScore = triageDecision.ageBasedPriorityScore;
+    token.mlPriorityScore = triageDecision.mlPriorityScore;
     token.triagePriorityClass = triageDecision.triagePriorityClass;
     token.modelPriorityClass = triageDecision.modelPriorityClass;
     token.triageConfidence = triageDecision.triageConfidence;
     token.triageLowConfidence = triageDecision.triageLowConfidence;
     token.triageRecommendation = triageDecision.triageRecommendation;
     token.triageSource = 'nurse_triage';
+    token.triageAllClassProbs = triageDecision.triageAllClassProbs || {};
+    token.triageModelVersion = triageDecision.triageModelVersion || token.triageModelVersion;
     token.manualReviewRequired = triageDecision.manualReviewRequired;
-    token.safetyMatches = triageDecision.safetyMatches;
+    token.safetyMatches = triageDecision.safetyMatches || [];
     token.overrideReason = clinicianOverride > 0
       ? `clinician_override_+${clinicianOverride}`
       : triageDecision.overrideReason;
+    token.priorityComponents = triageDecision.priorityComponents || {};
     token.priorityDecisionTrace = triageDecision.priorityDecisionTrace
       + (clinicianOverride > 0 ? `;nurseOverride=+${clinicianOverride}` : '');
+    token.derivedChiefComplaintSystem =
+      triageDecision.derivedChiefComplaintSystem ||
+      token.derivedChiefComplaintSystem ||
+      token.visitSnapshot?.chief_complaint_system ||
+      '';
+    token.queueSelectedRoute = queueMetrics.selectedRoute;
+    token.queueRouteType = queueMetrics.routeType;
+    token.queueRationale = queueMetrics.rationale;
+    token.queueCurrentLength = queueMetrics.currentQueueLength;
+    token.queueAvailableDoctors = queueMetrics.availableDoctors;
+    token.queueAvgWaitMinutes = queueMetrics.avgWaitMinutes;
+    token.testRecommendations = Array.isArray(triageDecision.testRecommendations)
+      ? triageDecision.testRecommendations
+      : [];
+    token.testSuggestedAt = token.testRecommendations.length > 0 ? new Date() : null;
+    token.predictedConsultMinutes = queueMetrics.avgConsultationMinutes;
+    token.predictedWaitMinutes = queueMetrics.avgWaitMinutes;
+    token.etaMinutes = queueMetrics.avgWaitMinutes;
+    token.visitSnapshot = {
+      ...(token.visitSnapshot || {}),
+      ...Object.fromEntries(
+        Object.entries({
+          temperature_c: nurseVitals.temperature_c,
+          spo2: nurseVitals.spo2,
+          heart_rate: nurseVitals.heart_rate,
+          respiratory_rate: nurseVitals.respiratory_rate,
+          systolic_bp: nurseVitals.systolic_bp,
+          diastolic_bp: nurseVitals.diastolic_bp,
+          gcs_total: nurseVitals.gcs_total,
+          pain_score: nurseVitals.pain_score,
+          news2_score: nurseVitals.news2_score,
+          mental_status_triage: mergedBody.mental_status_triage,
+        }).filter(([, value]) => value !== undefined && value !== null && value !== '')
+      ),
+      derivedChiefComplaintSystem:
+        triageDecision.derivedChiefComplaintSystem ||
+        token.visitSnapshot?.chief_complaint_system ||
+        '',
+    };
 
-    // If nurse triage now indicates immediate review, upgrade the routing lane
-    if (triageDecision.requiresImmediateReview && token.routingLane !== IMMEDIATE_REVIEW_LANE) {
-      token.routingLane = IMMEDIATE_REVIEW_LANE;
-      token.requiresImmediateReview = true;
-      token.escalationReason = triageDecision.escalationReason || 'nurse_triage_escalation';
-    }
+    token.routingLane = queueMetrics.requiresImmediateReview ? IMMEDIATE_REVIEW_LANE : 'normal';
+    token.requiresImmediateReview = queueMetrics.requiresImmediateReview;
+    token.escalationReason = queueMetrics.requiresImmediateReview
+      ? triageDecision.escalationReason || 'nurse_triage_escalation'
+      : '';
+    token.position = queueMetrics.requiresImmediateReview ? 0 : Math.max(1, Number(token.position) || 1);
 
     await token.save();
 
-    // Re-sort the queue since priority may have changed
-    const today = getTodayDateString();
-    const queue = await getTodayQueue(token.doctor, today);
-    await reorderWaitingQueueByUrgency(token.doctor, queue.avgConsultationMinutes, today);
+    // Re-sort the doctor-ready queue since the priority may have changed.
+    const queue = await getTodayQueue(token.doctor._id || token.doctor, today);
+    if (!queueMetrics.requiresImmediateReview) {
+      await reorderWaitingQueueByUrgency(
+        token.doctor._id || token.doctor,
+        queue.avgConsultationMinutes,
+        today,
+        'waiting_doctor'
+      );
+      await recomputeWaitingQueue(
+        token.doctor._id || token.doctor,
+        queue.avgConsultationMinutes,
+        today,
+        'waiting_doctor'
+      );
+    }
 
     const updatedToken = await Token.findById(token._id);
     res.json({
       success: true,
-      message: 'Nurse triage recorded. Token priority updated.',
+      message: queueMetrics.requiresImmediateReview
+        ? 'Nurse triage recorded. Immediate escalation required.'
+        : 'Nurse triage recorded. Token moved to the doctor queue.',
       ...buildTokenResponse(updatedToken),
     });
 

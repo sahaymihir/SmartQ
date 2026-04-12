@@ -5,6 +5,7 @@ import android.content.Intent;
 
 import com.example.smartqueue.ui.admin.AdminDashboardActivity;
 import com.example.smartqueue.ui.doctor.DoctorHomeActivity;
+import com.example.smartqueue.ui.nurse.NurseHomeActivity;
 import com.example.smartqueue.ui.patient.PatientHomeActivity;
 
 /**
@@ -26,6 +27,8 @@ public final class RoleNavigationHelper {
                 return new Intent(context, AdminDashboardActivity.class);
             case "doctor":
                 return new Intent(context, DoctorHomeActivity.class);
+            case "nurse":
+                return new Intent(context, NurseHomeActivity.class);
             default:
                 return new Intent(context, PatientHomeActivity.class);
         }

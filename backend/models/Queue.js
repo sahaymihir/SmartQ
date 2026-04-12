@@ -25,7 +25,7 @@ const tokenSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['waiting', 'called', 'arrived', 'completed', 'no_show', 'cancelled'],
+    enum: ['waiting', 'waiting_doctor', 'called', 'arrived', 'completed', 'no_show', 'cancelled'],
     default: 'waiting'
   },
   priority: {
@@ -152,6 +152,34 @@ const tokenSchema = new mongoose.Schema({
   priorityDecisionTrace: {
     type: String,
     default: ''
+  },
+  derivedChiefComplaintSystem: {
+    type: String,
+    default: ''
+  },
+  queueSelectedRoute: {
+    type: String,
+    default: ''
+  },
+  queueRouteType: {
+    type: String,
+    default: ''
+  },
+  queueRationale: {
+    type: String,
+    default: ''
+  },
+  queueCurrentLength: {
+    type: Number,
+    default: 0
+  },
+  queueAvailableDoctors: {
+    type: Number,
+    default: 0
+  },
+  queueAvgWaitMinutes: {
+    type: Number,
+    default: null
   },
   visitSnapshot: {
     type: mongoose.Schema.Types.Mixed,

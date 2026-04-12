@@ -247,7 +247,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
                     calledPatient = entry;
                 }
             }
-            if ("waiting".equals(status)) {
+            if ("waiting_doctor".equals(status)) {
                 waitingCount++;
                 if (isImmediateReview(entry)) {
                     immediateReviewCount++;
@@ -454,6 +454,9 @@ public class DoctorHomeActivity extends AppCompatActivity {
 
     private String formatStatus(String status) {
         if (TextUtils.isEmpty(status)) return "Waiting";
+        if ("waiting_doctor".equals(status)) {
+            return "Waiting for doctor";
+        }
         return status.substring(0, 1).toUpperCase() + status.substring(1);
     }
 

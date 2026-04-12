@@ -202,6 +202,7 @@ const buildDecisionTrace = ({
 const buildFallbackDecision = (patient, requestBody = {}) => {
   const ageBasedPriorityScore = getAgeBaselineScore(patient.age);
   const symptomsText = getCanonicalSymptoms(requestBody);
+  const derivedChiefComplaintSystem = requestBody.chief_complaint_system || 'other';
   const components = buildPriorityComponents({
     ageBasedPriorityScore,
     mlPriorityScore: null,
@@ -230,6 +231,13 @@ const buildFallbackDecision = (patient, requestBody = {}) => {
     overrideReason,
     manualReviewRequired: false,
     aiConfidence: 0,
+    derivedChiefComplaintSystem,
+    queueSelectedRoute: '',
+    queueRouteType: '',
+    queueRationale: '',
+    queueCurrentLength: 0,
+    queueAvailableDoctors: 0,
+    queueAvgWaitMinutes: null,
     routingLane: 'normal',
     requiresImmediateReview: false,
     escalationReason: '',
@@ -322,6 +330,16 @@ const buildPatientFlowDecision = (patient, requestBody = {}, flow = {}) => {
     ageBasedPriorityScore,
     mlPriorityScore,
     modelPriorityClass: rawModelPriorityClass,
+    derivedChiefComplaintSystem: flow.derivedChiefComplaintSystem || requestBody.chief_complaint_system || 'other',
+    queueSelectedRoute: flow.queueAssignment?.selectedRoute || '',
+    queueRouteType: flow.queueAssignment?.routeType || '',
+    queueRationale: flow.queueAssignment?.rationale || '',
+    queueCurrentLength: Number(flow.queueAssignment?.currentQueueLength || 0),
+    queueAvailableDoctors: Number(flow.queueAssignment?.availableDoctors || 0),
+    queueAvgWaitMinutes:
+      flow.queueAssignment?.avgWaitMinutes == null
+        ? null
+        : Number(flow.queueAssignment.avgWaitMinutes || 0),
     priorityScore: priorityFinalScore,
     priorityLabel: getPriorityLabel(priorityFinalScore),
     triagePriorityClass: operationalPriorityClass,
@@ -435,6 +453,13 @@ const determineTriageDecision = async (patient, requestBody = {}) => {
       ageBasedPriorityScore,
       mlPriorityScore,
       modelPriorityClass: data.priority_class,
+      derivedChiefComplaintSystem: requestBody.chief_complaint_system || 'other',
+      queueSelectedRoute: '',
+      queueRouteType: '',
+      queueRationale: '',
+      queueCurrentLength: 0,
+      queueAvailableDoctors: 0,
+      queueAvgWaitMinutes: null,
       priorityScore: priorityFinalScore,
       priorityLabel: getPriorityLabel(priorityFinalScore),
       triagePriorityClass: data.priority_class,

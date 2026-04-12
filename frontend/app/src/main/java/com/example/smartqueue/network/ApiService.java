@@ -58,7 +58,14 @@ public interface ApiService {
      * Roles: nurse, admin, doctor.
      */
     @PATCH("queue/nurse-triage/{tokenId}")
-    Call<MessageResponse> nurseTriageToken(@Path("tokenId") String tokenId, @Body NurseTriageRequest body);
+    Call<TokenResponse> nurseTriageToken(@Path("tokenId") String tokenId, @Body NurseTriageRequest body);
+
+    /**
+     * Nurse triage board: patients still waiting for vitals capture.
+     * Roles: nurse, admin, doctor.
+     */
+    @GET("queue/nurse-board")
+    Call<QueueResponse> getNurseQueue();
 
     /**
      * Staff create an emergency token for a patient who cannot self-register

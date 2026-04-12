@@ -316,7 +316,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
                         if ("called".equals(entry.getStatus()) && calledPatient == null) {
                             calledPatient = entry;
                         }
-                        if (!"waiting".equals(entry.getStatus())) continue;
+                        if (!"waiting_doctor".equals(entry.getStatus())) continue;
                         if (isImmediateReview(entry)) immediateReviewCount++;
                         else normalWaitingCount++;
                     }
