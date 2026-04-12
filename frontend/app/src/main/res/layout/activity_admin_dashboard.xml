@@ -93,6 +93,18 @@
             android:text="Seed Data"
             android:textSize="13sp"
             android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:layout_marginEnd="8dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnManageUsers"
+            style="@style/SmartQ.Button.Outlined"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="👥 Users"
+            android:textSize="13sp"
+            android:paddingStart="8dp"
             android:paddingEnd="8dp"/>
     </LinearLayout>
 

@@ -24,6 +24,8 @@ public class AuthResponse {
         private String email;
         private String role;
         private int age;
+        private String staffId;
+        private String specialty;
 
         // Getters
         public String getId() { return id; }
@@ -31,6 +33,8 @@ public class AuthResponse {
         public String getEmail() { return email; }
         public String getRole() { return role; }
         public int getAge() { return age; }
+        public String getStaffId() { return staffId; }
+        public String getSpecialty() { return specialty; }
 
         // Setters
         public void setId(String id) { this.id = id; }
@@ -38,5 +42,7 @@ public class AuthResponse {
         public void setEmail(String email) { this.email = email; }
         public void setRole(String role) { this.role = role; }
         public void setAge(int age) { this.age = age; }
+        public void setStaffId(String staffId) { this.staffId = staffId; }
+        public void setSpecialty(String specialty) { this.specialty = specialty; }
     }
 }

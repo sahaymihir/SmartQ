@@ -206,8 +206,15 @@ public class LoginActivity extends AppCompatActivity {
                         if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
                             AuthResponse body = response.body();
                             AuthResponse.User user = body.getUser();
-                            sessionManager.saveSession(body.getToken(), user.getId(),
-                                    user.getName(), user.getEmail(), user.getRole(), user.getAge());
+                            sessionManager.saveSession(
+                                    body.getToken(),
+                                    user.getId(),
+                                    user.getName(),
+                                    user.getEmail(),
+                                    user.getRole(),
+                                    user.getAge(),
+                                    user.getStaffId(),
+                                    user.getSpecialty());
                             ApiClient.setAuthToken(body.getToken());
                             navigateToHome(user.getRole());
                         } else {
@@ -225,7 +232,7 @@ public class LoginActivity extends AppCompatActivity {
 
     private void navigateToHome(String role) {
         Intent intent;
-        if ("admin".equals(role)) {
+        if ("admin".equals(role) || "superuser".equals(role)) {
             intent = new Intent(this, AdminDashboardActivity.class);
         } else if ("doctor".equals(role)) {
             intent = new Intent(this, DoctorHomeActivity.class);

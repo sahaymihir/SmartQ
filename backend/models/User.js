@@ -4,9 +4,11 @@ const bcrypt = require('bcryptjs');
 /**
  * User Schema
  *
- * role: "patient" or "admin"
+ * role: "patient" | "admin" | "doctor" | "nurse" | "superuser"
  * age: used for priority triage (seniors 60+ get bumped up)
  * priorityScore: computed at registration, used by triage algorithm
+ * staffId: auto-generated unique ID for clinical staff (doctor/nurse/admin/superuser)
+ *   Format: DOC-XXXX / NRS-XXXX / ADM-XXXX / SU-XXXX
  */
 const userSchema = new mongoose.Schema({
   name: {
@@ -39,7 +41,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['patient', 'admin', 'doctor', 'nurse'],
+    enum: ['patient', 'admin', 'doctor', 'nurse', 'superuser'],
     default: 'patient'
   },
   // Specialty — only relevant for role: 'doctor'
@@ -47,6 +49,19 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: ''
+  },
+  /**
+   * Staff ID — unique human-readable identifier for clinical staff.
+   * Auto-generated on first save for roles: doctor, nurse, admin, superuser.
+   * Patients do not get a staffId.
+   * Examples: DOC-0001, NRS-0002, ADM-0001, SU-0001
+   */
+  staffId: {
+    type: String,
+    unique: true,
+    sparse: true,     // allows many nulls (patients have no staffId)
+    trim: true,
+    default: null
   },
   // Computed priority score — higher = more urgent
   // Seniors (60+): base score 10, others: base score 5
@@ -57,6 +72,24 @@ const userSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true
+});
+
+// ─── Staff ID prefix map ───────────────────────────────────
+const STAFF_ID_PREFIXES = {
+  doctor:    'DOC',
+  nurse:     'NRS',
+  admin:     'ADM',
+  superuser: 'SU',
+};
+
+// ─── Generate staffId for clinical staff on first save ─────
+userSchema.pre('save', async function (next) {
+  if (this.isNew && !this.staffId && STAFF_ID_PREFIXES[this.role]) {
+    const prefix = STAFF_ID_PREFIXES[this.role];
+    const count = await this.constructor.countDocuments({ role: this.role });
+    this.staffId = `${prefix}-${String(count + 1).padStart(4, '0')}`;
+  }
+  next();
 });
 
 // ─── Hash password before saving ──────────────────────────

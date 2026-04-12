@@ -38,8 +38,6 @@ public class RegisterActivity extends AppCompatActivity {
 
     private TextInputLayout tilName, tilEmail, tilPhone, tilAge, tilPassword;
     private TextInputEditText etName, etEmail, etPhone, etAge, etPassword;
-    private RadioGroup rgRole;
-    private RadioButton rbAdmin, rbDoctor, rbNurse;
     private MaterialButton btnRegister, btnGoToLogin;
     private ProgressBar progressBar;
     private TextView tvError;
@@ -70,10 +68,6 @@ public class RegisterActivity extends AppCompatActivity {
         etPhone     = findViewById(R.id.etPhone);
         etAge       = findViewById(R.id.etAge);
         etPassword  = findViewById(R.id.etPassword);
-        rgRole      = findViewById(R.id.rgRole);
-        rbAdmin     = findViewById(R.id.rbAdmin);
-        rbDoctor    = findViewById(R.id.rbDoctor);
-        rbNurse     = findViewById(R.id.rbNurse);
         btnRegister = findViewById(R.id.btnRegister);
         btnGoToLogin = findViewById(R.id.btnGoToLogin);
         progressBar = findViewById(R.id.progressBar);
@@ -121,9 +115,8 @@ public class RegisterActivity extends AppCompatActivity {
         String password = etPassword.getText().toString().trim();
 
         String role = "patient";
-        if (rbAdmin.isChecked()) role = "admin";
-        else if (rbDoctor.isChecked()) role = "doctor";
-        else if (rbNurse.isChecked()) role = "nurse";
+        // Public registration always creates a patient account.
+        // Doctors, nurses, and admins are created by an administrator from the management panel.
 
         boolean valid = true;
 
@@ -174,8 +167,9 @@ public class RegisterActivity extends AppCompatActivity {
                             user.getName(),
                             user.getEmail(),
                             user.getRole(),
-                            user.getAge()
-                    );
+                            user.getAge(),
+                            user.getStaffId(),
+                            user.getSpecialty());
 
                     ApiClient.setAuthToken(body.getToken());
                     navigateToHome(user.getRole());
@@ -194,7 +188,7 @@ public class RegisterActivity extends AppCompatActivity {
 
     private void navigateToHome(String role) {
         Intent intent;
-        if ("admin".equals(role)) {
+        if ("admin".equals(role) || "superuser".equals(role)) {
             intent = new Intent(this, AdminDashboardActivity.class);
         } else if ("doctor".equals(role)) {
             intent = new Intent(this, DoctorHomeActivity.class);

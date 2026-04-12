@@ -17,6 +17,7 @@ const adminRoutes = require('./routes/admin');
 const doctorsRoutes = require('./routes/doctors');
 const notificationsRoutes = require('./routes/notifications');
 const prescriptionsRoutes = require('./routes/prescriptions');
+const usersRoutes = require('./routes/users');
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use('/api/admin', adminRoutes);   // protected — Week 3
 app.use('/api/doctors', doctorsRoutes); // doctors list + symptom predict
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/prescriptions', prescriptionsRoutes);
+app.use('/api/users', usersRoutes);   // user management (admin + superuser)
 
 // ─── Global Error Handler ─────────────────────────────────
 app.use((err, req, res, next) => {

@@ -43,13 +43,13 @@ const protect = async (req, res, next) => {
 };
 
 /**
- * adminOnly — Restrict route to admin/doctor role only.
+ * adminOnly — Restrict route to admin/doctor/superuser role only.
  * Must come AFTER protect middleware.
  *
  * Usage: router.post('/admin/next', protect, adminOnly, handler)
  */
 const adminOnly = (req, res, next) => {
-  if (req.user && ['admin', 'doctor'].includes(req.user.role)) {
+  if (req.user && ['admin', 'doctor', 'superuser'].includes(req.user.role)) {
     return next();
   }
   return res.status(403).json({
@@ -64,7 +64,7 @@ const adminOnly = (req, res, next) => {
  * Must come AFTER protect middleware.
  */
 const staffOnly = (req, res, next) => {
-  if (req.user && ['admin', 'doctor', 'nurse'].includes(req.user.role)) {
+  if (req.user && ['admin', 'doctor', 'nurse', 'superuser'].includes(req.user.role)) {
     return next();
   }
   return res.status(403).json({
@@ -73,4 +73,33 @@ const staffOnly = (req, res, next) => {
   });
 };
 
-module.exports = { protect, adminOnly, staffOnly };
+/**
+ * superuserOrAdmin — Restrict route to superuser and admin.
+ * Used for user-management endpoints.
+ * Must come AFTER protect middleware.
+ */
+const superuserOrAdmin = (req, res, next) => {
+  if (req.user && ['admin', 'superuser'].includes(req.user.role)) {
+    return next();
+  }
+  return res.status(403).json({
+    success: false,
+    message: 'Access denied. Admin or superuser only.'
+  });
+};
+
+/**
+ * superuserOnly — Restrict route to superuser only.
+ * Must come AFTER protect middleware.
+ */
+const superuserOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'superuser') {
+    return next();
+  }
+  return res.status(403).json({
+    success: false,
+    message: 'Access denied. Superuser only.'
+  });
+};
+
+module.exports = { protect, adminOnly, staffOnly, superuserOrAdmin, superuserOnly };

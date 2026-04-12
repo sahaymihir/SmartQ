@@ -20,6 +20,7 @@ import com.example.smartqueue.models.response.MlOpsLogsResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
+import com.example.smartqueue.ui.admin.UserManagementActivity;
 import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
@@ -40,7 +41,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
     private TextView tvAdminName, tvCurrentlyServing, tvPausedBadge, tvUrgentAlert;
     private TextView tvStatWaiting, tvStatDone, tvStatAvg, tvQueueLabel;
     private TextView tvMlOpsStatus, tvMlOpsSummary, tvMlOpsLastEvent, tvMlOpsLastUpdated, tvMlOpsEmpty;
-    private MaterialButton btnCallNext, btnPause, btnLogout, btnModelEval, btnSeedData, btnRefreshMlOps;
+    private MaterialButton btnCallNext, btnPause, btnLogout, btnModelEval, btnSeedData, btnRefreshMlOps, btnManageUsers;
     private LinearLayout layoutQueueList, layoutMlOpsLogs;
 
     private SessionManager sessionManager;
@@ -92,9 +93,10 @@ public class AdminDashboardActivity extends AppCompatActivity {
         btnLogout          = findViewById(R.id.btnLogout);
 
         tvAdminName.setText(sessionManager.getName());
-        btnModelEval   = findViewById(R.id.btnModelEval);
-        btnSeedData    = findViewById(R.id.btnSeedData);
+        btnModelEval    = findViewById(R.id.btnModelEval);
+        btnSeedData     = findViewById(R.id.btnSeedData);
         btnRefreshMlOps = findViewById(R.id.btnRefreshMlOps);
+        btnManageUsers  = findViewById(R.id.btnManageUsers);
         tvMlOpsStatus = findViewById(R.id.tvMlOpsStatus);
         tvMlOpsSummary = findViewById(R.id.tvMlOpsSummary);
         tvMlOpsLastEvent = findViewById(R.id.tvMlOpsLastEvent);
@@ -202,6 +204,11 @@ public class AdminDashboardActivity extends AppCompatActivity {
         // ── Emergency Patient ─────────────────────────────
         MaterialButton btnEmergencyPatient = findViewById(R.id.btnEmergencyPatient);
         btnEmergencyPatient.setOnClickListener(v -> showEmergencyDialog());
+
+        // ── Manage Users ──────────────────────────────────
+        btnManageUsers.setOnClickListener(v ->
+                startActivity(new Intent(this,
+                        UserManagementActivity.class)));
     }
 
     @Override
