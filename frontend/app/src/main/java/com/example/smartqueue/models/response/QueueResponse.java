@@ -1,5 +1,6 @@
 package com.example.smartqueue.models.response;
 
+import com.example.smartqueue.models.response.TestRecommendationResponse.Recommendation;
 import java.util.List;
 
 public class QueueResponse {
@@ -13,6 +14,8 @@ public class QueueResponse {
     private int snoozeCount;
     private String routingLane;
     private boolean requiresImmediateReview;
+    private boolean nurseTriaged;
+    private List<Recommendation> testRecommendations;
     private String escalationReason;
     private Integer triagePriorityClass;
     private int avgConsultationMinutes;
@@ -31,6 +34,11 @@ public class QueueResponse {
     public int getSnoozeCount()                 { return snoozeCount; }
     public String getRoutingLane()              { return routingLane; }
     public boolean isImmediateReviewRequired()  { return requiresImmediateReview; }
+    public boolean isNurseTriaged()             { return nurseTriaged; }
+    public List<Recommendation> getTestRecommendations() { return testRecommendations; }
+    public boolean hasTestRecommendations() {
+        return testRecommendations != null && !testRecommendations.isEmpty();
+    }
     public String getEscalationReason()         { return escalationReason; }
     public Integer getTriagePriorityClass()     { return triagePriorityClass; }
     public int getAvgConsultationMinutes()      { return avgConsultationMinutes == 0 ? 8 : avgConsultationMinutes; }
@@ -49,6 +57,8 @@ public class QueueResponse {
     public void setSnoozeCount(int v)                   { this.snoozeCount = v; }
     public void setRoutingLane(String v)                { this.routingLane = v; }
     public void setRequiresImmediateReview(boolean v)   { this.requiresImmediateReview = v; }
+    public void setNurseTriaged(boolean v)              { this.nurseTriaged = v; }
+    public void setTestRecommendations(List<Recommendation> v) { this.testRecommendations = v; }
     public void setEscalationReason(String v)           { this.escalationReason = v; }
     public void setTriagePriorityClass(Integer v)       { this.triagePriorityClass = v; }
     public void setAvgConsultationMinutes(int v)        { this.avgConsultationMinutes = v; }

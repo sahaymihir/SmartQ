@@ -2,6 +2,8 @@ package com.example.smartqueue.ui.nurse;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -38,6 +40,8 @@ import retrofit2.Response;
 
 public class NurseHomeActivity extends AppCompatActivity {
 
+    private static final long NURSE_POLL_INTERVAL_MS = 10_000L;
+
     private TextView tvNurseName;
     private TextView tvQueueSummary;
     private TextView tvQueueSubSummary;
@@ -59,6 +63,8 @@ public class NurseHomeActivity extends AppCompatActivity {
 
     private SessionManager sessionManager;
     private ApiService apiService;
+    private final Handler pollHandler = new Handler(Looper.getMainLooper());
+    private Runnable pollRunnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,6 +92,19 @@ public class NurseHomeActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadNurseQueue(false);
+        startAutoRefresh();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopAutoRefresh();
+    }
+
+    @Override
+    protected void onDestroy() {
+        stopAutoRefresh();
+        super.onDestroy();
     }
 
     private void bindViews() {
@@ -145,6 +164,26 @@ public class NurseHomeActivity extends AppCompatActivity {
                 renderQueueError("Network error while loading nurse triage board.");
             }
         });
+    }
+
+    private void startAutoRefresh() {
+        stopAutoRefresh();
+        pollRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (!isFinishing() && !isDestroyed() && sessionManager.isLoggedIn()) {
+                    loadNurseQueue(false);
+                    pollHandler.postDelayed(this, NURSE_POLL_INTERVAL_MS);
+                }
+            }
+        };
+        pollHandler.postDelayed(pollRunnable, NURSE_POLL_INTERVAL_MS);
+    }
+
+    private void stopAutoRefresh() {
+        if (pollRunnable != null) {
+            pollHandler.removeCallbacks(pollRunnable);
+        }
     }
 
     private void renderQueue(List<QueueResponse.QueueEntry> queue) {

@@ -391,44 +391,34 @@
                             android:textColor="@color/primary"/>
                     </LinearLayout>
 
-                    <!-- Search field -->
                     <com.google.android.material.textfield.TextInputLayout
                         style="@style/SmartQ.TextInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Search by name or specialty"
-                        android:layout_marginBottom="10dp">
+                        android:hint="Select doctor"
+                        app:endIconMode="dropdown_menu"
+                        app:helperText="Type to search by doctor name or specialty"
+                        android:layout_marginBottom="8dp">
 
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/etDoctorSearch"
+                        <AutoCompleteTextView
+                            android:id="@+id/dropdownDoctorPicker"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="text"
                             android:textSize="14sp"
-                            android:imeOptions="actionSearch"
                             android:singleLine="true"
-                            android:textColor="@color/text_primary"/>
+                            android:textColor="@color/text_primary" />
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Loading indicator -->
                     <TextView
                         android:id="@+id/tvDoctorListLoading"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Loading doctors..."
-                        android:textSize="14sp"
+                        android:textSize="12sp"
                         android:textColor="@color/on_surface_variant"
-                        android:gravity="center"
-                        android:padding="16dp"
+                        android:layout_marginTop="4dp"
                         android:visibility="visible"/>
-
-                    <!-- Doctor list (populated dynamically) -->
-                    <LinearLayout
-                        android:id="@+id/layoutDoctorList"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:visibility="gone"/>
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 

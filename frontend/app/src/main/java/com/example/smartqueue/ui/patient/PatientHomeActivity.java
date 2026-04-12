@@ -6,10 +6,10 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.RecognizerIntent;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -52,6 +52,9 @@ import retrofit2.Response;
 
 public class PatientHomeActivity extends AppCompatActivity {
 
+    private static final long QUEUE_POLL_INTERVAL_MS = 10_000L;
+    private static final long HISTORY_POLL_INTERVAL_MS = 30_000L;
+
     // Views
     private TextView tvGreeting, tvPatientName;
     private LinearLayout layoutNotInQueue, layoutInQueue;
@@ -63,9 +66,10 @@ public class PatientHomeActivity extends AppCompatActivity {
     private MaterialButton btnCheckIn, btnSnooze, btnLeaveQueue, btnDone;
 
     // New doctor-selection views
-    private TextInputEditText etSymptoms, etDoctorSearch;
+    private TextInputEditText etSymptoms;
+    private AutoCompleteTextView dropdownDoctorPicker;
     private MaterialButton btnFindDoctor, btnVoiceInput;
-    private LinearLayout layoutAiResult, layoutDoctorList;
+    private LinearLayout layoutAiResult;
     private TextView tvAiPickTitle, tvAiPickMeta, tvAiPickReasoning, tvSelectedDoctor, tvDoctorListLoading;
 
     // Visit type views
@@ -86,6 +90,8 @@ public class PatientHomeActivity extends AppCompatActivity {
 
     // Doctor selection state
     private List<DoctorsResponse.Doctor> allDoctors = new ArrayList<>();
+    private final List<String> doctorPickerOptions = new ArrayList<>();
+    private ArrayAdapter<String> doctorPickerAdapter;
     private String selectedDoctorId   = null;
     private String selectedDoctorName = null;
     private String autoRecommendedId  = null;
@@ -99,6 +105,8 @@ public class PatientHomeActivity extends AppCompatActivity {
     // Polling handler
     private Handler pollHandler = new Handler(Looper.getMainLooper());
     private Runnable pollRunnable;
+    private Handler historyPollHandler = new Handler(Looper.getMainLooper());
+    private Runnable historyPollRunnable;
     private boolean isInQueue = false;
     private ActivityResultLauncher<Intent> speechInputLauncher;
 
@@ -172,11 +180,10 @@ public class PatientHomeActivity extends AppCompatActivity {
 
         // New doctor-selection views
         etSymptoms          = findViewById(R.id.etSymptoms);
-        etDoctorSearch      = findViewById(R.id.etDoctorSearch);
+        dropdownDoctorPicker = findViewById(R.id.dropdownDoctorPicker);
         btnFindDoctor       = findViewById(R.id.btnFindDoctor);
         btnVoiceInput       = findViewById(R.id.btnVoiceInput);
         layoutAiResult      = findViewById(R.id.layoutAiResult);
-        layoutDoctorList    = findViewById(R.id.layoutDoctorList);
         tvAiPickTitle       = findViewById(R.id.tvAiPickTitle);
         tvAiPickMeta        = findViewById(R.id.tvAiPickMeta);
         tvAiPickReasoning   = findViewById(R.id.tvAiPickReasoning);
@@ -251,14 +258,15 @@ public class PatientHomeActivity extends AppCompatActivity {
 
         btnVoiceInput.setOnClickListener(v -> startVoiceInput());
 
-        // Doctor list search filter
-        etDoctorSearch.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
-            @Override public void onTextChanged(CharSequence s, int st, int b, int c) {}
-            @Override
-            public void afterTextChanged(Editable s) {
-                filterAndRenderDoctors(s.toString().trim().toLowerCase());
+        dropdownDoctorPicker.setOnItemClickListener((parent, view, position, id) -> {
+            String selectedLabel = (String) parent.getItemAtPosition(position);
+            DoctorsResponse.Doctor selectedDoctor = findDoctorByDisplayLabel(selectedLabel);
+            if (selectedDoctor == null) {
+                return;
             }
+            selectedDoctorId = selectedDoctor.getId();
+            selectedDoctorName = textOrDefault(selectedDoctor.getName(), "Doctor");
+            tvSelectedDoctor.setText(selectedDoctorName);
         });
 
         // Join Queue
@@ -288,10 +296,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                                 isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
                         tvDoctorName.setText(selectedDoctorName);
                         startPolling();
-                        // Show test recommendations if backend suggested them for a long wait
-                        if (body.hasTestRecommendations()) {
-                            showTestRecommendations(body.getTestRecommendations());
-                        }
+                        updateSuggestedTestsCard("waiting", body.isNurseTriaged(), body.getTestRecommendations());
                         Toast.makeText(PatientHomeActivity.this,
                                 body.getMessage() != null ? body.getMessage() : "Token #" + body.getTokenNumber() + " issued!",
                                 Toast.LENGTH_SHORT).show();
@@ -442,7 +447,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     // Load doctors from API
     private void loadDoctors() {
         tvDoctorListLoading.setVisibility(View.VISIBLE);
-        layoutDoctorList.setVisibility(View.GONE);
+        tvDoctorListLoading.setText("Loading doctors...");
 
         apiService.getDoctors().enqueue(new Callback<DoctorsResponse>() {
             @Override
@@ -452,94 +457,73 @@ public class PatientHomeActivity extends AppCompatActivity {
                         && response.body().getDoctors() != null
                         && !response.body().getDoctors().isEmpty()) {
                     allDoctors = response.body().getDoctors();
+                    updateDoctorPickerOptions();
                     tvDoctorListLoading.setVisibility(View.GONE);
-                    layoutDoctorList.setVisibility(View.VISIBLE);
-                    filterAndRenderDoctors("");
                     if (selectedFollowUpConsultation != null) {
                         applyDoctorSelectionForFollowUp(selectedFollowUpConsultation, false);
                     }
                 } else {
+                    doctorPickerOptions.clear();
+                    if (doctorPickerAdapter != null) {
+                        doctorPickerAdapter.notifyDataSetChanged();
+                    }
                     tvDoctorListLoading.setText("No doctors found. Ask admin to run Seed Data.");
+                    tvDoctorListLoading.setVisibility(View.VISIBLE);
                 }
             }
             @Override
             public void onFailure(Call<DoctorsResponse> call, Throwable t) {
                 tvDoctorListLoading.setText("Could not load doctors. Is backend running?");
+                tvDoctorListLoading.setVisibility(View.VISIBLE);
             }
         });
     }
 
-    // Filter and render doctor list based on search query
-    private void filterAndRenderDoctors(String query) {
-        String normalizedQuery = query == null ? "" : query.trim().toLowerCase();
-        List<DoctorsResponse.Doctor> filtered = new ArrayList<>();
-        for (DoctorsResponse.Doctor doc : allDoctors) {
-            String name = doc.getName() == null ? "" : doc.getName().toLowerCase();
-            String specialty = doc.getSpecialty() == null ? "" : doc.getSpecialty().toLowerCase();
-            if (normalizedQuery.isEmpty()
-                    || name.contains(normalizedQuery)
-                    || specialty.contains(normalizedQuery)) {
-                filtered.add(doc);
-            }
+    private void updateDoctorPickerOptions() {
+        doctorPickerOptions.clear();
+        for (DoctorsResponse.Doctor doctor : allDoctors) {
+            doctorPickerOptions.add(buildDoctorDisplayLabel(doctor));
         }
-        renderDoctorList(filtered);
+
+        if (doctorPickerAdapter == null) {
+            doctorPickerAdapter = new ArrayAdapter<>(
+                    this,
+                    android.R.layout.simple_dropdown_item_1line,
+                    doctorPickerOptions
+            );
+            dropdownDoctorPicker.setAdapter(doctorPickerAdapter);
+        } else {
+            doctorPickerAdapter.notifyDataSetChanged();
+        }
     }
 
-    // Inflate and render doctor list items into layoutDoctorList
-    private void renderDoctorList(List<DoctorsResponse.Doctor> doctors) {
-        layoutDoctorList.removeAllViews();
-        LayoutInflater inflater = LayoutInflater.from(this);
+    private String buildDoctorDisplayLabel(DoctorsResponse.Doctor doctor) {
+        String name = textOrDefault(doctor.getName(), "Doctor");
+        String specialty = textOrDefault(doctor.getSpecialty(), "General OPD");
+        return name + " - " + specialty;
+    }
 
-        if (doctors.isEmpty()) {
-            TextView tv = new TextView(this);
-            tv.setText("No doctors match your search");
-            tv.setTextSize(13f);
-            tv.setPadding(0, 24, 0, 24);
-            tv.setGravity(android.view.Gravity.CENTER);
-            tv.setTextColor(getResources().getColor(R.color.text_secondary));
-            layoutDoctorList.addView(tv);
+    private DoctorsResponse.Doctor findDoctorByDisplayLabel(String label) {
+        if (isBlank(label)) {
+            return null;
+        }
+        for (DoctorsResponse.Doctor doctor : allDoctors) {
+            if (buildDoctorDisplayLabel(doctor).equals(label)) {
+                return doctor;
+            }
+        }
+        return null;
+    }
+
+    private void syncDoctorPickerSelectionById(String doctorId) {
+        if (isBlank(doctorId)) {
             return;
         }
-
-        for (DoctorsResponse.Doctor doctor : doctors) {
-            View item = inflater.inflate(R.layout.item_doctor, layoutDoctorList, false);
-
-            CardView card        = item.findViewById(R.id.cardDoctorItem);
-            TextView tvInitial   = item.findViewById(R.id.tvDoctorInitial);
-            TextView tvName      = item.findViewById(R.id.tvDoctorItemName);
-            TextView tvSpecialty = item.findViewById(R.id.tvDoctorItemSpecialty);
-            TextView tvAiBadge   = item.findViewById(R.id.tvAiPick);
-            TextView tvCheck     = item.findViewById(R.id.tvDoctorSelectedMark);
-
-            String displayName = textOrDefault(doctor.getName(), "Doctor");
-            String displaySpecialty = textOrDefault(doctor.getSpecialty(), "General OPD");
-
-            tvName.setText(displayName);
-            tvSpecialty.setText(displaySpecialty);
-            tvInitial.setText(specialtyInitial(displaySpecialty));
-
-            boolean isSelected = doctor.getId() != null && doctor.getId().equals(selectedDoctorId);
-            boolean isAiPick   = doctor.getId() != null && doctor.getId().equals(autoRecommendedId);
-
-            tvCheck.setVisibility(isSelected ? View.VISIBLE : View.GONE);
-            tvAiBadge.setVisibility(isAiPick ? View.VISIBLE : View.GONE);
-            card.setCardBackgroundColor(getResources().getColor(
-                    isSelected ? R.color.primary_container : R.color.surface_container_low));
-
-            final String docId   = doctor.getId();
-            final String docName = displayName;
-
-            card.setOnClickListener(v -> {
-                selectedDoctorId   = docId;
-                selectedDoctorName = docName;
-                tvSelectedDoctor.setText(docName);
-                // Keep predicted badge but user may override selection
-                filterAndRenderDoctors(
-                        etDoctorSearch.getText() != null
-                                ? etDoctorSearch.getText().toString().trim().toLowerCase() : "");
-            });
-
-            layoutDoctorList.addView(item);
+        for (DoctorsResponse.Doctor doctor : allDoctors) {
+            if (doctorId.equals(doctor.getId())) {
+                dropdownDoctorPicker.setText(buildDoctorDisplayLabel(doctor), false);
+                return;
+            }
         }
     }
 
@@ -568,6 +552,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                                 selectedDoctorId   = rec.getId();
                                 selectedDoctorName = recName;
                                 tvSelectedDoctor.setText(recName);
+                                syncDoctorPickerSelectionById(rec.getId());
                             }
                             tvAiPickTitle.setText(rec != null
                                     ? "Suggested doctor: " + recName + " (" + recSpecialty + ")"
@@ -593,9 +578,6 @@ public class PatientHomeActivity extends AppCompatActivity {
                             }
                             tvAiPickReasoning.setText(reasoning);
                             layoutAiResult.setVisibility(View.VISIBLE);
-                            filterAndRenderDoctors(
-                                    etDoctorSearch.getText() != null
-                                            ? etDoctorSearch.getText().toString().trim().toLowerCase() : "");
                         } else {
                             Toast.makeText(PatientHomeActivity.this,
                                     "Could not predict doctor. Try again.", Toast.LENGTH_SHORT).show();
@@ -641,6 +623,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                     updateQueueUI(body.getPosition(), body.getTokenNumber(),
                             body.getEtaMinutes(), body.getStatus(), body.isCheckedIn(), body.getSnoozeCount(),
                             isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
+                    updateSuggestedTestsCard(body.getStatus(), body.isNurseTriaged(), body.getTestRecommendations());
                     if (body.getDoctorName() != null) tvDoctorName.setText(body.getDoctorName());
                     if ("called".equals(body.getStatus())) showCalledState();
                     else startPolling();
@@ -662,15 +645,35 @@ public class PatientHomeActivity extends AppCompatActivity {
             public void run() {
                 if (isInQueue && sessionManager.isLoggedIn()) {
                     fetchQueueStatus();
-                    pollHandler.postDelayed(this, 10000);
+                    pollHandler.postDelayed(this, QUEUE_POLL_INTERVAL_MS);
                 }
             }
         };
-        pollHandler.postDelayed(pollRunnable, 10000);
+        pollHandler.postDelayed(pollRunnable, QUEUE_POLL_INTERVAL_MS);
     }
 
     private void stopPolling() {
         if (pollRunnable != null) pollHandler.removeCallbacks(pollRunnable);
+    }
+
+    private void startHistoryPolling() {
+        stopHistoryPolling();
+        historyPollRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (!isInQueue && sessionManager.isLoggedIn()) {
+                    loadConsultationHistory(false);
+                    historyPollHandler.postDelayed(this, HISTORY_POLL_INTERVAL_MS);
+                }
+            }
+        };
+        historyPollHandler.postDelayed(historyPollRunnable, HISTORY_POLL_INTERVAL_MS);
+    }
+
+    private void stopHistoryPolling() {
+        if (historyPollRunnable != null) {
+            historyPollHandler.removeCallbacks(historyPollRunnable);
+        }
     }
 
     private void fetchQueueStatus() {
@@ -708,6 +711,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                         updateQueueUI(body.getPosition(), body.getTokenNumber(),
                                 body.getEtaMinutes(), body.getStatus(), body.isCheckedIn(), body.getSnoozeCount(),
                                 isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
+                        updateSuggestedTestsCard(body.getStatus(), body.isNurseTriaged(), body.getTestRecommendations());
                         startPolling();
                     }
                 } else if (userInitiated) {
@@ -761,6 +765,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     private void handleUnauthorized() {
         if (!isFinishing() && sessionManager.isLoggedIn()) {
             stopPolling();
+            stopHistoryPolling();
             Toast.makeText(this, "Session expired. Please log in again.", Toast.LENGTH_LONG).show();
             sessionManager.clearSession();
             ApiClient.setAuthToken(null);
@@ -820,12 +825,14 @@ public class PatientHomeActivity extends AppCompatActivity {
         layoutNotInQueue.setVisibility(View.VISIBLE);
         layoutInQueue.setVisibility(View.GONE);
         cardCalled.setVisibility(View.GONE);
+        startHistoryPolling();
     }
 
     private void showInQueueState() {
         layoutNotInQueue.setVisibility(View.GONE);
         layoutInQueue.setVisibility(View.VISIBLE);
         cardCalled.setVisibility(View.GONE);
+        stopHistoryPolling();
     }
 
     private void showCalledState() {
@@ -846,18 +853,13 @@ public class PatientHomeActivity extends AppCompatActivity {
         }
     }
 
-    // Return first letter of specialty for the avatar circle
-    private String specialtyInitial(String specialty) {
-        if (specialty == null || specialty.isEmpty()) return "?";
-        return String.valueOf(specialty.charAt(0)).toUpperCase();
-    }
-
     private void confirmLogout() {
         new AlertDialog.Builder(this)
                 .setTitle("Logout")
                 .setMessage("Are you sure you want to logout?")
                 .setPositiveButton("Logout", (dialog, which) -> {
                     stopPolling();
+                    stopHistoryPolling();
                     sessionManager.clearSession();
                     ApiClient.setAuthToken(null);
                     Intent intent = new Intent(this, LoginActivity.class);
@@ -916,8 +918,9 @@ public class PatientHomeActivity extends AppCompatActivity {
             TextView tvType = card.findViewById(R.id.tvHistoryType);
             TextView tvSummary = card.findViewById(R.id.tvHistorySummary);
             TextView tvOutcome = card.findViewById(R.id.tvHistoryOutcome);
+            TextView tvAction = card.findViewById(R.id.tvHistoryAction);
 
-            tvDate.setText(formatHistoryDate(consultation.getDate()));
+            tvDate.setText("Visit day: " + formatHistoryDate(consultation.getDate()));
             tvDoctor.setText(consultation.getDoctorName());
             tvType.setText(formatVisitTypeLabel(consultation.getVisitType(), consultation.getDoctorSpecialty()));
             tvSummary.setText(!isBlank(consultation.getSymptomsSummary())
@@ -926,6 +929,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             tvOutcome.setText(!isBlank(consultation.getConclusionPreview())
                     ? consultation.getConclusionPreview()
                     : (!isBlank(consultation.getDiagnosis()) ? consultation.getDiagnosis() : "Open for full prescription details."));
+            tvAction.setText(consultation.hasPrescription() ? "Open prescription" : "Open visit details");
 
             card.setOnClickListener(v -> openPrescriptionScreen(consultation.getTokenId(), true));
             layoutHistoryList.addView(card);
@@ -1033,9 +1037,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             }
         }
 
-        filterAndRenderDoctors(
-                etDoctorSearch.getText() != null
-                        ? etDoctorSearch.getText().toString().trim().toLowerCase() : "");
+        syncDoctorPickerSelectionById(selectedDoctorId);
     }
 
     private void openPrescriptionScreen(String tokenId, boolean readOnly) {
@@ -1074,13 +1076,43 @@ public class PatientHomeActivity extends AppCompatActivity {
         return value == null || value.trim().isEmpty();
     }
 
-    /**
-     * Populate and show the test recommendations card.
-     * Called after a successful queue join when the server returns suggestions.
-     */
-    private void showTestRecommendations(
+    private void updateSuggestedTestsCard(
+            String queueStatus,
+            boolean nurseTriaged,
             List<TestRecommendationResponse.Recommendation> recommendations) {
-        if (recommendations == null || recommendations.isEmpty()) return;
+        boolean waitingForNurse = ("waiting".equals(queueStatus) || "waiting_doctor".equals(queueStatus))
+                && !nurseTriaged;
+
+        if (recommendations != null && !recommendations.isEmpty()) {
+            showSuggestedTests(recommendations);
+            return;
+        }
+
+        if (waitingForNurse) {
+            showWaitingForVitalsMessage();
+            return;
+        }
+
+        cardTestRecs.setVisibility(View.GONE);
+    }
+
+    private void showWaitingForVitalsMessage() {
+        layoutTestRecsList.removeAllViews();
+        TextView tv = new TextView(this);
+        tv.setTextSize(12f);
+        tv.setTextColor(getResources().getColor(R.color.text_primary));
+        tv.setPadding(0, 4, 0, 4);
+        tv.setText("Waiting for vitals info from nurse triage. Suggested tests will appear automatically once vitals are recorded.");
+        layoutTestRecsList.addView(tv);
+        cardTestRecs.setVisibility(View.VISIBLE);
+    }
+
+    private void showSuggestedTests(
+            List<TestRecommendationResponse.Recommendation> recommendations) {
+        if (recommendations == null || recommendations.isEmpty()) {
+            cardTestRecs.setVisibility(View.GONE);
+            return;
+        }
 
         layoutTestRecsList.removeAllViews();
         for (TestRecommendationResponse.Recommendation rec : recommendations) {
@@ -1100,6 +1132,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         stopPolling();
+        stopHistoryPolling();
         super.onDestroy();
     }
 
@@ -1108,6 +1141,15 @@ public class PatientHomeActivity extends AppCompatActivity {
         super.onResume();
         if (!isInQueue) {
             loadConsultationHistory(false);
+            startHistoryPolling();
+        } else {
+            stopHistoryPolling();
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopHistoryPolling();
     }
 }
