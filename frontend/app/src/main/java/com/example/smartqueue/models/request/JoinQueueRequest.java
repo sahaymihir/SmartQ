@@ -24,6 +24,11 @@ public class JoinQueueRequest {
     private String symptomsVoiceTranscript;
     private String intakeLanguage;
 
+    // Visit intent: "new" (first/routine visit) or "follow_up" (continuing care)
+    private String visitType;
+    // Optional reference to the prior completed token for follow-up continuity
+    private String followUpTokenId;
+
     // Optional structured vitals forwarded to the triage model
     private Float pain_score;
     private Float spo2;
@@ -45,6 +50,7 @@ public class JoinQueueRequest {
         this.symptoms = symptoms;
         this.symptomsText = symptoms;
         this.intakeLanguage = "en";
+        this.visitType = "new";
     }
 
     /** Full multimodal constructor. */
@@ -55,6 +61,16 @@ public class JoinQueueRequest {
         this.symptomsText = symptomsText;
         this.symptomsVoiceTranscript = symptomsVoiceTranscript;
         this.intakeLanguage = intakeLanguage != null ? intakeLanguage : "en";
+        this.visitType = "new";
+    }
+
+    /** Constructor for follow-up visits with prior token linkage. */
+    public JoinQueueRequest(String symptomsText, String visitType, String followUpTokenId, String intakeLanguage) {
+        this.symptoms = symptomsText;
+        this.symptomsText = symptomsText;
+        this.intakeLanguage = intakeLanguage != null ? intakeLanguage : "en";
+        this.visitType = visitType != null ? visitType : "new";
+        this.followUpTokenId = followUpTokenId;
     }
 
     // ── Getters ──────────────────────────────────────────────────
@@ -63,6 +79,8 @@ public class JoinQueueRequest {
     public String getSymptomsText() { return symptomsText; }
     public String getSymptomsVoiceTranscript() { return symptomsVoiceTranscript; }
     public String getIntakeLanguage() { return intakeLanguage; }
+    public String getVisitType() { return visitType; }
+    public String getFollowUpTokenId() { return followUpTokenId; }
     public Float getPainScore() { return pain_score; }
     public Float getSpo2() { return spo2; }
     public Float getTemperatureC() { return temperature_c; }
@@ -82,6 +100,8 @@ public class JoinQueueRequest {
     public void setSymptomsText(String symptomsText) { this.symptomsText = symptomsText; }
     public void setSymptomsVoiceTranscript(String t) { this.symptomsVoiceTranscript = t; }
     public void setIntakeLanguage(String intakeLanguage) { this.intakeLanguage = intakeLanguage; }
+    public void setVisitType(String visitType) { this.visitType = visitType; }
+    public void setFollowUpTokenId(String followUpTokenId) { this.followUpTokenId = followUpTokenId; }
     public void setPainScore(Float pain_score) { this.pain_score = pain_score; }
     public void setSpo2(Float spo2) { this.spo2 = spo2; }
     public void setTemperatureC(Float temperature_c) { this.temperature_c = temperature_c; }

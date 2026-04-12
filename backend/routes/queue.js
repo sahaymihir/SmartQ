@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, staffOnly } = require('../middleware/authMiddleware');
 const { Token } = require('../models/Queue');
-const { buildVisitSnapshot, determineTriageDecision } = require('../services/triageService');
+const { buildVisitSnapshot, determineTriageDecision, getAgeBaselineScore, mapPriorityClassToScore } = require('../services/triageService');
 const {
   ACTIVE_TOKEN_STATUSES,
   buildDayQuery,
@@ -14,7 +14,11 @@ const {
   isImmediateReviewToken,
   promoteTokenByPriority,
   recomputeWaitingQueue,
+  getPriorityLabel,
 } = require('../utils/queueHelpers');
+
+// Minimum predicted wait time (minutes) before test recommendations are surfaced.
+const HIGH_WAIT_THRESHOLD_MIN = Number(process.env.TEST_SUGGEST_WAIT_THRESHOLD_MIN || 30);
 
 const buildTokenResponse = (token) => ({
   tokenId: token._id,
@@ -72,6 +76,16 @@ const buildTokenResponse = (token) => ({
     predictedConsultMinutes: token.predictedConsultMinutes,
     actualConsultMinutes: token.actualConsultMinutes,
   },
+  // Visit intent & follow-up
+  visitType: token.visitType || 'new',
+  followUpTokenId: token.followUpTokenId || null,
+  // Nurse triage
+  nurseTriaged: Boolean(token.nurseTriaged),
+  nurseTriagedAt: token.nurseTriagedAt || null,
+  nurseTriageNote: token.nurseTriageNote || '',
+  // Test recommendations (present when wait is high)
+  testRecommendations: Array.isArray(token.testRecommendations) ? token.testRecommendations : [],
+  testSuggestedAt: token.testSuggestedAt || null,
 });
 
 const buildJoinMessage = (token) => {
@@ -91,6 +105,11 @@ router.post('/join', protect, async (req, res) => {
     const { doctorId } = req.query;
     const { symptoms } = req.body;
     const patient = req.user;
+
+    // Visit intent: 'new' (default) or 'follow_up'
+    const visitType = ['new', 'follow_up'].includes(req.body.visitType)
+      ? req.body.visitType
+      : 'new';
 
     if (!doctorId) {
       return res.status(400).json({ success: false, message: 'doctorId is required' });
@@ -120,6 +139,34 @@ router.post('/join', protect, async (req, res) => {
       });
     }
 
+    // ─── Follow-up linkage ─────────────────────────────────────
+    // Resolve the prior token reference for continuity tracking.
+    let followUpTokenId = null;
+    if (visitType === 'follow_up') {
+      if (req.body.followUpTokenId) {
+        // Explicit reference provided by the client — validate it belongs to this patient
+        const priorToken = await Token.findOne({
+          _id: req.body.followUpTokenId,
+          patient: patient._id,
+          status: 'completed',
+        }).lean();
+        if (priorToken) {
+          followUpTokenId = priorToken._id;
+        }
+      } else {
+        // Auto-detect: use the most recent completed token for this patient
+        const recentToken = await Token.findOne({
+          patient: patient._id,
+          status: 'completed',
+        })
+          .sort({ completedAt: -1 })
+          .lean();
+        if (recentToken) {
+          followUpTokenId = recentToken._id;
+        }
+      }
+    }
+
     const queue = await getTodayQueue(doctorId);
 
     if (!queue.isActive) {
@@ -144,6 +191,17 @@ router.post('/join', protect, async (req, res) => {
     const predictedWaitMinutes =
       routingLane === IMMEDIATE_REVIEW_LANE ? 0 : computeETA(position, queue.avgConsultationMinutes);
     const joinedAt = new Date();
+
+    // ─── High-wait test recommendations ───────────────────────
+    // Surface ML-suggested routine tests to patients with long predicted waits
+    // so they can initiate them in parallel before the consultation.
+    const mlTestRecs = Array.isArray(triageDecision.testRecommendations)
+      ? triageDecision.testRecommendations
+      : [];
+    const shouldSuggestTests =
+      predictedWaitMinutes >= HIGH_WAIT_THRESHOLD_MIN && mlTestRecs.length > 0;
+    const testRecommendations = shouldSuggestTests ? mlTestRecs : [];
+    const testSuggestedAt = shouldSuggestTests ? new Date() : null;
 
     const token = await Token.create({
       patient: patient._id,
@@ -185,6 +243,12 @@ router.post('/join', protect, async (req, res) => {
       joinedAt,
       predictedWaitMinutes,
       predictedConsultMinutes: queue.avgConsultationMinutes,
+      // Visit intent fields
+      visitType,
+      followUpTokenId,
+      // Test suggestions
+      testRecommendations,
+      testSuggestedAt,
     });
 
     queue.totalTokensIssued = tokenNumber;
@@ -444,6 +508,7 @@ router.get('/history', protect, async (req, res) => {
       tokenNumber: token.tokenNumber,
       date: token.completedAt || token.createdAt,
       doctorName: token.doctor?.name || 'Unknown doctor',
+      doctorId: token.doctor?._id || null,
       symptoms: token.symptoms || '',
       diagnosis: token.prescription?.diagnosis || '',
       medicines: token.prescription?.medicines || '',
@@ -452,6 +517,7 @@ router.get('/history', protect, async (req, res) => {
       ocrStatus: token.prescription?.ocrStatus || 'none',
       triageRecommendation: token.triageRecommendation || '',
       priority: token.priority,
+      visitType: token.visitType || 'new',
       actualWaitMinutes: token.actualWaitMinutes,
       actualConsultMinutes: token.actualConsultMinutes,
     }));
@@ -463,6 +529,219 @@ router.get('/history', protect, async (req, res) => {
     });
   } catch (err) {
     console.error('History error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// PATCH /api/queue/nurse-triage/:tokenId
+// Nurse submits actual vitals and updates the token's triage.
+// Allowed roles: nurse, admin, doctor.
+// ─────────────────────────────────────────────────────────────
+router.patch('/nurse-triage/:tokenId', protect, staffOnly, async (req, res) => {
+  try {
+    const { tokenId } = req.params;
+
+    const token = await Token.findById(tokenId).populate('patient', 'name age phone');
+    if (!token) {
+      return res.status(404).json({ success: false, message: 'Token not found' });
+    }
+
+    if (!['waiting', 'called', 'arrived'].includes(token.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nurse triage can only be applied to active tokens',
+      });
+    }
+
+    // Merge nurse vitals with any existing symptom context from patient intake
+    const nurseVitals = {
+      heart_rate: req.body.heart_rate,
+      respiratory_rate: req.body.respiratory_rate,
+      spo2: req.body.spo2,
+      temperature_c: req.body.temperature_c,
+      systolic_bp: req.body.systolic_bp,
+      diastolic_bp: req.body.diastolic_bp,
+      gcs_total: req.body.gcs_total,
+      pain_score: req.body.pain_score,
+      news2_score: req.body.news2_score,
+      mental_status_triage: req.body.mental_status_triage,
+    };
+
+    // Re-run triage with nurse-measured vitals merged on top of original intake data
+    const mergedBody = {
+      symptoms: token.symptoms || '',
+      symptomsText: token.symptoms || '',
+      intakeLanguage: token.intakeLanguage || 'en',
+      ...nurseVitals,
+    };
+
+    const triageDecision = await determineTriageDecision(token.patient, mergedBody);
+
+    // Apply optional clinician priority boost (nurse/doctor override)
+    const clinicianOverride = Number(req.body.clinicianPriorityOverride || 0);
+    const overriddenScore = Math.min(10, triageDecision.priorityScore + clinicianOverride);
+    const overriddenLabel = getPriorityLabel(overriddenScore);
+
+    // Update token with nurse-measured results
+    token.nurseTriaged = true;
+    token.nurseTriagedAt = new Date();
+    token.nurseVitals = nurseVitals;
+    token.nurseTriageNote = req.body.nurseTriageNote || '';
+
+    // Apply new triage decision
+    token.priorityScore = overriddenScore;
+    token.priority = overriddenLabel;
+    token.priorityFinalScore = overriddenScore;
+    token.aiConfidence = triageDecision.aiConfidence;
+    token.triagePriorityClass = triageDecision.triagePriorityClass;
+    token.modelPriorityClass = triageDecision.modelPriorityClass;
+    token.triageConfidence = triageDecision.triageConfidence;
+    token.triageLowConfidence = triageDecision.triageLowConfidence;
+    token.triageRecommendation = triageDecision.triageRecommendation;
+    token.triageSource = 'nurse_triage';
+    token.manualReviewRequired = triageDecision.manualReviewRequired;
+    token.safetyMatches = triageDecision.safetyMatches;
+    token.overrideReason = clinicianOverride > 0
+      ? `clinician_override_+${clinicianOverride}`
+      : triageDecision.overrideReason;
+    token.priorityDecisionTrace = triageDecision.priorityDecisionTrace
+      + (clinicianOverride > 0 ? `;nurseOverride=+${clinicianOverride}` : '');
+
+    // If nurse triage now indicates immediate review, upgrade the routing lane
+    if (triageDecision.requiresImmediateReview && token.routingLane !== IMMEDIATE_REVIEW_LANE) {
+      token.routingLane = IMMEDIATE_REVIEW_LANE;
+      token.requiresImmediateReview = true;
+      token.escalationReason = triageDecision.escalationReason || 'nurse_triage_escalation';
+    }
+
+    await token.save();
+
+    // Re-sort the queue since priority may have changed
+    const today = getTodayDateString();
+    const queue = await getTodayQueue(token.doctor, today);
+    if (token.routingLane !== IMMEDIATE_REVIEW_LANE) {
+      await promoteTokenByPriority(token.doctor, token._id, queue.avgConsultationMinutes, today);
+    }
+
+    const updatedToken = await Token.findById(token._id);
+    res.json({
+      success: true,
+      message: 'Nurse triage recorded. Token priority updated.',
+      ...buildTokenResponse(updatedToken),
+    });
+
+  } catch (err) {
+    console.error('Nurse triage error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// POST /api/queue/emergency
+// Staff (nurse/admin/doctor) creates an emergency token for an
+// unconscious or non-ambulatory patient, bypassing self-intake.
+// The patient account must already exist (use POST /api/auth/register
+// to pre-create a record if the patient is new to the system).
+// ─────────────────────────────────────────────────────────────
+router.post('/emergency', protect, staffOnly, async (req, res) => {
+  try {
+    const { patientId, doctorId, reportedSymptoms, estimatedAge } = req.body;
+
+    if (!patientId) {
+      return res.status(400).json({
+        success: false,
+        message: 'patientId is required. Register the patient first if they are new.',
+      });
+    }
+
+    const User = require('../models/User');
+    const patient = await User.findById(patientId);
+    if (!patient || patient.role !== 'patient') {
+      return res.status(404).json({ success: false, message: 'Patient not found' });
+    }
+
+    // Auto-route to first available doctor if none specified
+    let targetDoctorId = doctorId;
+    if (!targetDoctorId) {
+      const anyDoctor = await User.findOne({ role: 'doctor' }).select('_id');
+      if (!anyDoctor) {
+        return res.status(400).json({ success: false, message: 'No doctors available for routing' });
+      }
+      targetDoctorId = anyDoctor._id.toString();
+    }
+
+    const today = getTodayDateString();
+    const queue = await getTodayQueue(targetDoctorId);
+
+    if (!queue.isActive) {
+      return res.status(400).json({ success: false, message: 'The target queue is not active today' });
+    }
+
+    const tokenNumber = queue.totalTokensIssued + 1;
+    const joinedAt = new Date();
+
+    // Emergency override: KTAS 1 (highest priority, score 10)
+    const ageBasedScore = getAgeBaselineScore(estimatedAge || patient.age);
+    const mlPriorityScore = mapPriorityClassToScore(1); // KTAS 1
+    const priorityFinalScore = 10; // Emergency always gets maximum score
+    const priorityLabel = getPriorityLabel(priorityFinalScore);
+    const components = {
+      age: ageBasedScore,
+      triage: mlPriorityScore,
+      symptomNlp: 0,
+      ocrFlags: 0,
+      clinicianOverride: 0,
+    };
+
+    const token = await Token.create({
+      patient: patient._id,
+      doctor: targetDoctorId,
+      tokenNumber,
+      position: 0,
+      etaMinutes: 0,
+      priority: priorityLabel,
+      priorityScore: priorityFinalScore,
+      symptoms: reportedSymptoms || 'Emergency — reported by attending staff',
+      intakeLanguage: 'en',
+      aiConfidence: 1.0,
+      ageBasedPriorityScore: ageBasedScore,
+      mlPriorityScore,
+      modelPriorityClass: 1,
+      triagePriorityClass: 1,
+      triageConfidence: 1.0,
+      triageLowConfidence: false,
+      triageRecommendation: 'Immediate emergency assessment required',
+      triageModelVersion: 'emergency_override_v1',
+      triageSource: 'emergency_staff_intake',
+      overrideReason: 'emergency_staff_intake',
+      manualReviewRequired: false,
+      routingLane: IMMEDIATE_REVIEW_LANE,
+      requiresImmediateReview: true,
+      escalationReason: 'emergency_staff_created',
+      safetyMatches: [],
+      priorityComponents: components,
+      priorityFinalScore,
+      priorityDecisionTrace: `source=emergency_staff_intake;ageScore=${ageBasedScore};mlScore=${mlPriorityScore};finalScore=${priorityFinalScore};createdBy=${req.user.role}`,
+      visitSnapshot: { emergencyAdmission: true, reportedSymptoms: reportedSymptoms || '' },
+      joinedAt,
+      predictedWaitMinutes: 0,
+      predictedConsultMinutes: queue.avgConsultationMinutes,
+      visitType: 'emergency',
+    });
+
+    queue.totalTokensIssued = tokenNumber;
+    await queue.save();
+
+    const updatedToken = await Token.findById(token._id);
+    res.status(201).json({
+      success: true,
+      message: `Emergency Token #${tokenNumber} created. Patient is in immediate review lane.`,
+      ...buildTokenResponse(updatedToken),
+    });
+
+  } catch (err) {
+    console.error('Emergency token creation error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

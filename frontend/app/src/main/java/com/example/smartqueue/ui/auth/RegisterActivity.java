@@ -39,7 +39,7 @@ public class RegisterActivity extends AppCompatActivity {
     private TextInputLayout tilName, tilEmail, tilPhone, tilAge, tilPassword;
     private TextInputEditText etName, etEmail, etPhone, etAge, etPassword;
     private RadioGroup rgRole;
-    private RadioButton rbAdmin, rbDoctor;
+    private RadioButton rbAdmin, rbDoctor, rbNurse;
     private MaterialButton btnRegister, btnGoToLogin;
     private ProgressBar progressBar;
     private TextView tvError;
@@ -73,6 +73,7 @@ public class RegisterActivity extends AppCompatActivity {
         rgRole      = findViewById(R.id.rgRole);
         rbAdmin     = findViewById(R.id.rbAdmin);
         rbDoctor    = findViewById(R.id.rbDoctor);
+        rbNurse     = findViewById(R.id.rbNurse);
         btnRegister = findViewById(R.id.btnRegister);
         btnGoToLogin = findViewById(R.id.btnGoToLogin);
         progressBar = findViewById(R.id.progressBar);
@@ -122,6 +123,7 @@ public class RegisterActivity extends AppCompatActivity {
         String role = "patient";
         if (rbAdmin.isChecked()) role = "admin";
         else if (rbDoctor.isChecked()) role = "doctor";
+        else if (rbNurse.isChecked()) role = "nurse";
 
         boolean valid = true;
 
@@ -196,6 +198,8 @@ public class RegisterActivity extends AppCompatActivity {
             intent = new Intent(this, AdminDashboardActivity.class);
         } else if ("doctor".equals(role)) {
             intent = new Intent(this, DoctorHomeActivity.class);
+        } else if ("nurse".equals(role)) {
+            intent = new Intent(this, AdminDashboardActivity.class);
         } else {
             intent = new Intent(this, PatientHomeActivity.class);
         }

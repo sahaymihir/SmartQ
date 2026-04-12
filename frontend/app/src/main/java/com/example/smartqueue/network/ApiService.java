@@ -1,11 +1,14 @@
 package com.example.smartqueue.network;
 
+import com.example.smartqueue.models.request.EmergencyRequest;
 import com.example.smartqueue.models.request.LoginRequest;
 import com.example.smartqueue.models.request.JoinQueueRequest;
+import com.example.smartqueue.models.request.NurseTriageRequest;
 import com.example.smartqueue.models.request.RegisterRequest;
 import com.example.smartqueue.models.request.PrescriptionRequest;
 import com.example.smartqueue.models.request.SymptomRequest;
 import com.example.smartqueue.models.response.AuthResponse;
+import com.example.smartqueue.models.response.ConsultationHistoryResponse;
 import com.example.smartqueue.models.response.DoctorsResponse;
 import com.example.smartqueue.models.response.ModelEvalHistoryResponse;
 import com.example.smartqueue.models.response.MlOpsLogsResponse;
@@ -39,6 +42,25 @@ public interface ApiService {
 
     @POST("queue/checkin")
     Call<MessageResponse> checkIn();
+
+    /** Patient's past consultations — used for follow-up visit linkage. */
+    @GET("queue/history")
+    Call<ConsultationHistoryResponse> getConsultationHistory();
+
+    /**
+     * Nurse / staff submit actual vitals and optionally override priority.
+     * Roles: nurse, admin, doctor.
+     */
+    @PATCH("queue/nurse-triage/{tokenId}")
+    Call<MessageResponse> nurseTriageToken(@Path("tokenId") String tokenId, @Body NurseTriageRequest body);
+
+    /**
+     * Staff create an emergency token for a patient who cannot self-register
+     * (e.g. unconscious). Forces immediate_review routing lane (KTAS 1).
+     * Roles: nurse, admin, doctor.
+     */
+    @POST("queue/emergency")
+    Call<TokenResponse> createEmergencyToken(@Body EmergencyRequest body);
 
     // ── DOCTOR ENDPOINTS ─────────────────────────────────────
 

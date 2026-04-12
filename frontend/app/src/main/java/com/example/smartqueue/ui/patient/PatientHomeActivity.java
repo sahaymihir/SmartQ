@@ -9,6 +9,7 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,6 +24,7 @@ import com.example.smartqueue.models.response.DoctorsResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.models.response.MessageResponse;
 import com.example.smartqueue.models.response.SymptomPredictResponse;
+import com.example.smartqueue.models.response.TestRecommendationResponse;
 import com.example.smartqueue.models.response.TokenResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
@@ -57,6 +59,16 @@ public class PatientHomeActivity extends AppCompatActivity {
     private LinearLayout layoutAiResult, layoutDoctorList;
     private TextView tvAiPickTitle, tvAiPickMeta, tvAiPickReasoning, tvSelectedDoctor, tvDoctorListLoading;
 
+    // Visit type views
+    private RadioGroup rgVisitType;
+    private LinearLayout layoutFollowUpNote;
+    private TextView tvFollowUpNote;
+
+    // Test recommendations views (shown when wait is high after joining)
+    private CardView cardTestRecs;
+    private LinearLayout layoutTestRecsList;
+    private MaterialButton btnDismissTestRecs;
+
     private SessionManager sessionManager;
     private ApiService apiService;
 
@@ -65,6 +77,10 @@ public class PatientHomeActivity extends AppCompatActivity {
     private String selectedDoctorId   = null;
     private String selectedDoctorName = null;
     private String autoRecommendedId  = null;
+
+    // Visit intent state
+    private String selectedVisitType  = "new";     // "new" or "follow_up"
+    private String followUpTokenId    = null;       // linked prior token (auto-detected or user-selected)
 
     // Polling handler
     private Handler pollHandler = new Handler(Looper.getMainLooper());
@@ -121,6 +137,16 @@ public class PatientHomeActivity extends AppCompatActivity {
         tvAiPickReasoning   = findViewById(R.id.tvAiPickReasoning);
         tvSelectedDoctor    = findViewById(R.id.tvSelectedDoctor);
         tvDoctorListLoading = findViewById(R.id.tvDoctorListLoading);
+
+        // Visit type views
+        rgVisitType         = findViewById(R.id.rgVisitType);
+        layoutFollowUpNote  = findViewById(R.id.layoutFollowUpNote);
+        tvFollowUpNote      = findViewById(R.id.tvFollowUpNote);
+
+        // Test recommendations views
+        cardTestRecs        = findViewById(R.id.cardTestRecs);
+        layoutTestRecsList  = findViewById(R.id.layoutTestRecsList);
+        btnDismissTestRecs  = findViewById(R.id.btnDismissTestRecs);
     }
 
     private void setupGreeting() {
@@ -130,6 +156,23 @@ public class PatientHomeActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
+
+        // Visit type selection — show/hide follow-up note
+        rgVisitType.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == R.id.rbVisitFollowUp) {
+                selectedVisitType = "follow_up";
+                layoutFollowUpNote.setVisibility(View.VISIBLE);
+                // Attempt to auto-detect prior visit for continuity info
+                loadLastVisitForFollowUp();
+            } else {
+                selectedVisitType = "new";
+                followUpTokenId = null;
+                layoutFollowUpNote.setVisibility(View.GONE);
+            }
+        });
+
+        // Dismiss test recommendations
+        btnDismissTestRecs.setOnClickListener(v -> cardTestRecs.setVisibility(View.GONE));
 
         // Find doctor using prediction
         btnFindDoctor.setOnClickListener(v -> {
@@ -175,6 +218,10 @@ public class PatientHomeActivity extends AppCompatActivity {
                                 isImmediateReview(body.getRoutingLane(), body.isImmediateReviewRequired()));
                         tvDoctorName.setText(selectedDoctorName);
                         startPolling();
+                        // Show test recommendations if backend suggested them for a long wait
+                        if (body.hasTestRecommendations()) {
+                            showTestRecommendations(body.getTestRecommendations());
+                        }
                         Toast.makeText(PatientHomeActivity.this,
                                 body.getMessage() != null ? body.getMessage() : "Token #" + body.getTokenNumber() + " issued!",
                                 Toast.LENGTH_SHORT).show();
@@ -434,7 +481,8 @@ public class PatientHomeActivity extends AppCompatActivity {
     private JoinQueueRequest buildJoinQueueRequest() {
         String symptoms = etSymptoms.getText() != null
                 ? etSymptoms.getText().toString().trim() : "";
-        return new JoinQueueRequest(symptoms);
+        JoinQueueRequest req = new JoinQueueRequest(symptoms, selectedVisitType, followUpTokenId, "en");
+        return req;
     }
 
     private void checkExistingToken() {
@@ -607,6 +655,65 @@ public class PatientHomeActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+    }
+
+    /**
+     * Load the most recent completed consultation and populate the follow-up note.
+     * Stores the token ID for submission in the join request.
+     */
+    private void loadLastVisitForFollowUp() {
+        apiService.getConsultationHistory().enqueue(
+                new Callback<com.example.smartqueue.models.response.ConsultationHistoryResponse>() {
+                    @Override
+                    public void onResponse(
+                            Call<com.example.smartqueue.models.response.ConsultationHistoryResponse> call,
+                            Response<com.example.smartqueue.models.response.ConsultationHistoryResponse> response) {
+                        if (response.isSuccessful() && response.body() != null
+                                && response.body().isSuccess()
+                                && response.body().getHistory() != null
+                                && !response.body().getHistory().isEmpty()) {
+
+                            com.example.smartqueue.models.response.ConsultationHistoryResponse.Consultation last =
+                                    response.body().getHistory().get(0);
+
+                            String note = getString(R.string.follow_up_note_linked)
+                                    + (last.getDoctorName() != null ? last.getDoctorName() : "prior visit");
+                            tvFollowUpNote.setText(note);
+                        }
+                        // followUpTokenId is resolved on the backend using the patient's ID;
+                        // no explicit token reference needed from the client for the auto-detect path.
+                    }
+
+                    @Override
+                    public void onFailure(
+                            Call<com.example.smartqueue.models.response.ConsultationHistoryResponse> call,
+                            Throwable t) {
+                        // Non-critical: follow-up still works without the history preview.
+                    }
+                });
+    }
+
+    /**
+     * Populate and show the test recommendations card.
+     * Called after a successful queue join when the server returns suggestions.
+     */
+    private void showTestRecommendations(
+            List<TestRecommendationResponse.Recommendation> recommendations) {
+        if (recommendations == null || recommendations.isEmpty()) return;
+
+        layoutTestRecsList.removeAllViews();
+        for (TestRecommendationResponse.Recommendation rec : recommendations) {
+            TextView tv = new TextView(this);
+            tv.setTextSize(12f);
+            tv.setTextColor(getResources().getColor(R.color.text_primary));
+            tv.setPadding(0, 4, 0, 4);
+
+            String urgency = rec.getUrgency() != null ? " [" + rec.getUrgency() + "]" : "";
+            String rationale = rec.getRationale() != null ? "\n  " + rec.getRationale() : "";
+            tv.setText("• " + rec.getTest() + urgency + rationale);
+            layoutTestRecsList.addView(tv);
+        }
+        cardTestRecs.setVisibility(View.VISIBLE);
     }
 
     @Override

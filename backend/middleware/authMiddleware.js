@@ -58,4 +58,19 @@ const adminOnly = (req, res, next) => {
   });
 };
 
-module.exports = { protect, adminOnly };
+/**
+ * staffOnly — Restrict route to admin, doctor, or nurse.
+ * Used for nurse-triage and emergency intake endpoints.
+ * Must come AFTER protect middleware.
+ */
+const staffOnly = (req, res, next) => {
+  if (req.user && ['admin', 'doctor', 'nurse'].includes(req.user.role)) {
+    return next();
+  }
+  return res.status(403).json({
+    success: false,
+    message: 'Access denied. Clinical staff only.'
+  });
+};
+
+module.exports = { protect, adminOnly, staffOnly };

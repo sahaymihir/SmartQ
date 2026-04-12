@@ -211,6 +211,15 @@
                             android:buttonTint="@color/primary"/>
 
                         <com.google.android.material.radiobutton.MaterialRadioButton
+                            android:id="@+id/rbNurse"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/role_nurse"
+                            android:textColor="@color/on_surface"
+                            android:buttonTint="@color/primary"/>
+
+                        <com.google.android.material.radiobutton.MaterialRadioButton
                             android:id="@+id/rbAdmin"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"

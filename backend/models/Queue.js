@@ -243,6 +243,48 @@ const tokenSchema = new mongoose.Schema({
   snoozeCount: {
     type: Number,
     default: 0
+  },
+
+  // ─── Visit intent & follow-up linkage ──────────────────────
+  visitType: {
+    type: String,
+    enum: ['new', 'follow_up', 'emergency'],
+    default: 'new'
+  },
+  // Reference to a prior completed token for follow-up continuity
+  followUpTokenId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Token',
+    default: null
+  },
+
+  // ─── Nurse triage (actual vitals captured by nursing staff) ─
+  nurseTriaged: {
+    type: Boolean,
+    default: false
+  },
+  nurseTriagedAt: {
+    type: Date,
+    default: null
+  },
+  // Full vitals submitted by nurse (same field names as triage payload)
+  nurseVitals: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
+  },
+  nurseTriageNote: {
+    type: String,
+    default: ''
+  },
+
+  // ─── Test recommendations (ML-suggested, offered when wait is high) ─
+  testRecommendations: {
+    type: mongoose.Schema.Types.Mixed,
+    default: () => []
+  },
+  testSuggestedAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

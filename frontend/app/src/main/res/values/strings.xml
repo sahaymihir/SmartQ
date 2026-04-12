@@ -43,7 +43,20 @@
     <string name="role_patient">Patient</string>
     <string name="role_admin">Admin</string>
     <string name="role_doctor">Doctor</string>
+    <string name="role_nurse">Nurse</string>
     <string name="select_role">Clinical Role</string>
+
+    <!-- Visit type -->
+    <string name="visit_type_new">New Visit</string>
+    <string name="visit_type_follow_up">Follow-up</string>
+    <string name="visit_type_label">Visit Type</string>
+    <string name="follow_up_note">We\'ll continue care from your most recent visit and route you to the same specialty.</string>
+    <string name="follow_up_note_linked">Continuing from: </string>
+
+    <!-- Test recommendations -->
+    <string name="test_recs_title">Suggested While You Wait</string>
+    <string name="test_recs_subtitle">Your estimated wait is long — get these routine tests started now so results are ready for your doctor.</string>
+    <string name="test_recs_dismiss">Dismiss</string>
 
     <!-- Errors -->
     <string name="error_empty_fields">Please fill all fields</string>

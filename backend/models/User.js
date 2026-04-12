@@ -39,7 +39,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['patient', 'admin', 'doctor'],
+    enum: ['patient', 'admin', 'doctor', 'nurse'],
     default: 'patient'
   },
   // Specialty — only relevant for role: 'doctor'
