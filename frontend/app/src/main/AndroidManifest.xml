@@ -42,6 +42,15 @@
         <activity android:name=".ui.admin.AdminDashboardActivity" android:exported="false"/>
         <activity android:name=".ui.doctor.DoctorHomeActivity" android:exported="false"/>
 
+        <!-- Firebase Cloud Messaging service for push notifications -->
+        <service
+            android:name=".services.SmartQFirebaseService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>

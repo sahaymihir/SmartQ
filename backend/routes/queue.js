@@ -47,6 +47,9 @@ const buildTokenResponse = (token) => ({
     manualReviewRequired: token.manualReviewRequired,
     allClassProbs: token.triageAllClassProbs || {},
   },
+  priorityComponents: token.priorityComponents || {},
+  priorityFinalScore: token.priorityFinalScore,
+  priorityDecisionTrace: token.priorityDecisionTrace || '',
   timing: {
     joinedAt: token.joinedAt,
     calledAt: token.calledAt,
@@ -127,7 +130,14 @@ router.post('/join', protect, async (req, res) => {
       etaMinutes: predictedWaitMinutes,
       priority: triageDecision.priorityLabel,
       priorityScore: triageDecision.priorityScore,
-      symptoms: symptoms || '',
+      // Normalised symptom text (prefer symptomsText, then voice, then legacy)
+      symptoms:
+        symptoms ||
+        req.body.symptomsText ||
+        req.body.symptomsVoiceTranscript ||
+        '',
+      symptomsVoiceTranscript: req.body.symptomsVoiceTranscript || '',
+      intakeLanguage: req.body.intakeLanguage || 'en',
       aiConfidence: triageDecision.aiConfidence,
       ageBasedPriorityScore: triageDecision.ageBasedPriorityScore,
       mlPriorityScore: triageDecision.mlPriorityScore,
@@ -140,6 +150,9 @@ router.post('/join', protect, async (req, res) => {
       triageSource: triageDecision.triageSource,
       overrideReason: triageDecision.overrideReason,
       manualReviewRequired: triageDecision.manualReviewRequired,
+      priorityComponents: triageDecision.priorityComponents,
+      priorityFinalScore: triageDecision.priorityFinalScore,
+      priorityDecisionTrace: triageDecision.priorityDecisionTrace,
       visitSnapshot: buildVisitSnapshot(patient, req.body),
       joinedAt,
       predictedWaitMinutes,
@@ -360,6 +373,58 @@ router.post('/leave', protect, async (req, res) => {
     });
   } catch (err) {
     console.error('Leave queue error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /api/queue/history
+// Patient's past completed consultations (up to 20 most recent)
+// ─────────────────────────────────────────────────────────────
+router.get('/history', protect, async (req, res) => {
+  try {
+    if (req.user.role !== 'patient') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only patients can access consultation history',
+      });
+    }
+
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+
+    const tokens = await Token.find({
+      patient: req.user._id,
+      status: 'completed',
+    })
+      .populate('doctor', 'name')
+      .sort({ completedAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const history = tokens.map((token) => ({
+      tokenId: token._id,
+      tokenNumber: token.tokenNumber,
+      date: token.completedAt || token.createdAt,
+      doctorName: token.doctor?.name || 'Unknown doctor',
+      symptoms: token.symptoms || '',
+      diagnosis: token.prescription?.diagnosis || '',
+      medicines: token.prescription?.medicines || '',
+      notes: token.prescription?.notes || '',
+      prescriptionSource: token.prescription?.source || 'doctor_typed',
+      ocrStatus: token.prescription?.ocrStatus || 'none',
+      triageRecommendation: token.triageRecommendation || '',
+      priority: token.priority,
+      actualWaitMinutes: token.actualWaitMinutes,
+      actualConsultMinutes: token.actualConsultMinutes,
+    }));
+
+    res.json({
+      success: true,
+      total: history.length,
+      history,
+    });
+  } catch (err) {
+    console.error('History error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

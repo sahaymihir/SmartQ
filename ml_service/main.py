@@ -169,6 +169,148 @@ class HealthResponse(BaseModel):
     model_version: str
 
 
+class TestRecommendationRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+    priority_class: int | None = Field(default=None, ge=1, le=5)
+    chief_complaint_system: str | None = None
+    age: int | None = Field(default=None, ge=0, le=130)
+    temperature_c: float | None = Field(default=None, ge=0)
+    spo2: float | None = Field(default=None, ge=0, le=100)
+    heart_rate: float | None = Field(default=None, ge=0)
+    systolic_bp: float | None = Field(default=None, ge=0)
+    pain_score: float | None = Field(default=None, ge=0, le=10)
+    gcs_total: int | None = Field(default=None, ge=0, le=15)
+    symptoms: str | None = None
+
+
+class TestRecommendation(BaseModel):
+    test: str
+    rationale: str
+    urgency: str = Field(description="immediate | urgent | routine")
+
+
+class TestRecommendationResponse(BaseModel):
+    recommendations: list[TestRecommendation]
+    source: str = "rule_based_v1"
+    low_confidence: bool = False
+
+
+# ── Rule-based test recommendation engine ────────────────────────────────────
+
+_COMPLAINT_TESTS: dict[str, list[dict]] = {
+    "respiratory": [
+        {"test": "Chest X-ray", "rationale": "Assess lung fields and cardiac silhouette", "urgency": "urgent"},
+        {"test": "SpO2 / ABG", "rationale": "Quantify hypoxia severity", "urgency": "immediate"},
+        {"test": "CBC", "rationale": "Detect infection or anaemia", "urgency": "urgent"},
+    ],
+    "cardiac": [
+        {"test": "12-lead ECG", "rationale": "Rule out ST-elevation MI and arrhythmia", "urgency": "immediate"},
+        {"test": "Troponin I/T", "rationale": "Biomarker for myocardial injury", "urgency": "immediate"},
+        {"test": "Chest X-ray", "rationale": "Assess cardiac size and pulmonary oedema", "urgency": "urgent"},
+    ],
+    "neurological": [
+        {"test": "Non-contrast CT Head", "rationale": "Exclude haemorrhage or mass", "urgency": "immediate"},
+        {"test": "Blood glucose", "rationale": "Rule out hypoglycaemia mimicking stroke", "urgency": "immediate"},
+        {"test": "CBC + CRP", "rationale": "Screen for infectious cause", "urgency": "urgent"},
+    ],
+    "gastrointestinal": [
+        {"test": "Liver function tests", "rationale": "Assess hepatobiliary involvement", "urgency": "urgent"},
+        {"test": "Serum amylase / lipase", "rationale": "Screen for pancreatitis", "urgency": "urgent"},
+        {"test": "Abdominal ultrasound", "rationale": "Visualise solid organs and free fluid", "urgency": "routine"},
+    ],
+    "trauma": [
+        {"test": "Full trauma series X-rays", "rationale": "Identify fractures and internal injury", "urgency": "immediate"},
+        {"test": "FAST ultrasound", "rationale": "Detect haemoperitoneum", "urgency": "immediate"},
+        {"test": "CBC + coagulation screen", "rationale": "Baseline haematology post-trauma", "urgency": "urgent"},
+    ],
+    "renal": [
+        {"test": "Urine dipstick / microscopy", "rationale": "Detect infection, blood, or casts", "urgency": "urgent"},
+        {"test": "Serum creatinine / eGFR", "rationale": "Assess renal function", "urgency": "urgent"},
+        {"test": "Renal ultrasound", "rationale": "Exclude obstruction", "urgency": "routine"},
+    ],
+    "endocrine": [
+        {"test": "Blood glucose (capillary + venous)", "rationale": "Diagnose hyper/hypoglycaemia", "urgency": "immediate"},
+        {"test": "HbA1c", "rationale": "Long-term glycaemic control assessment", "urgency": "routine"},
+        {"test": "Thyroid function tests", "rationale": "Rule out thyroid emergency", "urgency": "urgent"},
+    ],
+}
+
+_HIGH_FEVER_TESTS = [
+    {"test": "Blood cultures (×2)", "rationale": "Identify bacteraemia / sepsis source", "urgency": "immediate"},
+    {"test": "CBC + CRP + procalcitonin", "rationale": "Sepsis work-up", "urgency": "immediate"},
+    {"test": "Urinalysis + urine culture", "rationale": "Common infection source", "urgency": "urgent"},
+]
+
+_SEVERE_PAIN_TESTS = [
+    {"test": "Serum lactate", "rationale": "Assess tissue perfusion in severe pain states", "urgency": "urgent"},
+]
+
+_PEDIATRIC_TESTS = [
+    {"test": "Peripheral blood smear", "rationale": "Paediatric infectious and haematological screen", "urgency": "urgent"},
+]
+
+_ELDERLY_VITALS_TESTS = [
+    {"test": "Electrolytes + renal panel", "rationale": "Elderly patients at risk of electrolyte disturbance", "urgency": "urgent"},
+]
+
+
+def _deduplicate(recs: list[dict]) -> list[TestRecommendation]:
+    seen: set[str] = set()
+    out: list[TestRecommendation] = []
+    for r in recs:
+        key = r["test"].lower()
+        if key not in seen:
+            seen.add(key)
+            out.append(TestRecommendation(**r))
+    return out
+
+
+def generate_test_recommendations(payload: TestRecommendationRequest) -> TestRecommendationResponse:
+    recs: list[dict] = []
+
+    # Complaint-system rules
+    complaint = (payload.chief_complaint_system or "").lower().strip()
+    if complaint in _COMPLAINT_TESTS:
+        recs.extend(_COMPLAINT_TESTS[complaint])
+
+    # High fever (>= 38.5 °C)
+    if payload.temperature_c is not None and payload.temperature_c >= 38.5:
+        recs.extend(_HIGH_FEVER_TESTS)
+
+    # Severe pain (>= 7 / 10)
+    if payload.pain_score is not None and payload.pain_score >= 7:
+        recs.extend(_SEVERE_PAIN_TESTS)
+
+    # Paediatric (age <= 15)
+    if payload.age is not None and payload.age <= 15:
+        recs.extend(_PEDIATRIC_TESTS)
+
+    # Elderly (> 65) with borderline vitals
+    if payload.age is not None and payload.age > 65:
+        recs.extend(_ELDERLY_VITALS_TESTS)
+
+    # Priority class 1 / 2 always warrants basic resuscitation panel
+    if payload.priority_class is not None and payload.priority_class <= 2:
+        recs = [
+            {"test": "ABG (arterial blood gas)", "rationale": "Critical patient — assess oxygenation and acid-base", "urgency": "immediate"},
+            {"test": "Stat CBC + CMP + coagulation", "rationale": "Baseline panel for critical triage", "urgency": "immediate"},
+            *recs,
+        ]
+
+    # Fallback if no rules fired
+    if not recs:
+        recs = [
+            {"test": "CBC", "rationale": "Standard baseline haematology", "urgency": "routine"},
+            {"test": "Metabolic panel", "rationale": "Baseline chemistry screen", "urgency": "routine"},
+        ]
+
+    return TestRecommendationResponse(
+        recommendations=_deduplicate(recs),
+        source="rule_based_v1",
+        low_confidence=len(recs) < 2,
+    )
+
+
 def canonicalize_category_token(value: str) -> str:
     return "".join(ch for ch in value.strip().casefold() if ch.isalnum())
 
@@ -458,3 +600,20 @@ async def predict(payload: PredictionRequest, request: Request) -> PredictionRes
     except Exception as exc:
         logger.exception("Prediction failed")
         raise HTTPException(status_code=500, detail="Prediction failed") from exc
+
+
+@app.post("/test-recommendations", response_model=TestRecommendationResponse)
+async def test_recommendations(payload: TestRecommendationRequest) -> TestRecommendationResponse:
+    """
+    Rule-based test recommendation engine.
+
+    Accepts the same clinical fields used by /predict (all optional) and returns
+    a prioritised list of diagnostic tests with urgency labels. The rule engine
+    is the baseline; a supervised model can be hot-swapped in later by replacing
+    the generate_test_recommendations() call.
+    """
+    try:
+        return generate_test_recommendations(payload)
+    except Exception as exc:
+        logger.exception("Test recommendation failed")
+        raise HTTPException(status_code=500, detail="Recommendation engine error") from exc

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 const { Token, Queue } = require('../models/Queue');
+const { notifyTokenCalled, notifyQueuePaused } = require('../services/notificationService');
 const {
   ACTIVE_TOKEN_STATUSES,
   buildDayQuery,
@@ -273,6 +274,12 @@ router.post('/next', async (req, res) => {
 
     await recomputeWaitingQueue(doctorId, queue.avgConsultationMinutes, dateString);
 
+    // Push notification — non-fatal if it fails
+    const patientId = nextToken.patient?._id || nextToken.patient;
+    if (patientId) {
+      notifyTokenCalled(patientId, nextToken.tokenNumber).catch(() => {});
+    }
+
     res.json({
       success: true,
       message: `Now calling Token #${nextToken.tokenNumber} — ${nextToken.patient?.name}`,
@@ -332,13 +339,27 @@ router.post('/pause', async (req, res) => {
       });
     }
 
-    const queue = await Queue.findOne({ doctor: doctorId, date: dateString });
+    const queue = await Queue.findOne({ doctor: doctorId, date: dateString }).populate('doctor', 'name');
     if (!queue) {
       return res.status(404).json({ success: false, message: 'No queue found for today' });
     }
 
     queue.isPaused = paused;
     await queue.save();
+
+    // Push notifications to all waiting patients — non-fatal
+    const waitingTokens = await Token.find({
+      doctor: doctorId,
+      status: 'waiting',
+      createdAt: buildDayQuery(dateString),
+    }).lean();
+
+    const doctorName = queue.doctor?.name || '';
+    for (const token of waitingTokens) {
+      if (token.patient) {
+        notifyQueuePaused(token.patient, doctorName, paused).catch(() => {});
+      }
+    }
 
     res.json({
       success: true,
