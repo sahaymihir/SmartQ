@@ -88,7 +88,7 @@ class ComposeMainActivity : ComponentActivity() {
                                 onSuccess = { queue ->
                                     patientRefreshing = false
                                     patientPosition = queue.position
-                                    patientQueueLength = queue.position
+                                    patientQueueLength = deriveQueueLengthFromStatus(queue)
                                     patientEta = queue.etaMinutes
                                     patientQueueAhead = buildAheadPlaceholders(queue.position)
                                     patientPriority = queue.triagePriorityClass?.let(::priorityClassToLabel)
@@ -175,7 +175,7 @@ class ComposeMainActivity : ComponentActivity() {
                             onJoined = { token ->
                                 showToast(token.message ?: "Queue joined successfully")
                                 patientPosition = token.position
-                                patientQueueLength = token.position
+                                patientQueueLength = deriveQueueLengthFromJoin(token)
                                 patientEta = token.etaMinutes
                                 patientQueueAhead = buildAheadPlaceholders(token.position)
                                 patientPriority = token.triagePriorityClass?.let(::priorityClassToLabel)
@@ -194,7 +194,7 @@ class ComposeMainActivity : ComponentActivity() {
                             onSuccess = { queue ->
                                 patientRefreshing = false
                                 patientPosition = queue.position
-                                patientQueueLength = queue.position
+                                patientQueueLength = deriveQueueLengthFromStatus(queue)
                                 patientEta = queue.etaMinutes
                                 patientQueueAhead = buildAheadPlaceholders(queue.position)
                                 patientPriority = queue.triagePriorityClass?.let(::priorityClassToLabel)
@@ -555,6 +555,16 @@ class ComposeMainActivity : ComponentActivity() {
         return (1..count).map { index ->
             Triple("Queue Patient #$index", "--", "normal")
         }
+    }
+
+    private fun deriveQueueLengthFromStatus(queue: QueueResponse): Int {
+        val explicitQueueSize = queue.queue?.size ?: 0
+        if (explicitQueueSize > 0) return explicitQueueSize
+        return maxOf(queue.tokenNumber, queue.position)
+    }
+
+    private fun deriveQueueLengthFromJoin(token: TokenResponse): Int {
+        return maxOf(token.tokenNumber, token.position)
     }
 
     private fun showToast(message: String) {
