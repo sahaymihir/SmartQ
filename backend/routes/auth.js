@@ -15,7 +15,10 @@ const generateToken = (userId) => {
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/auth/register
-// Body: { name, email, password, phone, age, role }
+// Body: { name, email, password, phone, age }
+// Public endpoint — always creates a PATIENT account.
+// Staff (doctor / nurse / admin / superuser) must be created
+// by an admin or superuser via POST /api/users.
 // ─────────────────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
@@ -29,6 +32,16 @@ router.post('/register', async (req, res) => {
       });
     }
 
+    // Public registration is patient-only.
+    // Reject any attempt to register as a privileged role.
+    const requestedRole = (role || 'patient').toLowerCase();
+    if (requestedRole !== 'patient') {
+      return res.status(403).json({
+        success: false,
+        message: 'Staff accounts (doctor / nurse / admin) must be created by an administrator. Please contact your hospital admin.'
+      });
+    }
+
     // Check if email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -38,14 +51,14 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Create user (password hashed in pre-save hook)
+    // Create patient account
     const user = await User.create({
       name,
       email,
       password,
       phone,
       age: parseInt(age),
-      role: role || 'patient'
+      role: 'patient'
     });
 
     const token = generateToken(user._id);
@@ -59,6 +72,8 @@ router.post('/register', async (req, res) => {
         email: user.email,
         role: user.role,
         age: user.age,
+        staffId: user.staffId || null,
+        specialty: user.specialty || '',
         priorityScore: user.priorityScore
       }
     });
@@ -120,6 +135,8 @@ router.post('/login', async (req, res) => {
         email: user.email,
         role: user.role,
         age: user.age,
+        staffId: user.staffId || null,
+        specialty: user.specialty || '',
         priorityScore: user.priorityScore
       }
     });

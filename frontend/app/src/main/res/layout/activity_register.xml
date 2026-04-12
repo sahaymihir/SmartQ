@@ -173,52 +173,16 @@
 
                     <View android:layout_width="0dp" android:layout_height="20dp"/>
 
-                    <!-- Role Selection -->
+                    <!-- Patient-only notice -->
                     <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/select_role"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/primary"
-                        android:textAllCaps="true"
-                        android:letterSpacing="0.1"
-                        android:layout_marginBottom="8dp"/>
-
-                    <RadioGroup
-                        android:id="@+id/rgRole"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-
-                        <com.google.android.material.radiobutton.MaterialRadioButton
-                            android:id="@+id/rbPatient"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/role_patient"
-                            android:checked="true"
-                            android:textColor="@color/on_surface"
-                            android:buttonTint="@color/primary"/>
-
-                        <com.google.android.material.radiobutton.MaterialRadioButton
-                            android:id="@+id/rbDoctor"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/role_doctor"
-                            android:textColor="@color/on_surface"
-                            android:buttonTint="@color/primary"/>
-
-                        <com.google.android.material.radiobutton.MaterialRadioButton
-                            android:id="@+id/rbAdmin"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/role_admin"
-                            android:textColor="@color/on_surface"
-                            android:buttonTint="@color/primary"/>
-                    </RadioGroup>
+                        android:text="@string/register_patient_only_note"
+                        android:textSize="12sp"
+                        android:textColor="@color/on_surface_variant"
+                        android:background="@color/surface_container"
+                        android:padding="10dp"
+                        android:layout_marginBottom="16dp"/>
 
                     <!-- Error Text -->
                     <TextView

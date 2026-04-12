@@ -1,0 +1,434 @@
+package com.example.smartqueue.ui.admin;
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.util.Patterns;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.smartqueue.R;
+import com.example.smartqueue.models.request.CreateUserRequest;
+import com.example.smartqueue.models.response.MessageResponse;
+import com.example.smartqueue.models.response.UserListResponse;
+import com.example.smartqueue.network.ApiClient;
+import com.example.smartqueue.network.ApiService;
+import com.example.smartqueue.utils.SessionManager;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+/**
+ * User Management screen — lets admins and superusers view, create, and delete
+ * doctors, nurses, patients (and admins/superusers for superuser role only).
+ *
+ * Staff members (doctor / nurse) display their auto-generated Staff ID badge
+ * (e.g. DOC-0001, NRS-0002) throughout this screen.
+ */
+public class UserManagementActivity extends AppCompatActivity {
+
+    private ChipGroup chipGroupFilter;
+    private Chip chipAll, chipDoctors, chipNurses, chipPatients, chipAdmins;
+    private LinearLayout layoutUserList;
+    private ProgressBar progressBar;
+    private TextView tvEmpty, tvTitle;
+    private MaterialButton btnAddUser, btnBack;
+
+    private SessionManager sessionManager;
+    private ApiService apiService;
+    private boolean isSuperuser = false;
+
+    /** Currently selected role filter. Empty string = all. */
+    private String currentRoleFilter = "";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_user_management);
+
+        sessionManager = new SessionManager(this);
+        apiService = ApiClient.getInstance().create(ApiService.class);
+        isSuperuser = sessionManager.isSuperuser();
+
+        bindViews();
+        setupClickListeners();
+        loadUsers("");
+    }
+
+    private void bindViews() {
+        chipGroupFilter = findViewById(R.id.chipGroupFilter);
+        chipAll         = findViewById(R.id.chipAll);
+        chipDoctors     = findViewById(R.id.chipDoctors);
+        chipNurses      = findViewById(R.id.chipNurses);
+        chipPatients    = findViewById(R.id.chipPatients);
+        chipAdmins      = findViewById(R.id.chipAdmins);
+        layoutUserList  = findViewById(R.id.layoutUserList);
+        progressBar     = findViewById(R.id.progressBar);
+        tvEmpty         = findViewById(R.id.tvEmpty);
+        tvTitle         = findViewById(R.id.tvTitle);
+        btnAddUser      = findViewById(R.id.btnAddUser);
+        btnBack         = findViewById(R.id.btnBack);
+
+        // Only superusers can see admin accounts
+        chipAdmins.setVisibility(isSuperuser ? View.VISIBLE : View.GONE);
+
+        tvTitle.setText(isSuperuser ? "User Management (Superuser)" : "User Management");
+    }
+
+    private void setupClickListeners() {
+        btnBack.setOnClickListener(v -> finish());
+
+        btnAddUser.setOnClickListener(v -> showCreateUserDialog());
+
+        chipGroupFilter.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (checkedIds.isEmpty()) {
+                currentRoleFilter = "";
+                loadUsers("");
+                return;
+            }
+            int id = checkedIds.get(0);
+            if (id == R.id.chipAll)      currentRoleFilter = "";
+            else if (id == R.id.chipDoctors)  currentRoleFilter = "doctor";
+            else if (id == R.id.chipNurses)   currentRoleFilter = "nurse";
+            else if (id == R.id.chipPatients) currentRoleFilter = "patient";
+            else if (id == R.id.chipAdmins)   currentRoleFilter = "admin";
+            loadUsers(currentRoleFilter);
+        });
+    }
+
+    // ── Load Users ────────────────────────────────────────────
+
+    private void loadUsers(String roleFilter) {
+        progressBar.setVisibility(View.VISIBLE);
+        tvEmpty.setVisibility(View.GONE);
+        layoutUserList.removeAllViews();
+
+        String filterParam = TextUtils.isEmpty(roleFilter) ? null : roleFilter;
+
+        apiService.listUsers(filterParam, null, 1, 100).enqueue(
+                new Callback<UserListResponse>() {
+                    @Override
+                    public void onResponse(Call<UserListResponse> call,
+                                           Response<UserListResponse> response) {
+                        progressBar.setVisibility(View.GONE);
+                        if (response.isSuccessful() && response.body() != null
+                                && response.body().isSuccess()) {
+                            List<UserListResponse.UserEntry> users = response.body().getUsers();
+                            if (users == null || users.isEmpty()) {
+                                tvEmpty.setVisibility(View.VISIBLE);
+                            } else {
+                                for (UserListResponse.UserEntry user : users) {
+                                    layoutUserList.addView(buildUserCard(user));
+                                }
+                            }
+                        } else {
+                            tvEmpty.setVisibility(View.VISIBLE);
+                            tvEmpty.setText("Failed to load users.");
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<UserListResponse> call, Throwable t) {
+                        progressBar.setVisibility(View.GONE);
+                        tvEmpty.setVisibility(View.VISIBLE);
+                        tvEmpty.setText("Network error. Check connection.");
+                    }
+                });
+    }
+
+    // ── Build user card ───────────────────────────────────────
+
+    private View buildUserCard(UserListResponse.UserEntry user) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        int pad = dp(12);
+        int margin = dp(8);
+        card.setPadding(pad, pad, pad, pad);
+
+        // Card background
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setCornerRadius(dp(8));
+        bg.setColor(0xFFF5F5F5);
+        bg.setStroke(dp(1), 0xFFE0E0E0);
+        card.setBackground(bg);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, 0, margin);
+        card.setLayoutParams(lp);
+
+        // ── Row 1: name + role badge ──────────────────────
+        LinearLayout row1 = row();
+        TextView tvName = text(user.getDisplayLabel(), 15, true, 0xFF1A1A2E);
+        tvName.setLayoutParams(weightedLP(1));
+        row1.addView(tvName);
+
+        TextView tvRoleBadge = roleBadge(user.getRoleBadge(), user.getRole());
+        row1.addView(tvRoleBadge);
+        card.addView(row1);
+
+        // ── Row 2: staff ID (if present) ─────────────────
+        if (user.getStaffId() != null && !user.getStaffId().isEmpty()) {
+            TextView tvStaffId = text("Staff ID: " + user.getStaffId(), 12, false, 0xFF1565C0);
+            tvStaffId.setPadding(0, dp(2), 0, dp(2));
+            card.addView(tvStaffId);
+        }
+
+        // ── Row 3: specialty (doctors) ────────────────────
+        if ("doctor".equals(user.getRole())
+                && user.getSpecialty() != null && !user.getSpecialty().isEmpty()) {
+            card.addView(text("Specialty: " + user.getSpecialty(), 12, false, 0xFF555555));
+        }
+
+        // ── Row 4: email + phone ──────────────────────────
+        card.addView(text(user.getEmail() + "  ·  " + user.getPhone(), 12, false, 0xFF777777));
+
+        // ── Row 5: age + delete button ────────────────────
+        LinearLayout row5 = row();
+        row5.setPadding(0, dp(4), 0, 0);
+        TextView tvAge = text("Age: " + user.getAge(), 12, false, 0xFF777777);
+        tvAge.setLayoutParams(weightedLP(1));
+        row5.addView(tvAge);
+
+        MaterialButton btnDelete = new MaterialButton(this,
+                null, com.google.android.material.R.attr.materialButtonOutlinedStyle);
+        btnDelete.setText("Delete");
+        btnDelete.setTextSize(12);
+        btnDelete.setTextColor(0xFFC62828);
+        btnDelete.setStrokeColor(android.content.res.ColorStateList.valueOf(0xFFC62828));
+        btnDelete.setMinWidth(0);
+        btnDelete.setMinHeight(0);
+        btnDelete.setPadding(dp(8), dp(2), dp(8), dp(2));
+        int[] insets = {0, 0, 0, 0};
+        btnDelete.setInsetTop(0);
+        btnDelete.setInsetBottom(0);
+        LinearLayout.LayoutParams deleteLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, dp(32));
+        btnDelete.setLayoutParams(deleteLp);
+        btnDelete.setOnClickListener(v -> confirmDelete(user));
+        row5.addView(btnDelete);
+        card.addView(row5);
+
+        return card;
+    }
+
+    // ── Delete confirmation ───────────────────────────────────
+
+    private void confirmDelete(UserListResponse.UserEntry user) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete " + user.getRoleBadge() + "?")
+                .setMessage("Are you sure you want to permanently delete " + user.getName()
+                        + (user.getStaffId() != null && !user.getStaffId().isEmpty()
+                           ? " (" + user.getStaffId() + ")" : "")
+                        + "?\n\nThis action cannot be undone.")
+                .setPositiveButton("Delete", (d, w) -> deleteUser(String.valueOf(user.getId()), user.getName()))
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void deleteUser(String userId, String name) {
+        apiService.deleteUser(userId).enqueue(new Callback<MessageResponse>() {
+            @Override
+            public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
+                if (response.isSuccessful() && response.body() != null
+                        && response.body().isSuccess()) {
+                    Toast.makeText(UserManagementActivity.this,
+                            name + " deleted.", Toast.LENGTH_SHORT).show();
+                    loadUsers(currentRoleFilter);
+                } else {
+                    String msg = (response.body() != null && response.body().getMessage() != null)
+                            ? response.body().getMessage() : "Delete failed.";
+                    Toast.makeText(UserManagementActivity.this, msg, Toast.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<MessageResponse> call, Throwable t) {
+                Toast.makeText(UserManagementActivity.this,
+                        "Network error", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    // ── Create User dialog ────────────────────────────────────
+
+    private void showCreateUserDialog() {
+        View dialogView = LayoutInflater.from(this)
+                .inflate(R.layout.dialog_create_user, null);
+
+        TextInputEditText etName     = dialogView.findViewById(R.id.etDuName);
+        TextInputEditText etEmail    = dialogView.findViewById(R.id.etDuEmail);
+        TextInputEditText etPhone    = dialogView.findViewById(R.id.etDuPhone);
+        TextInputEditText etAge      = dialogView.findViewById(R.id.etDuAge);
+        TextInputEditText etPassword = dialogView.findViewById(R.id.etDuPassword);
+        Spinner spinnerRole          = dialogView.findViewById(R.id.spinnerRole);
+        TextInputLayout tilSpecialty = dialogView.findViewById(R.id.tilDuSpecialty);
+        TextInputEditText etSpecialty = dialogView.findViewById(R.id.etDuSpecialty);
+
+        // Populate role spinner based on current user's permission level
+        List<String> roles = new ArrayList<>();
+        roles.add("doctor");
+        roles.add("nurse");
+        roles.add("patient");
+        if (isSuperuser) {
+            roles.add("admin");
+            roles.add("superuser");
+        }
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, roles);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerRole.setAdapter(adapter);
+
+        // Show specialty field only for doctors
+        spinnerRole.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                tilSpecialty.setVisibility(
+                        "doctor".equals(roles.get(position)) ? View.VISIBLE : View.GONE);
+            }
+            @Override public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+        new AlertDialog.Builder(this)
+                .setTitle("Add New User")
+                .setView(dialogView)
+                .setPositiveButton("Create", (dialog, which) -> {
+                    String name      = etName.getText()     != null ? etName.getText().toString().trim()     : "";
+                    String email     = etEmail.getText()    != null ? etEmail.getText().toString().trim()    : "";
+                    String phone     = etPhone.getText()    != null ? etPhone.getText().toString().trim()    : "";
+                    String ageStr    = etAge.getText()      != null ? etAge.getText().toString().trim()      : "";
+                    String password  = etPassword.getText() != null ? etPassword.getText().toString().trim() : "";
+                    String specialty = etSpecialty.getText() != null ? etSpecialty.getText().toString().trim() : "";
+                    String role      = roles.get(spinnerRole.getSelectedItemPosition());
+
+                    if (TextUtils.isEmpty(name) || TextUtils.isEmpty(email)
+                            || TextUtils.isEmpty(phone) || TextUtils.isEmpty(ageStr)
+                            || TextUtils.isEmpty(password)) {
+                        Toast.makeText(this, "All fields are required.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                        Toast.makeText(this, "Invalid email.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    int age;
+                    try {
+                        age = Integer.parseInt(ageStr);
+                        if (age < 1 || age > 120) throw new NumberFormatException();
+                    } catch (NumberFormatException e) {
+                        Toast.makeText(this, "Invalid age (1–120).", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (password.length() < 6) {
+                        Toast.makeText(this, "Password must be at least 6 characters.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    submitCreateUser(new CreateUserRequest(name, email, password, phone, age, role,
+                            "doctor".equals(role) ? specialty : null));
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void submitCreateUser(CreateUserRequest req) {
+        apiService.createUser(req).enqueue(new Callback<MessageResponse>() {
+            @Override
+            public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
+                if (response.isSuccessful() && response.body() != null
+                        && response.body().isSuccess()) {
+                    Toast.makeText(UserManagementActivity.this,
+                            response.body().getMessage(), Toast.LENGTH_LONG).show();
+                    loadUsers(currentRoleFilter);
+                } else {
+                    String msg = (response.body() != null && response.body().getMessage() != null)
+                            ? response.body().getMessage() : "Failed to create user.";
+                    Toast.makeText(UserManagementActivity.this, msg, Toast.LENGTH_LONG).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<MessageResponse> call, Throwable t) {
+                Toast.makeText(UserManagementActivity.this,
+                        "Network error", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    // ── UI helpers ─────────────────────────────────────────────
+
+    private LinearLayout row() {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        return row;
+    }
+
+    private TextView text(String content, float size, boolean bold, int color) {
+        TextView tv = new TextView(this);
+        tv.setText(content);
+        tv.setTextSize(size);
+        tv.setTextColor(color);
+        if (bold) tv.setTypeface(null, android.graphics.Typeface.BOLD);
+        return tv;
+    }
+
+    private TextView roleBadge(String label, String role) {
+        TextView tv = new TextView(this);
+        tv.setText(label);
+        tv.setTextSize(10);
+        tv.setTextColor(0xFFFFFFFF);
+        tv.setTypeface(null, android.graphics.Typeface.BOLD);
+        tv.setPadding(dp(6), dp(2), dp(6), dp(2));
+
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setCornerRadius(dp(4));
+        bg.setColor(roleBadgeColor(role));
+        tv.setBackground(bg);
+        return tv;
+    }
+
+    private int roleBadgeColor(String role) {
+        if (role == null) return 0xFF607D8B;
+        switch (role.toLowerCase()) {
+            case "doctor":    return 0xFF1565C0;
+            case "nurse":     return 0xFF2E7D32;
+            case "admin":     return 0xFF6A1B9A;
+            case "superuser": return 0xFFC62828;
+            default:          return 0xFF607D8B;
+        }
+    }
+
+    private LinearLayout.LayoutParams weightedLP(int weight) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, weight);
+        return lp;
+    }
+
+    private int dp(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density);
+    }
+}

@@ -20,6 +20,7 @@ import com.example.smartqueue.models.response.MlOpsLogsResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
+import com.example.smartqueue.ui.admin.UserManagementActivity;
 import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
@@ -40,7 +41,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
     private TextView tvAdminName, tvCurrentlyServing, tvPausedBadge, tvUrgentAlert;
     private TextView tvStatWaiting, tvStatDone, tvStatAvg, tvQueueLabel;
     private TextView tvMlOpsStatus, tvMlOpsSummary, tvMlOpsLastEvent, tvMlOpsLastUpdated, tvMlOpsEmpty;
-    private MaterialButton btnCallNext, btnPause, btnLogout, btnModelEval, btnSeedData, btnRefreshMlOps;
+    private MaterialButton btnCallNext, btnPause, btnLogout, btnModelEval, btnSeedData, btnRefreshMlOps, btnManageUsers;
     private LinearLayout layoutQueueList, layoutMlOpsLogs;
 
     private SessionManager sessionManager;
@@ -92,9 +93,10 @@ public class AdminDashboardActivity extends AppCompatActivity {
         btnLogout          = findViewById(R.id.btnLogout);
 
         tvAdminName.setText(sessionManager.getName());
-        btnModelEval   = findViewById(R.id.btnModelEval);
-        btnSeedData    = findViewById(R.id.btnSeedData);
+        btnModelEval    = findViewById(R.id.btnModelEval);
+        btnSeedData     = findViewById(R.id.btnSeedData);
         btnRefreshMlOps = findViewById(R.id.btnRefreshMlOps);
+        btnManageUsers  = findViewById(R.id.btnManageUsers);
         tvMlOpsStatus = findViewById(R.id.tvMlOpsStatus);
         tvMlOpsSummary = findViewById(R.id.tvMlOpsSummary);
         tvMlOpsLastEvent = findViewById(R.id.tvMlOpsLastEvent);
@@ -198,6 +200,15 @@ public class AdminDashboardActivity extends AppCompatActivity {
         );
 
         btnRefreshMlOps.setOnClickListener(v -> loadMlOpsLogs(true));
+
+        // ── Emergency Patient ─────────────────────────────
+        MaterialButton btnEmergencyPatient = findViewById(R.id.btnEmergencyPatient);
+        btnEmergencyPatient.setOnClickListener(v -> showEmergencyDialog());
+
+        // ── Manage Users ──────────────────────────────────
+        btnManageUsers.setOnClickListener(v ->
+                startActivity(new Intent(this,
+                        UserManagementActivity.class)));
     }
 
     @Override
@@ -566,5 +577,81 @@ public class AdminDashboardActivity extends AppCompatActivity {
         } catch (ParseException e) {
             return "--:--:--";
         }
+    }
+
+    /**
+     * Show an emergency patient intake dialog.
+     * Staff provides the patient ID (from existing records) and an optional
+     * brief description of reported symptoms. The backend creates a KTAS-1
+     * token and routes it to the immediate_review lane.
+     */
+    private void showEmergencyDialog() {
+        android.widget.EditText etPatientId = new android.widget.EditText(this);
+        etPatientId.setHint("Patient ID (required)");
+        etPatientId.setSingleLine(true);
+
+        android.widget.EditText etSymptoms = new android.widget.EditText(this);
+        etSymptoms.setHint("Reported symptoms (optional)");
+        etSymptoms.setSingleLine(true);
+
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        layout.setPadding(pad, pad, pad, 0);
+        layout.addView(etPatientId);
+        layout.addView(etSymptoms);
+
+        new AlertDialog.Builder(this)
+                .setTitle("⚠ Emergency Patient Intake")
+                .setMessage("Creates an immediate-review token (KTAS 1) bypassing self-intake. Register the patient first if they are new.")
+                .setView(layout)
+                .setPositiveButton("Create Emergency Token", (dialog, which) -> {
+                    String patientId = etPatientId.getText().toString().trim();
+                    String symptoms = etSymptoms.getText().toString().trim();
+                    if (patientId.isEmpty()) {
+                        Toast.makeText(this, "Patient ID is required", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    submitEmergencyToken(patientId, symptoms);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void submitEmergencyToken(String patientId, String symptoms) {
+        com.example.smartqueue.models.request.EmergencyRequest req =
+                new com.example.smartqueue.models.request.EmergencyRequest(
+                        patientId, doctorId, symptoms);
+
+        apiService.createEmergencyToken(req).enqueue(
+                new Callback<com.example.smartqueue.models.response.TokenResponse>() {
+                    @Override
+                    public void onResponse(
+                            Call<com.example.smartqueue.models.response.TokenResponse> call,
+                            Response<com.example.smartqueue.models.response.TokenResponse> response) {
+                        if (response.isSuccessful() && response.body() != null
+                                && response.body().isSuccess()) {
+                            com.example.smartqueue.models.response.TokenResponse body = response.body();
+                            Toast.makeText(AdminDashboardActivity.this,
+                                    body.getMessage() != null
+                                            ? body.getMessage()
+                                            : "Emergency Token #" + body.getTokenNumber() + " created",
+                                    Toast.LENGTH_LONG).show();
+                            loadQueue();
+                        } else {
+                            Toast.makeText(AdminDashboardActivity.this,
+                                    "Failed to create emergency token. Check patient ID.",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(
+                            Call<com.example.smartqueue.models.response.TokenResponse> call,
+                            Throwable t) {
+                        Toast.makeText(AdminDashboardActivity.this,
+                                "Network error", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 }

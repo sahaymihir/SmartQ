@@ -243,6 +243,7 @@ const buildFallbackDecision = (patient, requestBody = {}) => {
       overrideReason,
       triageLowConfidence: false,
     }),
+    testRecommendations: [],
   };
 };
 
@@ -312,6 +313,11 @@ const buildPatientFlowDecision = (patient, requestBody = {}, flow = {}) => {
   const priorityFinalScore = computePriorityFinalScore(components, baseScore);
   const triageSource = flow.priority?.source || flow.flowSource || 'patient_flow_v1';
 
+  // Extract test recommendations from the ML flow (used for high-wait suggestions)
+  const testRecommendations = Array.isArray(flow.tests?.recommendations)
+    ? flow.tests.recommendations
+    : [];
+
   return {
     ageBasedPriorityScore,
     mlPriorityScore,
@@ -344,6 +350,7 @@ const buildPatientFlowDecision = (patient, requestBody = {}, flow = {}) => {
       overrideReason,
       triageLowConfidence,
     }),
+    testRecommendations,
   };
 };
 
@@ -453,6 +460,7 @@ const determineTriageDecision = async (patient, requestBody = {}) => {
         overrideReason,
         triageLowConfidence,
       }),
+      testRecommendations: [],
     };
   } catch (error) {
     console.warn('⚠️  Triage ML unavailable, using age-based fallback:', error.message);
