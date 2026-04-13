@@ -40,6 +40,7 @@
         <activity android:name=".ui.auth.LoginActivity" android:exported="false"/>
         <activity android:name=".ui.auth.RegisterActivity" android:exported="false"/>
         <activity android:name=".ui.patient.PatientHomeActivity" android:exported="false"/>
+        <activity android:name=".ui.patient.PatientQueueIntakeActivity" android:exported="false"/>
         <activity android:name=".ui.admin.AdminDashboardActivity" android:exported="false"/>
         <activity android:name=".ui.admin.UserManagementActivity" android:exported="false"/>
         <activity android:name=".ui.admin.ModelEvalActivity" android:exported="false"/>

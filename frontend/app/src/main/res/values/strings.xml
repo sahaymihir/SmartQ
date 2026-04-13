@@ -84,8 +84,9 @@
     <string name="test_recs_dismiss">Dismiss</string>
     <string name="patient_notifications_rationale">Enable notifications so SmartQ can alert you when you are next in line or when the doctor has called you.</string>
     <string name="join_queue_loading_doctors">Loading doctors...</string>
-    <string name="join_queue_select_doctor">Select Doctor To Continue</string>
-    <string name="join_queue_save_request">Save Queue Request</string>
+    <string name="join_queue_select_doctor">Select a doctor to continue</string>
+    <string name="join_queue_save_request">Save queue request</string>
+    <string name="join_queue_request_slot">Request queue slot</string>
 
     <!-- User Management -->
     <string name="user_management_title">User Management</string>

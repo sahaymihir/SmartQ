@@ -665,6 +665,13 @@ router.post('/snooze', protect, async (req, res) => {
       });
     }
 
+    if (token.position <= 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot snooze when you are next or second in line',
+      });
+    }
+
     const totalWaiting = await Token.countDocuments({
       doctor: token.doctor,
       status: token.status,

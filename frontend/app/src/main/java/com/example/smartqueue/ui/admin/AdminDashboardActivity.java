@@ -169,7 +169,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
                 public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
                     if (response.isSuccessful() && response.body() != null) {
                         isPaused = !isPaused;
-                        btnPause.setText(isPaused ? "▶ Resume" : "⏸ Pause");
+                        btnPause.setText(isPaused ? "Resume Queue" : "Pause Queue");
                         tvPausedBadge.setVisibility(isPaused ? View.VISIBLE : View.GONE);
                         Toast.makeText(AdminDashboardActivity.this,
                                 response.body().getMessage(), Toast.LENGTH_SHORT).show();
@@ -302,7 +302,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
                     }
 
                     isPaused = body.isPaused();
-                    btnPause.setText(isPaused ? "▶ Resume" : "⏸ Pause");
+                    btnPause.setText(isPaused ? "Resume Queue" : "Pause Queue");
                     tvPausedBadge.setVisibility(isPaused ? View.VISIBLE : View.GONE);
 
                     int normalWaitingCount = 0;
@@ -336,7 +336,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
                     } else if (currentCalledTokenId != null) {
                         btnCallNext.setText("Finalize Rx & Call Next");
                     } else {
-                        btnCallNext.setText("Call Next ▶");
+                        btnCallNext.setText("Call Next");
                     }
                     updateUrgentAlert(immediateReviewCount);
 
@@ -672,7 +672,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
         layout.addView(etSymptoms);
 
         new AlertDialog.Builder(this)
-                .setTitle("⚠ Emergency Patient Intake")
+                .setTitle("Emergency Patient Intake")
                 .setMessage("Creates an immediate-review token (KTAS 1) bypassing self-intake. Register the patient first if they are new.")
                 .setView(layout)
                 .setPositiveButton("Create Emergency Token", (dialog, which) -> {

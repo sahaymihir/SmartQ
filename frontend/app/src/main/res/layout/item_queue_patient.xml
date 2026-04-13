@@ -14,9 +14,9 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="top"
         android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center_vertical">
+        android:padding="16dp">
 
         <TextView
             android:id="@+id/tvTokenNum"
@@ -37,24 +37,48 @@
             android:layout_marginStart="12dp"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/tvPatientName"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Patient Name"
-                android:textColor="@color/on_surface"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:fontFamily="sans-serif-medium" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvPatientName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Patient Name"
+                    android:textColor="@color/on_surface"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:background="@drawable/bg_status_pill"
+                    android:paddingStart="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="4dp"
+                    android:text="Waiting"
+                    android:textAllCaps="true"
+                    android:textColor="@color/primary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/tvPatientInfo"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Age: 40 | Priority: Normal"
+                android:layout_marginTop="4dp"
+                android:text="Age 40 | Priority Normal"
                 android:textColor="@color/on_surface_variant"
-                android:textSize="13sp"
-                android:layout_marginTop="2dp" />
+                android:textSize="13sp" />
 
             <LinearLayout
                 android:id="@+id/layoutQueueActions"
@@ -69,48 +93,36 @@
                     android:id="@+id/btnQueuePrescription"
                     style="@style/SmartQ.Button.Outlined"
                     android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:text="Prescription"
-                    android:textSize="12sp"
-                    android:textAllCaps="false"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
+                    android:layout_height="36dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
                     android:minWidth="0dp"
-                    android:minHeight="0dp"/>
+                    android:minHeight="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:textAllCaps="false"
+                    android:text="Prescription"
+                    android:textSize="12sp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnQueueNoShow"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    style="@style/SmartQ.Button.Outlined"
                     android:layout_width="wrap_content"
-                        android:layout_height="40dp"
+                    android:layout_height="36dp"
                     android:layout_marginStart="8dp"
-                    android:text="No-show"
+                    android:backgroundTint="@android:color/transparent"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:textAllCaps="false"
+                    android:text="No-Show"
                     android:textColor="@color/error"
                     android:textSize="12sp"
-                    android:textAllCaps="false"
-                        android:gravity="center"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp"
-                    android:minWidth="0dp"
-                    android:minHeight="0dp"/>
+                    app:strokeColor="@color/error" />
             </LinearLayout>
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Waiting"
-            android:textColor="@color/primary"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textAllCaps="true"
-            android:letterSpacing="0.1"
-            android:background="@drawable/bg_status_pill"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp" />
-
     </LinearLayout>
 </androidx.cardview.widget.CardView>

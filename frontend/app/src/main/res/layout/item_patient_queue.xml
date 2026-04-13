@@ -101,16 +101,21 @@
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnItemNoShow"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    style="@style/SmartQ.Button.Outlined"
                     android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:text="No-show"
-                    android:textColor="@color/error"
-                    android:textSize="11sp"
-                    android:textAllCaps="false"
-                    android:padding="0dp"
+                    android:layout_height="36dp"
+                    android:backgroundTint="@android:color/transparent"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
                     android:minWidth="0dp"
-                    android:minHeight="0dp"/>
+                    android:minHeight="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:textAllCaps="false"
+                    android:text="No-Show"
+                    android:textColor="@color/error"
+                    android:textSize="12sp"
+                    app:strokeColor="@color/error" />
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

@@ -86,7 +86,7 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.ViewHolder> 
         }
 
         boolean canPrescribe = "called".equals(status) || "arrived".equals(status);
-        holder.btnPrescription.setVisibility(canPrescribe ? View.VISIBLE : View.INVISIBLE);
+        holder.btnPrescription.setVisibility(canPrescribe ? View.VISIBLE : View.GONE);
         holder.btnPrescription.setEnabled(canPrescribe);
         holder.btnPrescription.setOnClickListener(v -> {
             if (canPrescribe && listener != null) listener.onPrescription(entry);
@@ -134,7 +134,7 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.ViewHolder> 
             case "arrived":
                 return "In consultation";
             case "no_show":
-                return "No-show";
+                return "No-Show";
             case "completed":
                 return "Completed";
             default:
