@@ -123,7 +123,7 @@ public class RegisterActivity extends AppCompatActivity {
 
         if (TextUtils.isEmpty(name))   { tilName.setError("Required"); valid = false; }
         if (TextUtils.isEmpty(email))  { tilEmail.setError("Required"); valid = false; }
-        else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+        else if (!isValidEmail(email)) {
             tilEmail.setError("Invalid email"); valid = false;
         }
         if (TextUtils.isEmpty(phone) || phone.length() != 10 || !TextUtils.isDigitsOnly(phone)) {
@@ -233,5 +233,11 @@ public class RegisterActivity extends AppCompatActivity {
         } catch (Exception ignored) {
         }
         return "Registration failed. Please try again.";
+    }
+
+    private boolean isValidEmail(String email) {
+        return !TextUtils.isEmpty(email)
+                && Patterns.EMAIL_ADDRESS.matcher(email).matches()
+                && !email.contains("..");
     }
 }

@@ -178,7 +178,7 @@
 
                 <View android:layout_width="0dp" android:layout_height="12dp"/>
 
-                <!-- Remember / Reset -->
+                <!-- Remember session -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -194,19 +194,6 @@
                         android:textSize="12sp"
                         android:textColor="@color/on_surface_variant"
                         android:buttonTint="@color/primary"/>
-
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="0dp"
-                        android:layout_weight="1"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/reset_key"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/primary"/>
                 </LinearLayout>
 
                 <!-- Error message -->
@@ -350,7 +337,7 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
+                android:orientation="vertical"
                 android:gravity="center"
                 android:layout_marginTop="16dp">
 
@@ -366,12 +353,12 @@
                     style="@style/Widget.MaterialComponents.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/register_clinic"
+                    android:text="@string/create_account"
                     android:textColor="@color/primary"
                     android:textStyle="bold"
                     android:textSize="14sp"
                     android:textAllCaps="false"
-                    android:layout_marginStart="-8dp"/>
+                    android:layout_marginTop="2dp"/>
             </LinearLayout>
 
             <!-- ═══ Footer ═══ -->
