@@ -59,14 +59,14 @@ public class ModelEvalActivity extends AppCompatActivity {
     private ApiService apiService;
 
     private TextInputEditText etTestSymptoms, etTestAge, etTestTemperature, etTestPainScore, etTestSpo2,
-            etTestRespiratoryRate, etTestHeartRate, etTestSystolicBp, etTestDiastolicBp,
-            etTestGcs, etTestNews2;
+            etTestRespiratoryRate, etTestHeartRate, etTestSystolicBp, etTestDiastolicBp;
     private AutoCompleteTextView etTestChiefComplaint, etTestSex, etTestMentalStatus;
     private MaterialButton btnRunTest, btnBack, btnRefreshHistory;
     private MaterialButton btnExampleCardio, btnExampleFever, btnExampleRash, btnExampleTrauma;
     private LinearLayout layoutTestResult, layoutTestScores, layoutEvalHistory, layoutNoHistory, layoutTestSafetyAlertBlock;
     private TextView tvTestPrioritySummary, tvTestPriorityBreakdown, tvTestSafetySummary,
-            tvTestQueueSummary, tvTestSuggestedTests, tvTestSafetyAlert, tvTestQueueRationale;
+            tvTestQueueSummary, tvTestSuggestedTests, tvTestSafetyAlert, tvTestQueueRationale,
+            tvTestDerivedScores;
     private TextView tvTestPrimarySpecialist, tvTestRoutedSpecialty, tvTestNormalizedSymptoms;
     private TextView tvTestPatientWait;
     private TextView tvTestFactors, tvTestDoctor, tvTestReasoning, tvTestModelSource, tvHistoryCount,
@@ -108,8 +108,6 @@ public class ModelEvalActivity extends AppCompatActivity {
         etTestHeartRate = findViewById(R.id.etTestHeartRate);
         etTestSystolicBp = findViewById(R.id.etTestSystolicBp);
         etTestDiastolicBp = findViewById(R.id.etTestDiastolicBp);
-        etTestGcs = findViewById(R.id.etTestGcs);
-        etTestNews2 = findViewById(R.id.etTestNews2);
         layoutTestResult = findViewById(R.id.layoutTestResult);
         layoutTestScores = findViewById(R.id.layoutTestScores);
         layoutEvalHistory = findViewById(R.id.layoutEvalHistory);
@@ -119,6 +117,7 @@ public class ModelEvalActivity extends AppCompatActivity {
         tvTestPriorityBreakdown = findViewById(R.id.tvTestPriorityBreakdown);
         tvTestSafetySummary = findViewById(R.id.tvTestSafetySummary);
         tvTestSafetyAlert = findViewById(R.id.tvTestSafetyAlert);
+        tvTestDerivedScores = findViewById(R.id.tvTestDerivedScores);
         tvTestQueueSummary = findViewById(R.id.tvTestQueueSummary);
         tvTestQueueRationale = findViewById(R.id.tvTestQueueRationale);
         tvTestSuggestedTests = findViewById(R.id.tvTestSuggestedTests);
@@ -179,9 +178,7 @@ public class ModelEvalActivity extends AppCompatActivity {
                         26.0,
                         118.0,
                         92.0,
-                        58.0,
-                        15,
-                        7.0
+                        58.0
                 )));
 
         btnExampleFever.setOnClickListener(v ->
@@ -197,9 +194,7 @@ public class ModelEvalActivity extends AppCompatActivity {
                         24.0,
                         110.0,
                         104.0,
-                        68.0,
-                        15,
-                        5.0
+                        68.0
                 )));
 
         btnExampleRash.setOnClickListener(v ->
@@ -215,9 +210,7 @@ public class ModelEvalActivity extends AppCompatActivity {
                         16.0,
                         82.0,
                         118.0,
-                        76.0,
-                        15,
-                        1.0
+                        76.0
                 )));
 
         btnExampleTrauma.setOnClickListener(v ->
@@ -234,8 +227,6 @@ public class ModelEvalActivity extends AppCompatActivity {
                         null,
                         null,
                         null,
-                        null,
-                        15,
                         null
                 )));
 
@@ -270,8 +261,6 @@ public class ModelEvalActivity extends AppCompatActivity {
         etTestHeartRate.setText(formatOptionalDouble(scenario.heartRate));
         etTestSystolicBp.setText(formatOptionalDouble(scenario.systolicBp));
         etTestDiastolicBp.setText(formatOptionalDouble(scenario.diastolicBp));
-        etTestGcs.setText(scenario.gcsTotal != null ? String.valueOf(scenario.gcsTotal) : "");
-        etTestNews2.setText(formatOptionalDouble(scenario.news2Score));
 
         SymptomRequest request = buildAdminEvalRequest(scenario.scenarioKey);
         if (request != null) {
@@ -296,11 +285,6 @@ public class ModelEvalActivity extends AppCompatActivity {
 
         Integer age = parseRequiredInteger(etTestAge, "Age", 0, 130);
         if (age == null) {
-            return null;
-        }
-
-        Integer gcsTotal = parseOptionalInteger(etTestGcs, "consciousness check score", 0, 15);
-        if (gcsTotal == null && !TextUtils.isEmpty(getTextValue(etTestGcs))) {
             return null;
         }
 
@@ -339,11 +323,6 @@ public class ModelEvalActivity extends AppCompatActivity {
             return null;
         }
 
-        Double news2 = parseOptionalDouble(etTestNews2, "nurse urgency score", 0, 25);
-        if (news2 == null && !TextUtils.isEmpty(getTextValue(etTestNews2))) {
-            return null;
-        }
-
         return new SymptomRequest(symptoms, age)
                 .setChiefComplaintSystem(normalizeChiefComplaintSelection(getTextValue(etTestChiefComplaint)))
                 .setSex(normalizeSexSelection(getTextValue(etTestSex)))
@@ -355,8 +334,6 @@ public class ModelEvalActivity extends AppCompatActivity {
                 .setHeartRate(heartRate)
                 .setSystolicBp(systolicBp)
                 .setDiastolicBp(diastolicBp)
-                .setGcsTotal(gcsTotal)
-                .setNews2Score(news2)
                 .setScenarioKey(emptyToNull(scenarioKey));
     }
 
@@ -545,6 +522,11 @@ public class ModelEvalActivity extends AppCompatActivity {
                 body.getTriageSource(),
                 body.getGuardrailedRecommendation()
         ));
+        tvTestDerivedScores.setText(buildDerivedScoresText(
+                body.getMentalStatusTriage(),
+                body.getGcsTotal(),
+                body.getNews2Score()
+        ));
         tvTestQueueSummary.setText(buildQueueSummary(
                 body.getQueueSelectedRoute(),
                 body.getQueueRouteType(),
@@ -665,6 +647,7 @@ public class ModelEvalActivity extends AppCompatActivity {
             TextView tvFactors = card.findViewById(R.id.tvEvalFactors);
             TextView tvPrioritySummary = card.findViewById(R.id.tvEvalPrioritySummary);
             TextView tvPriorityBreakdown = card.findViewById(R.id.tvEvalPriorityBreakdown);
+            TextView tvDerivedScores = card.findViewById(R.id.tvEvalDerivedScores);
             TextView tvSafetySummary = card.findViewById(R.id.tvEvalSafetySummary);
             LinearLayout layoutSafetyAlertBlock = card.findViewById(R.id.layoutEvalSafetyAlertBlock);
             TextView tvSafetyAlert = card.findViewById(R.id.tvEvalSafetyAlert);
@@ -733,6 +716,11 @@ public class ModelEvalActivity extends AppCompatActivity {
                     entry.getTriageConfidence(),
                     entry.getTriageSource(),
                     entry.getGuardrailedRecommendation()
+            ));
+            tvDerivedScores.setText(buildDerivedScoresText(
+                    entry.getMentalStatusTriage(),
+                    entry.getGcsTotal(),
+                    entry.getNews2Score()
             ));
 
             tvRouteSummary.setText(getLikelyDepartment(
@@ -1409,6 +1397,15 @@ public class ModelEvalActivity extends AppCompatActivity {
         return TextUtils.join(" · ", parts);
     }
 
+    private String buildDerivedScoresText(String mentalStatus, Integer gcsTotal, Double news2Score) {
+        return "Mental status: "
+                + (!TextUtils.isEmpty(mentalStatus) ? toReadableMentalStatus(mentalStatus) : "—")
+                + " · GCS: "
+                + (gcsTotal != null ? gcsTotal : "—")
+                + " · NEWS2: "
+                + (news2Score != null ? formatScore(news2Score) : "Pending more vitals");
+    }
+
     private String buildDoctorConfidenceLabel(double confidence) {
         if (confidence >= 0.7d) {
             return "High";
@@ -1489,8 +1486,6 @@ public class ModelEvalActivity extends AppCompatActivity {
         final Double heartRate;
         final Double systolicBp;
         final Double diastolicBp;
-        final Integer gcsTotal;
-        final Double news2Score;
 
         EvalScenario(
                 String symptoms,
@@ -1504,9 +1499,7 @@ public class ModelEvalActivity extends AppCompatActivity {
                 Double respiratoryRate,
                 Double heartRate,
                 Double systolicBp,
-                Double diastolicBp,
-                Integer gcsTotal,
-                Double news2Score
+                Double diastolicBp
         ) {
             this(
                     null,
@@ -1521,9 +1514,7 @@ public class ModelEvalActivity extends AppCompatActivity {
                     respiratoryRate,
                     heartRate,
                     systolicBp,
-                    diastolicBp,
-                    gcsTotal,
-                    news2Score
+                    diastolicBp
             );
         }
 
@@ -1540,9 +1531,7 @@ public class ModelEvalActivity extends AppCompatActivity {
                 Double respiratoryRate,
                 Double heartRate,
                 Double systolicBp,
-                Double diastolicBp,
-                Integer gcsTotal,
-                Double news2Score
+                Double diastolicBp
         ) {
             this.scenarioKey = scenarioKey;
             this.symptoms = symptoms;
@@ -1557,8 +1546,6 @@ public class ModelEvalActivity extends AppCompatActivity {
             this.heartRate = heartRate;
             this.systolicBp = systolicBp;
             this.diastolicBp = diastolicBp;
-            this.gcsTotal = gcsTotal;
-            this.news2Score = news2Score;
         }
     }
 }

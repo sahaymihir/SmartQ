@@ -12,6 +12,7 @@ const {
 const { notifyWaitingDoctorEtaChanges } = require('../services/queueNotificationService');
 const { buildVisitSnapshot, determineTriageDecision, getAgeBaselineScore, mapPriorityClassToScore } = require('../services/triageService');
 const { routeToSupportedSpecialty } = require('../services/specialtyService');
+const { withDerivedClinicalScores } = require('../utils/clinicalScoring');
 const {
   ACTIVE_TOKEN_STATUSES,
   buildDayQuery,
@@ -75,6 +76,18 @@ const isSameDayCheckIn = (checkInDate, todayDateString) => {
 };
 
 const buildTokenResponse = (token) => ({
+  mentalStatusTriage:
+    token.nurseVitals?.mental_status_triage ||
+    token.visitSnapshot?.mental_status_triage ||
+    null,
+  gcsTotal:
+    token.nurseVitals?.gcs_total ??
+    token.visitSnapshot?.gcs_total ??
+    null,
+  news2Score:
+    token.nurseVitals?.news2_score ??
+    token.visitSnapshot?.news2_score ??
+    null,
   tokenId: token._id,
   tokenNumber: token.tokenNumber,
   position: token.position,
@@ -1018,7 +1031,7 @@ router.patch('/nurse-triage/:tokenId', nurseTriageLimiter, protect, staffOnly, a
     }
 
     // Merge nurse vitals with any existing symptom context from patient intake
-    const nurseVitals = {
+    const nurseVitals = withDerivedClinicalScores({
       heart_rate: req.body.heart_rate,
       respiratory_rate: req.body.respiratory_rate,
       spo2: req.body.spo2,
@@ -1029,7 +1042,7 @@ router.patch('/nurse-triage/:tokenId', nurseTriageLimiter, protect, staffOnly, a
       pain_score: req.body.pain_score,
       news2_score: req.body.news2_score,
       mental_status_triage: req.body.mental_status_triage,
-    };
+    });
 
     // Re-run triage with nurse-measured vitals merged on top of original intake data
     const mergedBody = {
@@ -1039,7 +1052,8 @@ router.patch('/nurse-triage/:tokenId', nurseTriageLimiter, protect, staffOnly, a
       intakeLanguage: token.intakeLanguage || 'en',
       sex: token.visitSnapshot?.sex,
       chief_complaint_system: token.visitSnapshot?.chief_complaint_system,
-      mental_status_triage: req.body.mental_status_triage || token.visitSnapshot?.mental_status_triage,
+      mental_status_triage:
+        nurseVitals.mental_status_triage || token.visitSnapshot?.mental_status_triage,
       ...nurseVitals,
     };
 

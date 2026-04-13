@@ -2,6 +2,7 @@ const axios = require('axios');
 const { getPriorityLabel } = require('../utils/queueHelpers');
 const { runPatientFlow } = require('./patientFlowService');
 const { postWithRetry } = require('../utils/httpRetry');
+const { withDerivedClinicalScores } = require('../utils/clinicalScoring');
 
 const TRIAGE_API_URL = process.env.TRIAGE_API_URL || 'http://localhost:8000';
 const TRIAGE_MODEL_VERSION = process.env.TRIAGE_MODEL_VERSION || 'v3';
@@ -66,6 +67,7 @@ const getCanonicalSymptoms = (requestBody = {}) =>
   '';
 
 const buildTriagePayload = (patient, requestBody = {}) => {
+  const enrichedBody = withDerivedClinicalScores(requestBody);
   const payload = {
     age: patient.age,
   };
@@ -74,8 +76,8 @@ const buildTriagePayload = (patient, requestBody = {}) => {
     if (field === 'age') {
       continue;
     }
-    if (requestBody[field] !== undefined && requestBody[field] !== null && requestBody[field] !== '') {
-      payload[field] = requestBody[field];
+    if (enrichedBody[field] !== undefined && enrichedBody[field] !== null && enrichedBody[field] !== '') {
+      payload[field] = enrichedBody[field];
     }
   }
 
@@ -83,18 +85,19 @@ const buildTriagePayload = (patient, requestBody = {}) => {
 };
 
 const buildVisitSnapshot = (patient, requestBody = {}) => {
+  const enrichedBody = withDerivedClinicalScores(requestBody);
   const snapshot = {
     age: patient.age,
   };
 
   for (const field of SNAPSHOT_FIELDS) {
-    if (requestBody[field] !== undefined && requestBody[field] !== null && requestBody[field] !== '') {
-      snapshot[field] = requestBody[field];
+    if (enrichedBody[field] !== undefined && enrichedBody[field] !== null && enrichedBody[field] !== '') {
+      snapshot[field] = enrichedBody[field];
     }
   }
 
   // Persist normalised canonical symptoms string in the snapshot.
-  const canonicalSymptoms = getCanonicalSymptoms(requestBody);
+  const canonicalSymptoms = getCanonicalSymptoms(enrichedBody);
   if (canonicalSymptoms) {
     snapshot.symptoms = canonicalSymptoms;
   }
@@ -103,28 +106,33 @@ const buildVisitSnapshot = (patient, requestBody = {}) => {
 };
 
 const buildPatientFlowPayload = (patient, requestBody = {}) => {
-  const symptoms = getCanonicalSymptoms(requestBody);
+  const enrichedBody = withDerivedClinicalScores(requestBody);
+  const symptoms = getCanonicalSymptoms(enrichedBody);
   if (!symptoms) {
     return null;
   }
 
-  return {
+  const payload = {
     symptoms,
     age: patient.age,
-    sex: requestBody.sex,
-    mental_status_triage: requestBody.mental_status_triage,
-    chief_complaint_system: requestBody.chief_complaint_system,
-    language: requestBody.language || requestBody.intakeLanguage,
-    temperature_c: requestBody.temperature_c,
-    pain_score: requestBody.pain_score,
-    spo2: requestBody.spo2,
-    respiratory_rate: requestBody.respiratory_rate,
-    heart_rate: requestBody.heart_rate,
-    systolic_bp: requestBody.systolic_bp,
-    diastolic_bp: requestBody.diastolic_bp,
-    gcs_total: requestBody.gcs_total,
-    news2_score: requestBody.news2_score,
+    sex: enrichedBody.sex,
+    mental_status_triage: enrichedBody.mental_status_triage,
+    chief_complaint_system: enrichedBody.chief_complaint_system,
+    language: enrichedBody.language || enrichedBody.intakeLanguage,
+    temperature_c: enrichedBody.temperature_c,
+    pain_score: enrichedBody.pain_score,
+    spo2: enrichedBody.spo2,
+    respiratory_rate: enrichedBody.respiratory_rate,
+    heart_rate: enrichedBody.heart_rate,
+    systolic_bp: enrichedBody.systolic_bp,
+    diastolic_bp: enrichedBody.diastolic_bp,
+    gcs_total: enrichedBody.gcs_total,
+    news2_score: enrichedBody.news2_score,
   };
+
+  return Object.fromEntries(
+    Object.entries(payload).filter(([, value]) => value !== undefined && value !== null && value !== '')
+  );
 };
 
 const getAgeBaselineScore = (age) => (Number(age) >= 60 ? 10 : 5);

@@ -6,6 +6,8 @@ import android.os.Looper;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -40,6 +42,7 @@ import retrofit2.Response;
 public class NurseHomeActivity extends AppCompatActivity {
 
     private static final long NURSE_POLL_INTERVAL_MS = 10_000L;
+    private static final String[] MENTAL_STATUS_OPTIONS = {"Alert", "Drowsy", "Unresponsive"};
 
     private TextView tvNurseName;
     private TextView tvQueueSummary;
@@ -54,6 +57,7 @@ public class NurseHomeActivity extends AppCompatActivity {
     private TextView tvLastResultPatient;
     private TextView tvLastResultPriority;
     private TextView tvLastResultBreakdown;
+    private TextView tvLastResultClinicalScores;
     private View layoutSafetyAlertBlock;
     private TextView tvLastResultSafetyAlert;
     private TextView tvLastResultSafetySummary;
@@ -120,6 +124,7 @@ public class NurseHomeActivity extends AppCompatActivity {
         tvLastResultPatient = findViewById(R.id.tvLastResultPatient);
         tvLastResultPriority = findViewById(R.id.tvLastResultPriority);
         tvLastResultBreakdown = findViewById(R.id.tvLastResultBreakdown);
+        tvLastResultClinicalScores = findViewById(R.id.tvLastResultClinicalScores);
         layoutSafetyAlertBlock = findViewById(R.id.layoutSafetyAlertBlock);
         tvLastResultSafetyAlert = findViewById(R.id.tvLastResultSafetyAlert);
         tvLastResultSafetySummary = findViewById(R.id.tvLastResultSafetySummary);
@@ -255,11 +260,11 @@ public class NurseHomeActivity extends AppCompatActivity {
         TextView tvDialogSubtitle = dialogView.findViewById(R.id.tvDialogSubtitle);
         TextInputEditText etTemperature = dialogView.findViewById(R.id.etTemperature);
         TextInputEditText etSpo2 = dialogView.findViewById(R.id.etSpo2);
+        TextInputEditText etRespiratoryRate = dialogView.findViewById(R.id.etRespiratoryRate);
         TextInputEditText etHeartRate = dialogView.findViewById(R.id.etHeartRate);
         TextInputEditText etSystolicBp = dialogView.findViewById(R.id.etSystolicBp);
         TextInputEditText etDiastolicBp = dialogView.findViewById(R.id.etDiastolicBp);
-        TextInputEditText etGcsTotal = dialogView.findViewById(R.id.etGcsTotal);
-        TextInputEditText etNews2Score = dialogView.findViewById(R.id.etNews2Score);
+        AutoCompleteTextView dropdownMentalStatus = dialogView.findViewById(R.id.dropdownMentalStatus);
         TextInputEditText etPainScore = dialogView.findViewById(R.id.etPainScore);
         TextInputEditText etTriageNote = dialogView.findViewById(R.id.etTriageNote);
         MaterialButton btnDialogSubmit = dialogView.findViewById(R.id.btnDialogSubmit);
@@ -267,12 +272,15 @@ public class NurseHomeActivity extends AppCompatActivity {
 
         setDefaultIfEmpty(etTemperature, "37.0");
         setDefaultIfEmpty(etSpo2, "98");
+        setDefaultIfEmpty(etRespiratoryRate, "18");
         setDefaultIfEmpty(etHeartRate, "80");
         setDefaultIfEmpty(etSystolicBp, "120");
         setDefaultIfEmpty(etDiastolicBp, "80");
-        setDefaultIfEmpty(etGcsTotal, "15");
-        setDefaultIfEmpty(etNews2Score, "0");
         setDefaultIfEmpty(etPainScore, "0");
+        attachDropdown(dropdownMentalStatus, MENTAL_STATUS_OPTIONS);
+        if (TextUtils.isEmpty(textOrEmpty(dropdownMentalStatus))) {
+            dropdownMentalStatus.setText(MENTAL_STATUS_OPTIONS[0], false);
+        }
 
         tvDialogTitle.setText("Submit nurse vitals");
         tvDialogSubtitle.setText(textOrDefault(entry.getPatientName(), "Patient")
@@ -288,11 +296,13 @@ public class NurseHomeActivity extends AppCompatActivity {
                 NurseTriageRequest request = new NurseTriageRequest();
                 request.setTemperatureC(parseOptionalFloat(etTemperature, "temperature"));
                 request.setSpo2(parseOptionalFloat(etSpo2, "SpO2"));
+                request.setRespiratoryRate(parseOptionalFloat(etRespiratoryRate, "respiratory rate"));
                 request.setHeartRate(parseOptionalFloat(etHeartRate, "heart rate"));
                 request.setSystolicBp(parseOptionalFloat(etSystolicBp, "systolic BP"));
                 request.setDiastolicBp(parseOptionalFloat(etDiastolicBp, "diastolic BP"));
-                request.setGcsTotal(parseOptionalInt(etGcsTotal, "GCS total"));
-                request.setNews2Score(parseOptionalFloat(etNews2Score, "NEWS2 score"));
+                request.setMentalStatusTriage(
+                        normalizeMentalStatusSelection(textOrEmpty(dropdownMentalStatus))
+                );
                 request.setPainScore(parseOptionalFloat(etPainScore, "pain score"));
                 request.setNurseTriageNote(textOrEmpty(etTriageNote));
                 submitNurseTriage(entry, request, dialog, btnDialogSubmit);
@@ -352,6 +362,7 @@ public class NurseHomeActivity extends AppCompatActivity {
         tvLastResultPriority.setText(buildPriorityHeadline(body));
         styleLastResultPriority(body);
         tvLastResultBreakdown.setText(buildPriorityBreakdown(body));
+        tvLastResultClinicalScores.setText(buildClinicalScoresSummary(body));
 
         List<TokenResponse.SafetyMatch> safetyMatches = body.getSafetyMatches();
         boolean hasSafetyMatches = safetyMatches != null && !safetyMatches.isEmpty();
@@ -390,6 +401,21 @@ public class NurseHomeActivity extends AppCompatActivity {
                 + " · score " + score
                 + " · " + textOrDefault(body.getTriageSource(), "—")
                 + " · " + textOrDefault(body.getTriageRecommendation(), "—");
+    }
+
+    private String buildClinicalScoresSummary(TokenResponse body) {
+        String mentalStatus = toReadableMentalStatus(body.getMentalStatusTriage());
+        String gcsTotal = body.getGcsTotal() != null ? String.valueOf(body.getGcsTotal()) : "—";
+        String news2 = body.getNews2Score() != null
+                ? String.valueOf(Math.round(body.getNews2Score()))
+                : "Pending more vitals";
+
+        return "Derived scores: Mental status "
+                + textOrDefault(mentalStatus, "—")
+                + " · GCS "
+                + gcsTotal
+                + " · NEWS2 "
+                + news2;
     }
 
     private String buildSafetyAlertText(List<TokenResponse.SafetyMatch> safetyMatches) {
@@ -497,6 +523,22 @@ public class NurseHomeActivity extends AppCompatActivity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
+    private void attachDropdown(AutoCompleteTextView field, String[] values) {
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_list_item_1,
+                values
+        );
+        field.setAdapter(adapter);
+        field.setThreshold(0);
+        field.setOnClickListener(v -> field.showDropDown());
+        field.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                field.showDropDown();
+            }
+        });
+    }
+
     private void setDefaultIfEmpty(TextInputEditText input, String value) {
         if (input.getText() == null || TextUtils.isEmpty(input.getText().toString().trim())) {
             input.setText(value);
@@ -527,7 +569,31 @@ public class NurseHomeActivity extends AppCompatActivity {
         return TextUtils.isEmpty(value) ? fallback : value.trim();
     }
 
+    private String textOrEmpty(TextView input) {
+        return input.getText() == null ? "" : input.getText().toString().trim();
+    }
+
     private String textOrEmpty(TextInputEditText input) {
         return input.getText() == null ? "" : input.getText().toString().trim();
+    }
+
+    private String normalizeMentalStatusSelection(String value) {
+        if (TextUtils.isEmpty(value)) return null;
+
+        String lower = value.toLowerCase(Locale.getDefault());
+        if (lower.startsWith("alert")) return "alert";
+        if (lower.startsWith("drows")) return "drowsy";
+        if (lower.startsWith("unresponsive")) return "unresponsive";
+        return lower;
+    }
+
+    private String toReadableMentalStatus(String value) {
+        if (TextUtils.isEmpty(value)) return value;
+
+        String lower = value.toLowerCase(Locale.getDefault());
+        if ("alert".equals(lower)) return "Alert";
+        if ("drowsy".equals(lower)) return "Drowsy";
+        if ("unresponsive".equals(lower)) return "Unresponsive";
+        return value;
     }
 }

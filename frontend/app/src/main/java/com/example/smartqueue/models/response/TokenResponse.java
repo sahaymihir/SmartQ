@@ -5,6 +5,9 @@ import java.util.List;
 
 public class TokenResponse {
     private boolean success;
+    private String mentalStatusTriage;
+    private Integer gcsTotal;
+    private Double news2Score;
     private String tokenId;
     private int tokenNumber;
     private int position;
@@ -46,6 +49,9 @@ public class TokenResponse {
     private List<Recommendation> testRecommendations;
 
     public boolean isSuccess() { return success; }
+    public String getMentalStatusTriage() { return mentalStatusTriage; }
+    public Integer getGcsTotal() { return gcsTotal; }
+    public Double getNews2Score() { return news2Score; }
     public String getTokenId() { return tokenId; }
     public int getTokenNumber() { return tokenNumber; }
     public int getPosition() { return position; }

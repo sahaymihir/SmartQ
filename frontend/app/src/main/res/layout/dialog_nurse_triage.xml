@@ -71,6 +71,22 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
+            android:hint="Respiratory rate"
+            app:helperText="Breaths per minute"
+            app:placeholderText="e.g. 18">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etRespiratoryRate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/SmartQ.TextInput.Outlined"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
             android:hint="Heart rate"
             app:helperText="Beats per minute"
             app:placeholderText="e.g. 80">
@@ -119,31 +135,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:hint="GCS total"
-            app:helperText="Glasgow Coma Scale total: 3 - 15"
-            app:placeholderText="e.g. 15">
+            android:hint="Current mental status"
+            app:endIconMode="dropdown_menu"
+            app:helperText="Used to derive GCS automatically">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etGcsTotal"
+            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                android:id="@+id/dropdownMentalStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            style="@style/SmartQ.TextInput.Outlined"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:hint="NEWS2 score"
-            app:helperText="National Early Warning Score 2: 0 - 20"
-            app:placeholderText="e.g. 0">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etNews2Score"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="numberDecimal" />
+                android:inputType="none" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout

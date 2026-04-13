@@ -15,6 +15,7 @@ const {
 } = require('../services/queueNotificationService');
 const { resetAndSeedDemoData } = require('../services/demoSeedService');
 const { routeToSupportedSpecialty } = require('../services/specialtyService');
+const { withDerivedClinicalScores } = require('../utils/clinicalScoring');
 const {
   ACTIVE_TOKEN_STATUSES,
   buildDayQuery,
@@ -397,12 +398,14 @@ const buildAdminEvalPayload = (body = {}) => {
     throw new Error('Valid age is required');
   }
 
-  return {
+  return withDerivedClinicalScores({
     symptoms,
     age,
     scenarioKey: selectedScenario?.key,
     sex: parseOptionalText(sourceBody.sex),
-    mental_status_triage: parseOptionalText(sourceBody.mental_status_triage),
+    mental_status_triage: parseOptionalText(
+      sourceBody.mental_status_triage || sourceBody.mentalStatusTriage
+    ),
     chief_complaint_system: parseOptionalText(sourceBody.chief_complaint_system),
     language: parseOptionalText(sourceBody.language || sourceBody.intakeLanguage),
     temperature_c: parseOptionalNumber(sourceBody.temperature_c, 'Temperature', { min: 0, max: 50 }),
@@ -414,7 +417,7 @@ const buildAdminEvalPayload = (body = {}) => {
     diastolic_bp: parseOptionalNumber(sourceBody.diastolic_bp, 'Diastolic BP', { min: 0, max: 200 }),
     gcs_total: parseOptionalNumber(sourceBody.gcs_total, 'GCS total', { min: 0, max: 15, integer: true }),
     news2_score: parseOptionalNumber(sourceBody.news2_score, 'NEWS2 score', { min: 0, max: 25 }),
-  };
+  });
 };
 
 const getDoctorRoute = (doctor = {}) =>
