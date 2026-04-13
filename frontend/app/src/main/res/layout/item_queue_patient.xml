@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/SmartQ.Card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    app:cardCornerRadius="14dp"
-    app:cardElevation="0dp"
-    app:cardBackgroundColor="@color/surface_container_low"
-    app:strokeColor="@color/outline_variant"
-    app:strokeWidth="1dp"
+    android:layout_marginBottom="10dp"
     android:foreground="@drawable/ripple_dark">
 
     <LinearLayout
@@ -20,15 +16,14 @@
 
         <TextView
             android:id="@+id/tvTokenNum"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
             android:background="@drawable/bg_token_circle"
             android:gravity="center"
             android:text="#1"
             android:textColor="@color/primary"
-            android:textStyle="bold"
             android:textSize="14sp"
-            android:fontFamily="sans-serif-medium" />
+            android:textStyle="bold" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -45,14 +40,12 @@
 
                 <TextView
                     android:id="@+id/tvPatientName"
+                    style="@style/SmartQ.Text.CardTitle"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:fontFamily="sans-serif-medium"
                     android:text="Patient Name"
-                    android:textColor="@color/on_surface"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
+                    android:textSize="16sp" />
 
                 <TextView
                     android:id="@+id/tvStatus"
@@ -73,21 +66,20 @@
 
             <TextView
                 android:id="@+id/tvPatientInfo"
+                style="@style/SmartQ.Text.Meta"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Age 40 | Priority Normal"
-                android:textColor="@color/on_surface_variant"
-                android:textSize="13sp" />
+                android:layout_marginTop="6dp"
+                android:text="Age 40 | Priority Normal" />
 
             <LinearLayout
                 android:id="@+id/layoutQueueActions"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="end|center_vertical"
+                android:layout_marginTop="10dp"
                 android:baselineAligned="false"
-                android:layout_marginTop="8dp">
+                android:gravity="end|center_vertical"
+                android:orientation="horizontal">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnQueuePrescription"
@@ -100,8 +92,8 @@
                     android:minHeight="0dp"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
-                    android:textAllCaps="false"
                     android:text="Prescription"
+                    android:textAllCaps="false"
                     android:textSize="12sp" />
 
                 <com.google.android.material.button.MaterialButton
@@ -117,8 +109,8 @@
                     android:minHeight="0dp"
                     android:paddingStart="12dp"
                     android:paddingEnd="12dp"
-                    android:textAllCaps="false"
                     android:text="No-Show"
+                    android:textAllCaps="false"
                     android:textColor="@color/error"
                     android:textSize="12sp"
                     app:strokeColor="@color/error" />

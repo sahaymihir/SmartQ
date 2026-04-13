@@ -16,7 +16,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:paddingTop="12dp"
+            android:paddingBottom="16dp">
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -25,21 +27,25 @@
                 android:orientation="vertical">
 
                 <TextView
+                    style="@style/SmartQ.Text.ScreenLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Nurse Triage"
-                    android:textColor="@color/text_primary"
-                    android:textSize="24sp"
-                    android:textStyle="bold" />
+                    android:text="Nurse Triage" />
 
                 <TextView
                     android:id="@+id/tvNurseName"
+                    style="@style/SmartQ.Text.ScreenTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Nurse"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
+                    android:layout_marginTop="6dp"
+                    android:text="Nurse" />
+
+                <TextView
+                    style="@style/SmartQ.Text.ScreenSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Capture vitals clearly so patients move cleanly into the doctor queue." />
             </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
@@ -52,22 +58,17 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnLogout"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
+                style="@style/SmartQ.Button.Back"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Logout"
-                android:textColor="@color/primary" />
+                android:text="Logout" />
         </LinearLayout>
 
         <androidx.cardview.widget.CardView
+            style="@style/SmartQ.Card.Primary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="@color/surface_container_low"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/outline_variant"
-            app:strokeWidth="1dp">
+            android:layout_marginBottom="14dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -76,31 +77,26 @@
                 android:padding="18dp">
 
                 <TextView
+                    style="@style/SmartQ.Text.SectionLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Board Summary"
-                    android:textColor="@color/primary"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
+                    android:text="Board Summary" />
 
                 <TextView
                     android:id="@+id/tvQueueSummary"
+                    style="@style/SmartQ.Text.CardTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Loading triage board..."
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                    android:layout_marginTop="10dp"
+                    android:text="Loading triage board..." />
 
                 <TextView
                     android:id="@+id/tvQueueSubSummary"
+                    style="@style/SmartQ.Text.Meta"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:text="Capture vitals to move patients into the doctor queue."
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
+                    android:text="Capture vitals to move patients into the doctor queue." />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -109,21 +105,17 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="16dp"
+            android:layout_marginBottom="12dp"
             android:indeterminateTint="@color/primary"
             android:visibility="gone" />
 
         <androidx.cardview.widget.CardView
             android:id="@+id/cardLastResult"
+            style="@style/SmartQ.Card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:visibility="gone"
-            app:cardBackgroundColor="@color/surface_container_low"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/outline_variant"
-            app:strokeWidth="1dp">
+            android:layout_marginBottom="14dp"
+            android:visibility="gone">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -132,30 +124,33 @@
                 android:padding="18dp">
 
                 <TextView
-                    android:id="@+id/tvLastResultPatient"
-                    android:layout_width="match_parent"
+                    style="@style/SmartQ.Text.SectionLabel"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Last triaged patient"
-                    android:textColor="@color/text_primary"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:text="Latest Submission" />
 
                 <TextView
-                    android:id="@+id/tvLastResultPriority"
+                    android:id="@+id/tvLastResultPatient"
+                    style="@style/SmartQ.Text.CardTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
+                    android:text="Last triaged patient" />
+
+                <TextView
+                    android:id="@+id/tvLastResultPriority"
+                    style="@style/SmartQ.Text.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tvLastResultBreakdown"
+                    style="@style/SmartQ.Text.Meta"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
+                    android:layout_marginTop="8dp" />
 
                 <LinearLayout
                     android:id="@+id/layoutSafetyAlertBlock"
@@ -186,58 +181,50 @@
 
                 <TextView
                     android:id="@+id/tvLastResultSafetySummary"
+                    style="@style/SmartQ.Text.Meta"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
+                    android:layout_marginTop="12dp" />
 
                 <TextView
                     android:id="@+id/tvLastResultQueue"
+                    style="@style/SmartQ.Text.Body"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tvLastResultRationale"
+                    style="@style/SmartQ.Text.Meta"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="13sp" />
+                    android:layout_marginTop="6dp" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
         <TextView
+            style="@style/SmartQ.Text.SectionLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Patients Waiting For Vitals"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:layout_marginBottom="8dp"
+            android:text="Patients Waiting for Vitals" />
 
         <TextView
             android:id="@+id/tvQueueEmpty"
+            style="@style/SmartQ.Text.EmptyState"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
             android:gravity="center"
             android:paddingTop="24dp"
             android:paddingBottom="24dp"
             android:text="No patients are waiting for nurse triage right now."
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp"
             android:visibility="gone" />
 
         <LinearLayout
             android:id="@+id/layoutQueueList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
             android:orientation="vertical" />
     </LinearLayout>
 </ScrollView>

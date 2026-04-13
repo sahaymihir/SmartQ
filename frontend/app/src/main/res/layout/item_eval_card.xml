@@ -2,13 +2,9 @@
 <androidx.cardview.widget.CardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="@style/SmartQ.Card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="0dp"
-    app:cardBackgroundColor="@color/surface_container_low"
-    app:strokeColor="@color/divider"
-    app:strokeWidth="1dp"
     android:layout_marginBottom="12dp">
 
     <LinearLayout
@@ -100,24 +96,19 @@
             android:textColor="@color/text_secondary"
             android:layout_marginBottom="12dp"/>
 
-        <!-- ════════════════════════════════════════ -->
-        <!--  🟦  PATIENT SUMMARY                   -->
-        <!-- ════════════════════════════════════════ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="#0D1565C0"
-            android:padding="10dp"
+            android:background="@drawable/bg_patient_info_panel"
+            android:padding="12dp"
             android:layout_marginBottom="8dp">
 
             <TextView
+                style="@style/SmartQ.Text.SectionLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🟦  Patient Summary"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="#1565C0"
+                android:text="Patient Summary"
                 android:layout_marginBottom="8dp"/>
 
             <TextView
@@ -156,24 +147,19 @@
                 android:textColor="@color/text_primary"/>
         </LinearLayout>
 
-        <!-- ════════════════════════════════════════ -->
-        <!--  🟩  NURSE / TRIAGE                    -->
-        <!-- ════════════════════════════════════════ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="#0D2E7D32"
-            android:padding="10dp"
+            android:background="@drawable/bg_patient_info_panel"
+            android:padding="12dp"
             android:layout_marginBottom="8dp">
 
             <TextView
+                style="@style/SmartQ.Text.SectionLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🟩  Nurse / Triage"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="#2E7D32"
+                android:text="Nurse / Triage"
                 android:layout_marginBottom="8dp"/>
 
             <LinearLayout
@@ -181,18 +167,18 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="#33C62828"
-                android:padding="8dp"
+                android:background="@drawable/badge_high"
+                android:padding="10dp"
                 android:layout_marginBottom="8dp"
                 android:visibility="gone">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="⚠ Safety Override Alert"
+                    android:text="Safety Override Alert"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:textColor="#C62828"
+                    android:textColor="@android:color/white"
                     android:layout_marginBottom="3dp"/>
 
                 <TextView
@@ -201,7 +187,7 @@
                     android:layout_height="wrap_content"
                     android:text="—"
                     android:textSize="11sp"
-                    android:textColor="#B71C1C"/>
+                    android:textColor="@android:color/white"/>
             </LinearLayout>
 
             <TextView
@@ -277,23 +263,18 @@
                 android:textColor="@color/text_secondary"/>
         </LinearLayout>
 
-        <!-- ════════════════════════════════════════ -->
-        <!--  🟥  DOCTOR CLINICAL                   -->
-        <!-- ════════════════════════════════════════ -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="#0DC62828"
-            android:padding="10dp">
+            android:background="@drawable/bg_patient_info_panel"
+            android:padding="12dp">
 
             <TextView
+                style="@style/SmartQ.Text.SectionLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🟥  Doctor Clinical"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="#C62828"
+                android:text="Doctor Clinical"
                 android:layout_marginBottom="8dp"/>
 
             <TextView
@@ -354,10 +335,10 @@
                 android:id="@+id/tvEvalManualReviewFlag"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="⚠ Manual review recommended"
+                android:text="Manual review recommended"
                 android:textSize="11sp"
                 android:textStyle="bold"
-                android:textColor="#C62828"
+                android:textColor="@color/priority_high"
                 android:layout_marginBottom="6dp"
                 android:visibility="gone"/>
 
@@ -381,7 +362,7 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnEvalOverrideRoute"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                style="@style/SmartQ.Button.Outlined"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Override Route"

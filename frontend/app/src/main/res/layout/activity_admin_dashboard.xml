@@ -1,246 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="@color/surface">
+    android:background="@color/surface"
+    android:fillViewport="true">
 
-    <!-- ── Top Bar ──────────────────────────────────────── -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="20dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="16dp"
-        android:paddingBottom="12dp"
-        android:background="@color/surface_container_low">
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Admin Dashboard"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:textColor="@color/text_primary"/>
-
-            <TextView
-                android:id="@+id/tvAdminName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Dr. Name"
-                android:textSize="13sp"
-                android:textColor="@color/text_secondary"/>
-        </LinearLayout>
-
-        <!-- Pause/Resume toggle -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnPause"
-            style="@style/SmartQ.Button.Outlined"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Pause Queue"
-            android:textSize="13sp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:layout_marginEnd="8dp"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnLogout"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Logout"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"/>
-    </LinearLayout>
-
-    <!-- ── Admin Action Buttons ─────────────────────────── -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="8dp">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnModelEval"
-            style="@style/SmartQ.Button.Outlined"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Model Eval"
-            android:textSize="13sp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:layout_marginEnd="8dp"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSeedData"
-            style="@style/SmartQ.Button.Outlined"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Seed Data"
-            android:textSize="13sp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:layout_marginEnd="8dp"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnManageUsers"
-            style="@style/SmartQ.Button.Outlined"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Manage Users"
-            android:textSize="13sp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"/>
-    </LinearLayout>
-
-    <!-- ── Emergency Patient Button ───────────────────────── -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnEmergencyPatient"
-        style="@style/SmartQ.Button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Emergency Intake"
-        android:textColor="@color/white"
-        android:backgroundTint="@color/priority_high"
-        android:textStyle="bold"
-        android:textSize="14sp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="8dp"
-        app:cornerRadius="12dp"/>
-
-    <!-- ── Stats Row ─────────────────────────────────────── -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp">
-
-        <!-- Waiting -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            style="@style/SmartQ.Card"
-            android:layout_marginEnd="6dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="14dp">
-                <TextView
-                    android:id="@+id/tvStatWaiting"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="7"
-                    android:textSize="26sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/primary"/>
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Waiting"
-                    android:textSize="11sp"
-                    android:textColor="@color/text_secondary"/>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Done -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            style="@style/SmartQ.Card"
-            android:layout_marginStart="6dp"
-            android:layout_marginEnd="6dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="14dp">
-                <TextView
-                    android:id="@+id/tvStatDone"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="3"
-                    android:textSize="26sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/accent"/>
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Done"
-                    android:textSize="11sp"
-                    android:textColor="@color/text_secondary"/>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Avg time -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            style="@style/SmartQ.Card"
-            android:layout_marginStart="6dp">
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:padding="14dp">
-                <TextView
-                    android:id="@+id/tvStatAvg"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="8m"
-                    android:textSize="26sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/priority_medium"/>
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Avg/patient"
-                    android:textSize="11sp"
-                    android:textColor="@color/text_secondary"/>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-    </LinearLayout>
-
-    <!-- ── Currently Serving + Call Next ────────────────── -->
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="0dp"
-        app:cardBackgroundColor="@color/primary"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="12dp">
+        android:orientation="vertical"
+        android:padding="20dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:padding="16dp">
+            android:orientation="horizontal"
+            android:paddingTop="12dp"
+            android:paddingBottom="16dp">
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -249,232 +27,412 @@
                 android:orientation="vertical">
 
                 <TextView
+                    style="@style/SmartQ.Text.ScreenLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Currently Serving"
-                    android:textSize="11sp"
-                    android:textColor="#AAFFFFFF"/>
+                    android:text="Operations Board" />
+
+                <TextView
+                    android:id="@+id/tvAdminName"
+                    style="@style/SmartQ.Text.ScreenTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Dr. Name" />
+
+                <TextView
+                    style="@style/SmartQ.Text.ScreenSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Monitor queue health, route emergencies, and keep the floor moving." />
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogout"
+                style="@style/SmartQ.Button.Back"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Logout" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPause"
+                style="@style/SmartQ.Button.Outlined"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:text="Pause Queue" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnModelEval"
+                style="@style/SmartQ.Button.Secondary"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Model Eval" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSeedData"
+                style="@style/SmartQ.Button.Secondary"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:text="Seed Data" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnManageUsers"
+                style="@style/SmartQ.Button.Secondary"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="Manage Users" />
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnEmergencyPatient"
+            style="@style/SmartQ.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp"
+            android:backgroundTint="@color/priority_high"
+            android:text="Emergency Intake"
+            android:textColor="@color/white" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp"
+            android:orientation="horizontal">
+
+            <androidx.cardview.widget.CardView
+                style="@style/SmartQ.Card"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <TextView
+                        android:id="@+id/tvStatWaiting"
+                        style="@style/SmartQ.Text.StatValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="7"
+                        android:textColor="@color/primary" />
+
+                    <TextView
+                        style="@style/SmartQ.Text.StatLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Waiting" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                style="@style/SmartQ.Card"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="6dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <TextView
+                        android:id="@+id/tvStatDone"
+                        style="@style/SmartQ.Text.StatValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="3"
+                        android:textColor="@color/accent" />
+
+                    <TextView
+                        style="@style/SmartQ.Text.StatLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Done" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <androidx.cardview.widget.CardView
+                style="@style/SmartQ.Card"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:padding="14dp">
+
+                    <TextView
+                        android:id="@+id/tvStatAvg"
+                        style="@style/SmartQ.Text.StatValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="8m"
+                        android:textColor="@color/priority_medium" />
+
+                    <TextView
+                        style="@style/SmartQ.Text.StatLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Avg/patient" />
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+        </LinearLayout>
+
+        <androidx.cardview.widget.CardView
+            style="@style/SmartQ.Card.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    style="@style/SmartQ.Text.SectionLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Current Patient" />
 
                 <TextView
                     android:id="@+id/tvCurrentlyServing"
-                    android:layout_width="wrap_content"
+                    style="@style/SmartQ.Text.CardTitle"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Token #10 — Arjun Mehta"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/on_surface"
-                    android:layout_marginTop="2dp"/>
+                    android:layout_marginTop="10dp"
+                    android:text="No patient currently called" />
 
-                <!-- Paused badge -->
                 <TextView
                     android:id="@+id/tvPausedBadge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="QUEUE PAUSED"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/badge_medium"
+                    android:paddingStart="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="4dp"
+                    android:text="Queue paused"
+                    android:textAllCaps="true"
+                    android:textColor="@color/priority_medium"
                     android:textSize="11sp"
-                    android:textColor="#FFD700"
                     android:textStyle="bold"
-                    android:layout_marginTop="4dp"
-                    android:visibility="gone"/>
+                    android:visibility="gone" />
 
                 <TextView
                     android:id="@+id/tvUrgentAlert"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/badge_high"
+                    android:paddingStart="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="4dp"
                     android:text="1 patient needs immediate review"
+                    android:textColor="@color/priority_high"
                     android:textSize="11sp"
-                    android:textColor="#FFD166"
                     android:textStyle="bold"
-                    android:layout_marginTop="4dp"
-                    android:visibility="gone"/>
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnPrescription"
+                        style="@style/SmartQ.Button.Secondary"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:text="@string/prescription_open" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnCallNext"
+                        style="@style/SmartQ.Button.Gradient"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:text="Call Next" />
+                </LinearLayout>
             </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPrescription"
-                style="@style/SmartQ.Button.Outlined"
-                android:layout_width="wrap_content"
+        <androidx.cardview.widget.CardView
+            style="@style/SmartQ.Card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="14dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:text="@string/prescription_open"
-                android:textSize="12sp"/>
+                android:orientation="vertical"
+                android:padding="16dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnCallNext"
-                style="@style/SmartQ.Button.Gradient"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Call Next"
-                android:textStyle="bold"
-                android:textSize="13sp"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"/>
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-    <!-- ML ops diagnostics -->
-    <androidx.cardview.widget.CardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        style="@style/SmartQ.Card"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="12dp">
+                    <TextView
+                        style="@style/SmartQ.Text.SectionLabel"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="ML Connectivity" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRefreshMlOps"
+                        style="@style/SmartQ.Button.Secondary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="0dp"
+                        android:text="Refresh" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvMlOpsStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:background="@drawable/badge_normal"
+                    android:paddingStart="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="4dp"
+                    android:text="No traffic yet"
+                    android:textColor="@color/on_surface"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    style="@style/SmartQ.Text.Meta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Session-scoped demo diagnostics for the live backend and ML services." />
+
+                <TextView
+                    android:id="@+id/tvMlOpsSummary"
+                    style="@style/SmartQ.Text.Meta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Requests: 0 | Success: 0 | Failed: 0" />
+
+                <TextView
+                    android:id="@+id/tvMlOpsLastEvent"
+                    style="@style/SmartQ.Text.Meta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Last event: -" />
+
+                <TextView
+                    android:id="@+id/tvMlOpsLastUpdated"
+                    style="@style/SmartQ.Text.Meta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Updated just now"
+                    android:textSize="12sp" />
+
+                <TextView
+                    style="@style/SmartQ.Text.SectionLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="Recent Events" />
+
+                <LinearLayout
+                    android:id="@+id/layoutMlOpsLogs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical" />
+
+                <TextView
+                    android:id="@+id/tvMlOpsEmpty"
+                    style="@style/SmartQ.Text.Meta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="No events recorded yet." />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="14dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="ML Connectivity"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnRefreshMlOps"
-                    style="@style/SmartQ.Button.Outlined"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="0dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:text="Refresh"
-                    android:textSize="12sp"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp" />
-            </LinearLayout>
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
 
             <TextView
-                android:id="@+id/tvMlOpsStatus"
+                style="@style/SmartQ.Text.SectionLabel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Patient Queue" />
+
+            <TextView
+                android:id="@+id/tvQueueLabel"
+                style="@style/SmartQ.Text.Meta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:paddingStart="10dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="10dp"
-                android:paddingBottom="4dp"
-                android:text="No traffic yet"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="@color/on_surface"
-                android:background="@drawable/badge_normal" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Session-scoped demo diagnostics for the live backend and ML services."
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary" />
-
-            <TextView
-                android:id="@+id/tvMlOpsSummary"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Requests: 0 | Success: 0 | Failed: 0"
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary" />
-
-            <TextView
-                android:id="@+id/tvMlOpsLastEvent"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Last event: -"
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary" />
-
-            <TextView
-                android:id="@+id/tvMlOpsLastUpdated"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="Updated just now"
-                android:textSize="11sp"
-                android:textColor="@color/text_secondary" />
-
-            <TextView
-                android:id="@+id/tvMlOpsRecentHeader"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="Recent events"
-                android:textStyle="bold"
-                android:textSize="12sp"
-                android:textColor="@color/text_primary" />
-
-            <LinearLayout
-                android:id="@+id/layoutMlOpsLogs"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_marginTop="6dp" />
-
-            <TextView
-                android:id="@+id/tvMlOpsEmpty"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="No events recorded yet."
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary"
-                android:layout_marginTop="4dp" />
+                android:text="7 waiting" />
         </LinearLayout>
-    </androidx.cardview.widget.CardView>
-
-    <!-- ── Queue List Label ──────────────────────────────── -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingStart="20dp"
-        android:paddingEnd="20dp"
-        android:paddingBottom="8dp"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Patient Queue"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"/>
-
-        <TextView
-            android:id="@+id/tvQueueLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="7 waiting"
-            android:textSize="13sp"
-            android:textColor="@color/text_secondary"/>
-    </LinearLayout>
-
-    <!-- ── Scrollable Patient List ───────────────────────── -->
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp">
 
         <LinearLayout
             android:id="@+id/layoutQueueList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingBottom="16dp"/>
-    </ScrollView>
-
-</LinearLayout>
+            android:paddingBottom="8dp" />
+    </LinearLayout>
+</ScrollView>

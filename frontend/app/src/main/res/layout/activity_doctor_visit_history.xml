@@ -17,16 +17,14 @@
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingTop="8dp"
-            android:paddingBottom="12dp">
+            android:paddingBottom="16dp">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnHistoryBack"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
+                style="@style/SmartQ.Button.Back"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Back"
-                android:textColor="@color/primary"
-                android:textSize="13sp" />
+                android:text="Back" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -36,21 +34,18 @@
 
                 <TextView
                     android:id="@+id/tvHistoryTitle"
+                    style="@style/SmartQ.Text.ScreenTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Previous Visits"
-                    android:textColor="@color/text_primary"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
+                    android:text="Previous Visits" />
 
                 <TextView
                     android:id="@+id/tvHistorySubtitle"
+                    style="@style/SmartQ.Text.ScreenSubtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Patient visit timeline"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
+                    android:layout_marginTop="4dp"
+                    android:text="Patient visit timeline" />
             </LinearLayout>
         </LinearLayout>
 
@@ -64,14 +59,13 @@
 
         <TextView
             android:id="@+id/tvHistoryEmpty"
+            style="@style/SmartQ.Text.EmptyState"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
             android:paddingTop="28dp"
             android:paddingBottom="28dp"
             android:text="No completed visits found for this patient yet."
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp"
             android:visibility="gone" />
 
         <LinearLayout

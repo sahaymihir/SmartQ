@@ -19,7 +19,6 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.AppCompatButton;
 import androidx.core.content.ContextCompat;
 
 import com.example.smartqueue.R;
@@ -70,10 +69,7 @@ public class UserManagementActivity extends AppCompatActivity {
     private ApiService apiService;
     private boolean isSuperuser = false;
 
-    private int colorSurfaceContainerLow;
     private int colorOutlineVariant;
-    private int colorTextPrimary;
-    private int colorTextSecondary;
     private int colorPrimary;
     private int colorPriorityHigh;
     private int colorWhite;
@@ -115,10 +111,7 @@ public class UserManagementActivity extends AppCompatActivity {
         btnAddUser      = findViewById(R.id.btnAddUser);
         btnBack         = findViewById(R.id.btnBack);
 
-        colorSurfaceContainerLow = ContextCompat.getColor(this, R.color.surface_container_low);
         colorOutlineVariant = ContextCompat.getColor(this, R.color.outline_variant);
-        colorTextPrimary = ContextCompat.getColor(this, R.color.text_primary);
-        colorTextSecondary = ContextCompat.getColor(this, R.color.text_secondary);
         colorPrimary = ContextCompat.getColor(this, R.color.primary);
         colorPriorityHigh = ContextCompat.getColor(this, R.color.priority_high);
         colorWhite = ContextCompat.getColor(this, R.color.white);
@@ -199,111 +192,44 @@ public class UserManagementActivity extends AppCompatActivity {
     // ── Build user card ───────────────────────────────────────
 
     private View buildUserCard(UserListResponse.UserEntry user) {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        int pad = dp(12);
-        int margin = dp(8);
-        card.setPadding(pad, pad, pad, pad);
+        View card = LayoutInflater.from(this).inflate(R.layout.item_user_card, layoutUserList, false);
+        TextView tvName = card.findViewById(R.id.tvUserName);
+        TextView tvRoleBadge = card.findViewById(R.id.tvUserRoleBadge);
+        TextView tvStaffId = card.findViewById(R.id.tvUserStaffId);
+        TextView tvSpecialty = card.findViewById(R.id.tvUserSpecialty);
+        TextView tvContact = card.findViewById(R.id.tvUserContact);
+        TextView tvAge = card.findViewById(R.id.tvUserAge);
+        MaterialButton btnDelete = card.findViewById(R.id.btnDeleteUser);
 
-        // Card background
-        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
-        bg.setCornerRadius(dp(8));
-        bg.setColor(colorSurfaceContainerLow);
-        bg.setStroke(dp(1), colorOutlineVariant);
-        card.setBackground(bg);
+        tvName.setText(user.getDisplayLabel());
+        bindRoleBadge(tvRoleBadge, user.getRoleBadge(), user.getRole());
 
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(0, 0, 0, margin);
-        card.setLayoutParams(lp);
-
-        // ── Row 1: name + role badge ──────────────────────
-        LinearLayout row1 = row();
-        TextView tvName = text(user.getDisplayLabel(), 15, true, colorTextPrimary);
-        tvName.setLayoutParams(weightedLP(1));
-        row1.addView(tvName);
-
-        TextView tvRoleBadge = roleBadge(user.getRoleBadge(), user.getRole());
-        row1.addView(tvRoleBadge);
-        card.addView(row1);
-
-        // ── Row 2: staff ID (if present) ─────────────────
-        if (user.getStaffId() != null && !user.getStaffId().isEmpty()) {
-            TextView tvStaffId = text("Staff ID: " + user.getStaffId(), 12, false, colorPrimary);
-            tvStaffId.setPadding(0, dp(2), 0, dp(2));
-            card.addView(tvStaffId);
+        if (!TextUtils.isEmpty(user.getStaffId())) {
+            tvStaffId.setText(user.getStaffId());
+            tvStaffId.setVisibility(View.VISIBLE);
+        } else {
+            tvStaffId.setVisibility(View.GONE);
         }
 
-        // ── Row 3: specialty (doctors) ────────────────────
         if ("doctor".equals(user.getRole())
                 && user.getSpecialty() != null && !user.getSpecialty().isEmpty()) {
-            card.addView(text("Specialty: " + user.getSpecialty(), 12, false, colorTextSecondary));
+            tvSpecialty.setText("Specialty: " + user.getSpecialty());
+            tvSpecialty.setVisibility(View.VISIBLE);
+        } else {
+            tvSpecialty.setVisibility(View.GONE);
         }
 
-        // ── Row 4: email + phone ──────────────────────────
-        card.addView(text(user.getEmail() + "  ·  " + user.getPhone(), 12, false, colorTextSecondary));
-
-        // ── Row 5: age + delete button ────────────────────
-        LinearLayout row5 = row();
-        row5.setPadding(0, dp(4), 0, 0);
-        TextView tvAge = text("Age: " + user.getAge(), 12, false, colorTextSecondary);
-        tvAge.setLayoutParams(weightedLP(1));
-        row5.addView(tvAge);
-
-        AppCompatButton btnDelete = new AppCompatButton(this);
-        btnDelete.setText("Delete");
-        btnDelete.setTextSize(12);
-        btnDelete.setTextColor(colorPriorityHigh);
-        btnDelete.setPadding(dp(8), dp(2), dp(8), dp(2));
-        btnDelete.setAllCaps(false);
-        btnDelete.setBackground(buildDeleteButtonBackground());
-        btnDelete.setMinWidth(0);
-        btnDelete.setMinHeight(0);
-        LinearLayout.LayoutParams deleteLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, dp(32));
-        btnDelete.setLayoutParams(deleteLp);
+        tvContact.setText(user.getEmail() + "  ·  " + user.getPhone());
+        tvAge.setText("Age: " + user.getAge());
         btnDelete.setOnClickListener(v -> confirmDelete(user));
-        row5.addView(btnDelete);
-        card.addView(row5);
-
         return card;
     }
 
     private void renderUserCards(List<UserListResponse.UserEntry> users) {
         layoutUserList.removeAllViews();
         for (UserListResponse.UserEntry user : users) {
-            try {
-                layoutUserList.addView(buildUserCard(user));
-            } catch (RuntimeException error) {
-                android.util.Log.e("UserManagement", "Failed to render user card", error);
-                layoutUserList.addView(buildFallbackUserCard(user));
-            }
+            layoutUserList.addView(buildUserCard(user));
         }
-    }
-
-    private View buildFallbackUserCard(UserListResponse.UserEntry user) {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        int pad = dp(12);
-        card.setPadding(pad, pad, pad, pad);
-        card.setBackground(buildCardBackground());
-
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(0, 0, 0, dp(8));
-        card.setLayoutParams(lp);
-
-        String name = user != null ? user.getDisplayLabel() : "Unknown user";
-        String role = user != null ? user.getRoleBadge() : "USER";
-        String email = user != null && user.getEmail() != null ? user.getEmail() : "—";
-        String phone = user != null && user.getPhone() != null ? user.getPhone() : "—";
-
-        card.addView(text(name, 15, true, colorTextPrimary));
-        card.addView(text(role, 11, true, roleBadgeColor(user != null ? user.getRole() : null)));
-        card.addView(text(email + "  ·  " + phone, 12, false, colorTextSecondary));
-        return card;
     }
 
     // ── Delete confirmation ───────────────────────────────────
@@ -403,8 +329,8 @@ public class UserManagementActivity extends AppCompatActivity {
         }
 
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_spinner_item, roles);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                R.layout.list_item_doctor_dropdown, roles);
+        adapter.setDropDownViewResource(R.layout.list_item_doctor_dropdown);
         spinnerRole.setAdapter(adapter);
 
         // Show specialty field only for doctors
@@ -535,35 +461,12 @@ public class UserManagementActivity extends AppCompatActivity {
 
     // ── UI helpers ─────────────────────────────────────────────
 
-    private LinearLayout row() {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        return row;
-    }
-
-    private TextView text(String content, float size, boolean bold, int color) {
-        TextView tv = new TextView(this);
-        tv.setText(content);
-        tv.setTextSize(size);
-        tv.setTextColor(color);
-        if (bold) tv.setTypeface(null, android.graphics.Typeface.BOLD);
-        return tv;
-    }
-
-    private TextView roleBadge(String label, String role) {
-        TextView tv = new TextView(this);
+    private void bindRoleBadge(TextView tv, String label, String role) {
         tv.setText(label);
-        tv.setTextSize(10);
-        tv.setTextColor(colorWhite);
-        tv.setTypeface(null, android.graphics.Typeface.BOLD);
-        tv.setPadding(dp(6), dp(2), dp(6), dp(2));
-
         android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
-        bg.setCornerRadius(dp(4));
+        bg.setCornerRadius(dp(8));
         bg.setColor(roleBadgeColor(role));
         tv.setBackground(bg);
-        return tv;
     }
 
     private int roleBadgeColor(String role) {
@@ -591,31 +494,9 @@ public class UserManagementActivity extends AppCompatActivity {
         return filtered;
     }
 
-    private LinearLayout.LayoutParams weightedLP(int weight) {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
-                LinearLayout.LayoutParams.WRAP_CONTENT, weight);
-        return lp;
-    }
-
     private void showStatus(String message) {
         tvEmpty.setText(message);
         tvEmpty.setVisibility(View.VISIBLE);
-    }
-
-    private android.graphics.drawable.GradientDrawable buildCardBackground() {
-        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
-        bg.setCornerRadius(dp(8));
-        bg.setColor(colorSurfaceContainerLow);
-        bg.setStroke(dp(1), colorOutlineVariant);
-        return bg;
-    }
-
-    private android.graphics.drawable.GradientDrawable buildDeleteButtonBackground() {
-        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
-        bg.setCornerRadius(dp(8));
-        bg.setColor(ContextCompat.getColor(this, R.color.transparent));
-        bg.setStroke(dp(1), colorPriorityHigh);
-        return bg;
     }
 
     private int dp(int value) {

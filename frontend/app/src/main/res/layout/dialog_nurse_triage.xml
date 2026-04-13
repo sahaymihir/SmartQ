@@ -10,34 +10,30 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="8dp">
+        android:padding="16dp">
 
         <TextView
             android:id="@+id/tvDialogTitle"
+            style="@style/SmartQ.Text.ScreenTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Submit nurse vitals"
-            android:textColor="@color/text_primary"
-            android:textSize="20sp"
-            android:textStyle="bold" />
+            android:textSize="22sp" />
 
         <TextView
             android:id="@+id/tvDialogSubtitle"
+            style="@style/SmartQ.Text.ScreenSubtitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="Patient · Token #"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp" />
+            android:text="Patient · Token #" />
 
         <TextView
+            style="@style/SmartQ.Text.SectionLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="14dp"
-            android:text="Vitals and notes"
-            android:textColor="@color/primary"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:text="Vitals and notes" />
 
         <com.google.android.material.textfield.TextInputLayout
             style="@style/SmartQ.TextInput.Outlined"

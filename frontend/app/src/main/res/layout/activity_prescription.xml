@@ -18,16 +18,14 @@
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingTop="8dp"
-            android:paddingBottom="12dp">
+            android:paddingBottom="16dp">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnPrescriptionBack"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
+                style="@style/SmartQ.Button.Back"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Back"
-                android:textColor="@color/primary"
-                android:textSize="13sp" />
+                android:text="Back" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -37,63 +35,62 @@
 
                 <TextView
                     android:id="@+id/tvPrescriptionTitle"
+                    style="@style/SmartQ.Text.ScreenTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/prescription_title"
-                    android:textColor="@color/text_primary"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
+                    android:text="@string/prescription_title" />
 
                 <TextView
                     android:id="@+id/tvPrescriptionSubtitle"
+                    style="@style/SmartQ.Text.ScreenSubtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="@string/prescription_editable"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
+                    android:layout_marginTop="4dp"
+                    android:text="@string/prescription_editable" />
             </LinearLayout>
         </LinearLayout>
 
         <androidx.cardview.widget.CardView
+            style="@style/SmartQ.Card.Primary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            style="@style/SmartQ.Card"
             android:layout_marginBottom="16dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="18dp">
+
+                <TextView
+                    style="@style/SmartQ.Text.SectionLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Visit Summary" />
 
                 <TextView
                     android:id="@+id/tvPrescriptionPatient"
+                    style="@style/SmartQ.Text.CardTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Patient"
-                    android:textColor="@color/text_primary"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:layout_marginTop="10dp"
+                    android:text="Patient" />
 
                 <TextView
                     android:id="@+id/tvPrescriptionMeta"
+                    style="@style/SmartQ.Text.Meta"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:text="Doctor • Visit"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="12sp" />
+                    android:text="Doctor • Visit" />
 
                 <TextView
                     android:id="@+id/tvPrescriptionStatus"
+                    style="@style/SmartQ.Text.SectionLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="@string/prescription_status_draft"
-                    android:textColor="@color/primary"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
+                    android:text="@string/prescription_status_draft" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -105,11 +102,11 @@
             android:layout_marginBottom="12dp" />
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/SmartQ.TextInput"
+            style="@style/SmartQ.TextInput.Outlined"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/prescription_symptoms_summary"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="12dp"
+            android:hint="@string/prescription_symptoms_summary">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etSymptomsSummary"
@@ -123,11 +120,11 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/SmartQ.TextInput"
+            style="@style/SmartQ.TextInput.Outlined"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/prescription_tests_done"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="12dp"
+            android:hint="@string/prescription_tests_done">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etTestsDone"
@@ -141,11 +138,11 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/SmartQ.TextInput"
+            style="@style/SmartQ.TextInput.Outlined"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/prescription_medications"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="12dp"
+            android:hint="@string/prescription_medications">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etMedications"
@@ -159,11 +156,11 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/SmartQ.TextInput"
+            style="@style/SmartQ.TextInput.Outlined"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/prescription_conclusion"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="12dp"
+            android:hint="@string/prescription_conclusion">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etConclusion"
@@ -177,11 +174,11 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
-            style="@style/SmartQ.TextInput"
+            style="@style/SmartQ.TextInput.Outlined"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="@string/prescription_advice_notes"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="16dp"
+            android:hint="@string/prescription_advice_notes">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etAdviceNotes"
