@@ -290,20 +290,15 @@ public class PatientHomeActivity extends AppCompatActivity {
     private void renderConsultationHistory() {
         layoutHistoryList.removeAllViews();
 
-        int startIndex = latestConsultation != null ? 1 : 0;
-        if (consultationHistory.size() <= startIndex) {
+        if (consultationHistory.isEmpty()) {
             tvHistoryEmpty.setVisibility(View.VISIBLE);
-            tvHistoryEmpty.setText(
-                    latestConsultation == null
-                            ? getString(R.string.history_empty)
-                            : "Your earlier visits will appear here."
-            );
+            tvHistoryEmpty.setText(getString(R.string.history_empty));
             return;
         }
 
         tvHistoryEmpty.setVisibility(View.GONE);
         LayoutInflater inflater = LayoutInflater.from(this);
-        for (int i = startIndex; i < consultationHistory.size(); i++) {
+        for (int i = 0; i < consultationHistory.size(); i++) {
             ConsultationHistoryResponse.Consultation consultation = consultationHistory.get(i);
             View card = inflater.inflate(R.layout.item_consultation_history, layoutHistoryList, false);
             TextView tvDate = card.findViewById(R.id.tvHistoryDate);

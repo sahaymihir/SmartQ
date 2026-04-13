@@ -92,18 +92,18 @@
                     android:id="@+id/btnItemNoShow"
                     style="@style/SmartQ.Button.Outlined"
                     android:layout_width="wrap_content"
-                    android:layout_height="40dp"
+                    android:layout_height="wrap_content"
                     android:backgroundTint="@android:color/transparent"
                     android:insetTop="0dp"
                     android:insetBottom="0dp"
-                    android:minWidth="88dp"
-                    android:minHeight="40dp"
+                    android:minWidth="96dp"
+                    android:minHeight="48dp"
                     android:paddingStart="14dp"
                     android:paddingEnd="14dp"
                     android:text="No Show"
                     android:textAllCaps="false"
                     android:textColor="@color/error"
-                    android:textSize="11sp"
+                    android:textSize="12sp"
                     app:strokeColor="@color/error" />
             </LinearLayout>
         </LinearLayout>

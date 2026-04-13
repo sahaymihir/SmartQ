@@ -155,6 +155,9 @@ router.post('/next', async (req, res) => {
       const durationMinutes = Math.round((Date.now() - consultationStart) / 60000);
 
       currentToken.status = 'completed';
+      const now = new Date();
+      currentToken.completedAt = now;
+      currentToken.actualConsultMinutes = durationMinutes > 0 ? durationMinutes : currentToken.actualConsultMinutes;
       await currentToken.save();
 
       // Update moving average
