@@ -40,3 +40,9 @@ ml_service/models/bert_specialty/
 ml_service/models/**/training/datasets/
 ml_service/*.pid
 .codex
+
+# Project report artifacts
+final_report.aux
+final_report.out
+final_report.pdf
+final_report.toc
