@@ -198,7 +198,7 @@ public class LoginActivity extends AppCompatActivity {
         String password = etPassword.getText().toString().trim();
 
         if (TextUtils.isEmpty(email)) { tilEmail.setError("Email is required"); return; }
-        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) { tilEmail.setError("Invalid email"); return; }
+        if (!isValidEmail(email)) { tilEmail.setError("Invalid email"); return; }
         if (TextUtils.isEmpty(password)) { tilPassword.setError("Password is required"); return; }
         if (password.length() < 6) { tilPassword.setError("Min 6 characters"); return; }
 
@@ -259,5 +259,11 @@ public class LoginActivity extends AppCompatActivity {
         tvError.animate().translationX(-8).setDuration(50)
                 .withEndAction(() -> tvError.animate().translationX(8).setDuration(50)
                         .withEndAction(() -> tvError.animate().translationX(0).setDuration(50).start()).start()).start();
+    }
+
+    private boolean isValidEmail(String email) {
+        return !TextUtils.isEmpty(email)
+                && Patterns.EMAIL_ADDRESS.matcher(email).matches()
+                && !email.contains("..");
     }
 }

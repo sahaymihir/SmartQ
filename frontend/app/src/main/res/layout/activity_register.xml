@@ -41,7 +41,7 @@
                     android:text="@string/create_account"
                     android:textSize="28sp"
                     android:textStyle="bold"
-                    android:textColor="@color/on_surface"
+                    android:textColor="@color/primary"
                     android:fontFamily="sans-serif-black"/>
 
                 <TextView
