@@ -67,6 +67,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     private static final String QUEUE_ALERT_CHANNEL_ID = "smartq_queue_alerts";
     private static final int NEXT_IN_LINE_NOTIFICATION_ID = 1201;
     private static final int CALLED_NOTIFICATION_ID = 1202;
+    private static final int TOKEN_ACTIVATED_NOTIFICATION_ID = 1203;
 
     // Views
     private TextView tvGreeting, tvPatientName;
@@ -77,6 +78,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     private TextView tvCheckinTitle, tvCheckinSubtitle, tvSnoozeCount;
     private CardView cardCheckin, cardSnooze;
     private MaterialButton btnCheckIn, btnSnooze, btnLeaveQueue, btnDone;
+    private MaterialButton btnCheckInPreJoin;
 
     // New doctor-selection views
     private TextInputEditText etSymptoms;
@@ -118,7 +120,24 @@ public class PatientHomeActivity extends AppCompatActivity {
     private int lastKnownQueuePosition = Integer.MAX_VALUE;
     private String lastKnownQueueStatus = "waiting";
     private boolean hasCheckedInToday = false;
+    private PendingJoinRequest pendingJoinRequest = null;
     private ActivityResultLauncher<Intent> speechInputLauncher;
+
+    private static class PendingJoinRequest {
+        final String doctorId;
+        final String doctorName;
+        final String symptoms;
+        final String visitType;
+        final String followUpTokenId;
+
+        PendingJoinRequest(String doctorId, String doctorName, String symptoms, String visitType, String followUpTokenId) {
+            this.doctorId = doctorId;
+            this.doctorName = doctorName;
+            this.symptoms = symptoms;
+            this.visitType = visitType;
+            this.followUpTokenId = followUpTokenId;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -187,6 +206,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         btnSnooze          = findViewById(R.id.btnSnooze);
         btnLeaveQueue      = findViewById(R.id.btnLeaveQueue);
         btnDone            = findViewById(R.id.btnDone);
+        btnCheckInPreJoin  = findViewById(R.id.btnCheckInPreJoin);
         MaterialButton btnLogout = findViewById(R.id.btnLogout);
         btnLogout.setOnClickListener(v -> confirmLogout());
 
@@ -258,10 +278,6 @@ public class PatientHomeActivity extends AppCompatActivity {
 
         // Join Queue
         btnJoinQueue.setOnClickListener(v -> {
-            if (!hasCheckedInToday) {
-                Toast.makeText(this, "Please check in at hospital before joining queue", Toast.LENGTH_SHORT).show();
-                return;
-            }
             if (selectedDoctorId == null) {
                 Toast.makeText(this, "Please select a doctor first", Toast.LENGTH_SHORT).show();
                 return;
@@ -276,36 +292,10 @@ public class PatientHomeActivity extends AppCompatActivity {
             joinQueueWithContext(selectedDoctorId, selectedDoctorName, symptoms, "new", null);
         });
 
+        btnCheckInPreJoin.setOnClickListener(v -> performCheckIn());
+
         // Check In
-        btnCheckIn.setOnClickListener(v -> {
-            btnCheckIn.setEnabled(false);
-            apiService.checkIn().enqueue(new Callback<MessageResponse>() {
-                @Override
-                public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
-                    if (response.code() == 401) { handleUnauthorized(); return; }
-                    if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
-                        hasCheckedInToday = true;
-                        updateCheckinUI(true);
-                        Toast.makeText(PatientHomeActivity.this,
-                                "Checked in! Hospital notified.", Toast.LENGTH_SHORT).show();
-                    } else {
-                        btnCheckIn.setEnabled(true);
-                        fetchQueueStatus();
-                        MessageResponse error = ApiErrorParser.parseMessage(response);
-                        Toast.makeText(PatientHomeActivity.this,
-                                error != null && error.getMessage() != null
-                                        ? error.getMessage()
-                                        : "Could not check in. Try again.",
-                                Toast.LENGTH_SHORT).show();
-                    }
-                }
-                @Override
-                public void onFailure(Call<MessageResponse> call, Throwable t) {
-                    btnCheckIn.setEnabled(true);
-                    Toast.makeText(PatientHomeActivity.this, "Network error", Toast.LENGTH_SHORT).show();
-                }
-            });
-        });
+        btnCheckIn.setOnClickListener(v -> performCheckIn());
 
         // Snooze
         btnSnooze.setOnClickListener(v ->
@@ -588,7 +578,14 @@ public class PatientHomeActivity extends AppCompatActivity {
             return;
         }
         if (!hasCheckedInToday) {
-            Toast.makeText(this, "Please check in at hospital before joining queue", Toast.LENGTH_SHORT).show();
+            pendingJoinRequest = new PendingJoinRequest(
+                    doctorId,
+                    doctorName,
+                    symptoms,
+                    visitType,
+                    followUpTokenId
+            );
+            showDeferredJoinDialog(doctorName);
             return;
         }
         if (!isDoctorAvailable(doctorId)) {
@@ -618,12 +615,13 @@ public class PatientHomeActivity extends AppCompatActivity {
                     maybeNotifyQueueEvents(body.getTokenNumber(), "waiting", body.getPosition(), textOrDefault(doctorName, selectedDoctorName));
                     startPolling();
                     updateSuggestedTestsCard("waiting", body.isNurseTriaged(), body.getTestRecommendations());
+                        notifyTokenActivated(body.getTokenNumber(), body.getPosition(), body.getEtaMinutes(), textOrDefault(doctorName, selectedDoctorName));
                     Toast.makeText(PatientHomeActivity.this,
                             body.getMessage() != null ? body.getMessage() : "Token #" + body.getTokenNumber() + " issued!",
                             Toast.LENGTH_SHORT).show();
                 } else {
                     btnJoinQueue.setEnabled(true);
-                    btnJoinQueue.setText("Join Queue");
+                    btnJoinQueue.setText("Request Queue Slot");
                     MessageResponse error = ApiErrorParser.parseMessage(response);
                     Toast.makeText(PatientHomeActivity.this,
                             error != null && error.getMessage() != null
@@ -636,7 +634,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<TokenResponse> call, Throwable t) {
                 btnJoinQueue.setEnabled(true);
-                btnJoinQueue.setText("Join Queue");
+                btnJoinQueue.setText("Request Queue Slot");
                 Toast.makeText(PatientHomeActivity.this,
                         "Server error. Is backend running?", Toast.LENGTH_LONG).show();
             }
@@ -932,7 +930,7 @@ public class PatientHomeActivity extends AppCompatActivity {
 
     private void resetJoinButton() {
         btnJoinQueue.setEnabled(true);
-        btnJoinQueue.setText("Join Queue");
+        btnJoinQueue.setText("Request Queue Slot");
     }
 
     private void setLeaveQueueLoading(boolean loading) {
@@ -1094,12 +1092,99 @@ public class PatientHomeActivity extends AppCompatActivity {
             tvCheckinSubtitle.setText("Hospital has been notified of your arrival");
             btnCheckIn.setEnabled(false);
             btnCheckIn.setText("Done");
+            btnCheckInPreJoin.setEnabled(false);
+            btnCheckInPreJoin.setText("Checked In");
         } else {
             tvCheckinTitle.setText("Not checked in yet");
             tvCheckinSubtitle.setText("Tap when you arrive at the hospital");
             btnCheckIn.setEnabled(true);
             btnCheckIn.setText("Check In");
+            btnCheckInPreJoin.setEnabled(true);
+            btnCheckInPreJoin.setText("Check In at Hospital");
         }
+    }
+
+    private void showDeferredJoinDialog(String doctorName) {
+        String targetDoctor = textOrDefault(doctorName, selectedDoctorName);
+        new AlertDialog.Builder(this)
+                .setTitle("Queue request saved")
+                .setMessage("Your queue request has been saved for " + targetDoctor + ". Check in at hospital to activate your token.")
+                .setPositiveButton("Check In Now", (dialog, which) -> performCheckIn())
+                .setNegativeButton("Later", null)
+                .show();
+
+        Toast.makeText(this, "Queue request saved. Check in to activate queue entry.", Toast.LENGTH_LONG).show();
+    }
+
+    private void performCheckIn() {
+        btnCheckIn.setEnabled(false);
+        btnCheckInPreJoin.setEnabled(false);
+        apiService.checkIn().enqueue(new Callback<MessageResponse>() {
+            @Override
+            public void onResponse(Call<MessageResponse> call, Response<MessageResponse> response) {
+                if (response.code() == 401) { handleUnauthorized(); return; }
+                if (response.isSuccessful() && response.body() != null && response.body().isSuccess()) {
+                    hasCheckedInToday = true;
+                    updateCheckinUI(true);
+                    boolean hasPendingRequest = pendingJoinRequest != null;
+                    Toast.makeText(PatientHomeActivity.this,
+                        hasPendingRequest
+                            ? "Checked in! Activating queue request."
+                            : "Checked in! You can now request a queue slot.",
+                        Toast.LENGTH_SHORT).show();
+                    activatePendingJoinAfterCheckIn();
+                } else {
+                    btnCheckIn.setEnabled(true);
+                    btnCheckInPreJoin.setEnabled(true);
+                    fetchQueueStatus();
+                    MessageResponse error = ApiErrorParser.parseMessage(response);
+                    Toast.makeText(PatientHomeActivity.this,
+                            error != null && error.getMessage() != null
+                                    ? error.getMessage()
+                                    : "Could not check in. Try again.",
+                            Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<MessageResponse> call, Throwable t) {
+                btnCheckIn.setEnabled(true);
+                btnCheckInPreJoin.setEnabled(true);
+                Toast.makeText(PatientHomeActivity.this, "Network error", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void activatePendingJoinAfterCheckIn() {
+        if (pendingJoinRequest == null) {
+            return;
+        }
+        PendingJoinRequest request = pendingJoinRequest;
+        pendingJoinRequest = null;
+        joinQueueWithContext(
+                request.doctorId,
+                request.doctorName,
+                request.symptoms,
+                request.visitType,
+                request.followUpTokenId
+        );
+    }
+
+    private void notifyTokenActivated(int tokenNumber, int position, int etaMinutes, String doctorName) {
+        StringBuilder body = new StringBuilder();
+        body.append("Token #").append(tokenNumber)
+                .append(" | Position: ").append(position)
+                .append(" | ETA: ").append(etaMinutes == 0 ? "Next up" : ("~" + etaMinutes + " min"));
+        if (!isBlank(doctorName)) {
+            body.append(" | Doctor: ").append(doctorName);
+        }
+
+        postQueueNotification(
+                TOKEN_ACTIVATED_NOTIFICATION_ID,
+                "Queue token activated",
+                body.toString(),
+                doctorName
+        );
     }
 
     private void showNotInQueueState() {

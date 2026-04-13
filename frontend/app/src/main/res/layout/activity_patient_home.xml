@@ -373,11 +373,19 @@
 
             <!-- Join button -->
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCheckInPreJoin"
+                style="@style/SmartQ.Button.Outlined"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Check In at Hospital"
+                android:layout_marginBottom="10dp"/>
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnJoinQueue"
                 style="@style/SmartQ.Button"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Join Queue"
+                android:text="Request Queue Slot"
                 android:layout_marginBottom="8dp"/>
 
         </LinearLayout>
