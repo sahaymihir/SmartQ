@@ -16,6 +16,7 @@ import com.example.smartqueue.models.response.PrescriptionResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
 import com.example.smartqueue.ui.auth.LoginActivity;
+import com.example.smartqueue.utils.SessionFlowHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -280,13 +281,7 @@ public class PrescriptionActivity extends AppCompatActivity {
 
     private void handleUnauthorized() {
         if (!isFinishing()) {
-            sessionManager.clearSession();
-            ApiClient.setAuthToken(null);
-            Toast.makeText(this, "Session expired. Please log in again.", Toast.LENGTH_LONG).show();
-            Intent intent = new Intent(this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
+            SessionFlowHelper.logoutToLogin(this, sessionManager, "Session expired. Please log in again.");
         }
     }
 }

@@ -91,6 +91,12 @@ const userSchema = new mongoose.Schema({
   lastHospitalCheckInAt: {
     type: Date,
     default: null
+  },
+  // Optional FCM token for device push notifications.
+  fcmToken: {
+    type: String,
+    default: null,
+    trim: true
   }
 }, {
   timestamps: true

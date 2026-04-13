@@ -54,6 +54,11 @@
     <string name="follow_up_note_linked">Continuing from: </string>
     <string name="follow_up_choose_visit">Choose Previous Visit</string>
     <string name="follow_up_none">No previous completed visits available yet.</string>
+    <string name="follow_up_same_doctor">Reuse Same Doctor</string>
+    <string name="follow_up_same_specialty">Reuse Specialty</string>
+    <string name="follow_up_choose_doctor">Choose Doctor First</string>
+    <string name="follow_up_same_doctor_hint">follow-up reuses the same doctor if still available</string>
+    <string name="follow_up_same_specialty_hint">follow-up stays in the same specialty if the doctor changed</string>
     <string name="history_title">Recent Visits</string>
     <string name="history_empty">Your completed visits will appear here.</string>
     <string name="history_view_prescription">View prescription</string>
@@ -77,6 +82,10 @@
     <string name="test_recs_title">Suggested While You Wait</string>
     <string name="test_recs_subtitle">Your estimated wait is long — get these routine tests started now so results are ready for your doctor.</string>
     <string name="test_recs_dismiss">Dismiss</string>
+    <string name="patient_notifications_rationale">Enable notifications so SmartQ can alert you when you are next in line or when the doctor has called you.</string>
+    <string name="join_queue_loading_doctors">Loading doctors...</string>
+    <string name="join_queue_select_doctor">Select Doctor To Continue</string>
+    <string name="join_queue_save_request">Save Queue Request</string>
 
     <!-- User Management -->
     <string name="user_management_title">User Management</string>

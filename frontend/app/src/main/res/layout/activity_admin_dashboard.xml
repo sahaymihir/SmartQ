@@ -371,6 +371,14 @@
                 android:background="@drawable/badge_normal" />
 
             <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Session-scoped demo diagnostics for the live backend and ML services."
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary" />
+
+            <TextView
                 android:id="@+id/tvMlOpsSummary"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

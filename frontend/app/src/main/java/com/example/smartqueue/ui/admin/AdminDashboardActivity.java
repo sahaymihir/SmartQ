@@ -20,11 +20,10 @@ import com.example.smartqueue.models.response.MlOpsLogsResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
-import com.example.smartqueue.ui.admin.UserManagementActivity;
-import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.ui.prescription.PrescriptionActivity;
 import com.example.smartqueue.utils.ApiErrorParser;
 import com.example.smartqueue.utils.RoleNavigationHelper;
+import com.example.smartqueue.utils.SessionFlowHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 
@@ -189,10 +188,7 @@ public class AdminDashboardActivity extends AppCompatActivity {
                         .setTitle("Logout")
                         .setMessage("Are you sure?")
                         .setPositiveButton("Logout", (d, w) -> {
-                            sessionManager.clearSession();
-                            startActivity(new Intent(this, LoginActivity.class));
-                            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
-                            finish();
+                            SessionFlowHelper.logoutToLogin(this, sessionManager, null);
                         })
                         .setNegativeButton("Cancel", null)
                         .show()
@@ -330,9 +326,18 @@ public class AdminDashboardActivity extends AppCompatActivity {
                     currentCalledTokenId = calledPatient != null ? calledPatient.getTokenId() : null;
                     btnPrescription.setEnabled(currentCalledTokenId != null);
                     btnPrescription.setAlpha(currentCalledTokenId != null ? 1f : 0.6f);
+                    btnPrescription.setText(currentCalledTokenId != null ? "Finish Prescription" : getString(R.string.prescription_open));
                     tvCurrentlyServing.setText(calledPatient != null
                             ? "Token #" + calledPatient.getTokenNumber() + " — " + calledPatient.getPatientName()
+                                + " • finalize prescription before next call"
                             : "No patient currently called");
+                    if (isPaused) {
+                        btnCallNext.setText("Queue Paused");
+                    } else if (currentCalledTokenId != null) {
+                        btnCallNext.setText("Finalize Rx & Call Next");
+                    } else {
+                        btnCallNext.setText("Call Next ▶");
+                    }
                     updateUrgentAlert(immediateReviewCount);
 
                     renderQueueList(queue);

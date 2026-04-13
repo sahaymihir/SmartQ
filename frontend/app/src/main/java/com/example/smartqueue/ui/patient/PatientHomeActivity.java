@@ -1,5 +1,6 @@
 package com.example.smartqueue.ui.patient;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.ActivityNotFoundException;
 import android.app.NotificationChannel;
@@ -41,10 +42,10 @@ import com.example.smartqueue.models.response.TestRecommendationResponse;
 import com.example.smartqueue.models.response.TokenResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
-import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.ui.prescription.PrescriptionActivity;
 import com.example.smartqueue.utils.ApiErrorParser;
 import com.example.smartqueue.utils.RoleNavigationHelper;
+import com.example.smartqueue.utils.SessionFlowHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -122,6 +123,8 @@ public class PatientHomeActivity extends AppCompatActivity {
     private boolean hasCheckedInToday = false;
     private PendingJoinRequest pendingJoinRequest = null;
     private ActivityResultLauncher<Intent> speechInputLauncher;
+    private ActivityResultLauncher<String> notificationPermissionLauncher;
+    private boolean isDoctorListLoading = false;
 
     private static class PendingJoinRequest {
         final String doctorId;
@@ -171,6 +174,18 @@ public class PatientHomeActivity extends AppCompatActivity {
                     etSymptoms.setSelection(etSymptoms.getText() != null ? etSymptoms.getText().length() : 0);
                 }
         );
+        notificationPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                isGranted -> {
+                    if (!isGranted) {
+                        Toast.makeText(
+                                this,
+                                getString(R.string.patient_notifications_rationale),
+                                Toast.LENGTH_LONG
+                        ).show();
+                    }
+                }
+        );
         ApiClient.setAuthToken(sessionManager.getToken());
         apiService = ApiClient.getInstance().create(ApiService.class);
 
@@ -178,6 +193,8 @@ public class PatientHomeActivity extends AppCompatActivity {
         ensureQueueAlertChannel();
         setupGreeting();
         setupClickListeners();
+        updateJoinButtonState();
+        maybeRequestNotificationPermission();
         loadDoctors();
         loadConsultationHistory();
         fetchCheckInStatus(true);
@@ -265,15 +282,11 @@ public class PatientHomeActivity extends AppCompatActivity {
                 return;
             }
             if (!selectedDoctor.isAvailable()) {
-                selectedDoctorId = null;
-                selectedDoctorName = null;
-                tvSelectedDoctor.setText("Select an available doctor");
+                clearSelectedDoctor("Select an available doctor");
                 Toast.makeText(this, "Selected doctor is unavailable right now", Toast.LENGTH_SHORT).show();
                 return;
             }
-            selectedDoctorId = selectedDoctor.getId();
-            selectedDoctorName = textOrDefault(selectedDoctor.getName(), "Doctor");
-            tvSelectedDoctor.setText(selectedDoctorName);
+            applySelectedDoctor(selectedDoctor);
         });
 
         // Join Queue
@@ -392,8 +405,7 @@ public class PatientHomeActivity extends AppCompatActivity {
 
     // Load doctors from API
     private void loadDoctors() {
-        tvDoctorListLoading.setVisibility(View.VISIBLE);
-        tvDoctorListLoading.setText("Loading doctors...");
+        setDoctorLoadingState(true, getString(R.string.join_queue_loading_doctors));
 
         apiService.getDoctors().enqueue(new Callback<DoctorsResponse>() {
             @Override
@@ -404,20 +416,31 @@ public class PatientHomeActivity extends AppCompatActivity {
                         && !response.body().getDoctors().isEmpty()) {
                     allDoctors = response.body().getDoctors();
                     updateDoctorPickerOptions();
-                    tvDoctorListLoading.setVisibility(View.GONE);
+                    setDoctorLoadingState(false, "");
+                    if (!isBlank(selectedDoctorId) && !isDoctorAvailable(selectedDoctorId)) {
+                        clearSelectedDoctor("Previously selected doctor unavailable");
+                    } else {
+                        updateJoinButtonState();
+                    }
                 } else {
+                    allDoctors = new ArrayList<>();
                     doctorPickerOptions.clear();
                     if (doctorPickerAdapter != null) {
                         doctorPickerAdapter.notifyDataSetChanged();
                     }
-                    tvDoctorListLoading.setText("No doctors found. Ask admin to run Seed Data.");
-                    tvDoctorListLoading.setVisibility(View.VISIBLE);
+                    clearSelectedDoctor("No live doctor roster");
+                    setDoctorLoadingState(false, "No doctors found. Ask admin to run Seed Data.");
                 }
             }
             @Override
             public void onFailure(Call<DoctorsResponse> call, Throwable t) {
-                tvDoctorListLoading.setText("Could not load doctors. Is backend running?");
-                tvDoctorListLoading.setVisibility(View.VISIBLE);
+                allDoctors = new ArrayList<>();
+                doctorPickerOptions.clear();
+                if (doctorPickerAdapter != null) {
+                    doctorPickerAdapter.notifyDataSetChanged();
+                }
+                clearSelectedDoctor("Doctor list unavailable");
+                setDoctorLoadingState(false, "Could not load doctors. Is backend running?");
             }
         });
     }
@@ -468,11 +491,14 @@ public class PatientHomeActivity extends AppCompatActivity {
         for (DoctorsResponse.Doctor doctor : allDoctors) {
             if (doctorId.equals(doctor.getId())) {
                 if (!doctor.isAvailable()) {
-                    selectedDoctorId = null;
-                    selectedDoctorName = null;
+                    clearSelectedDoctor("Selected doctor unavailable");
                     return;
                 }
+                selectedDoctorId = doctor.getId();
+                selectedDoctorName = textOrDefault(doctor.getName(), "Doctor");
+                tvSelectedDoctor.setText(selectedDoctorName);
                 dropdownDoctorPicker.setText(buildDoctorDisplayLabel(doctor), false);
+                updateJoinButtonState();
                 return;
             }
         }
@@ -493,7 +519,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     // Call symptom prediction API
     private void predictDoctor(String symptoms) {
         btnFindDoctor.setEnabled(false);
-        btnFindDoctor.setText("Finding...");
+        btnFindDoctor.setText("Checking...");
 
         apiService.predictDoctor(new SymptomRequest(symptoms))
                 .enqueue(new Callback<SymptomPredictResponse>() {
@@ -501,7 +527,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                     public void onResponse(Call<SymptomPredictResponse> call,
                                            Response<SymptomPredictResponse> response) {
                         btnFindDoctor.setEnabled(true);
-                        btnFindDoctor.setText("Find Best Doctor");
+                        btnFindDoctor.setText("Get Model Suggestion");
                         if (response.code() == 401) { handleUnauthorized(); return; }
 
                         if (response.isSuccessful() && response.body() != null
@@ -518,9 +544,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                                     tvSelectedDoctor.setText(recName);
                                     syncDoctorPickerSelectionById(rec.getId());
                                 } else {
-                                    selectedDoctorId = null;
-                                    selectedDoctorName = null;
-                                    tvSelectedDoctor.setText("Suggested doctor unavailable. Select another.");
+                                    clearSelectedDoctor("Suggested doctor unavailable. Pick another");
                                 }
                             }
                             tvAiPickTitle.setText(rec != null
@@ -555,7 +579,7 @@ public class PatientHomeActivity extends AppCompatActivity {
                     @Override
                     public void onFailure(Call<SymptomPredictResponse> call, Throwable t) {
                         btnFindDoctor.setEnabled(true);
-                        btnFindDoctor.setText("Find Best Doctor");
+                        btnFindDoctor.setText("Get Model Suggestion");
                         Toast.makeText(PatientHomeActivity.this,
                                 "Server error", Toast.LENGTH_SHORT).show();
                     }
@@ -899,6 +923,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         updateQueuePollingSignals("waiting", Integer.MAX_VALUE);
         fetchCheckInStatus(true);
         loadConsultationHistory();
+        updateJoinButtonState();
         if (showToast) {
             Toast.makeText(this, "No active queue token found.", Toast.LENGTH_SHORT).show();
         }
@@ -929,8 +954,7 @@ public class PatientHomeActivity extends AppCompatActivity {
     }
 
     private void resetJoinButton() {
-        btnJoinQueue.setEnabled(true);
-        btnJoinQueue.setText("Request Queue Slot");
+        updateJoinButtonState();
     }
 
     private void setLeaveQueueLoading(boolean loading) {
@@ -947,14 +971,7 @@ public class PatientHomeActivity extends AppCompatActivity {
         if (!isFinishing() && sessionManager.isLoggedIn()) {
             stopPolling();
             stopHistoryPolling();
-            Toast.makeText(this, "Session expired. Please log in again.", Toast.LENGTH_LONG).show();
-            sessionManager.clearSession();
-            ApiClient.setAuthToken(null);
-            Intent intent = new Intent(this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
-            finish();
+            SessionFlowHelper.logoutToLogin(this, sessionManager, "Session expired. Please log in again.");
         }
     }
 
@@ -1102,6 +1119,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             btnCheckInPreJoin.setEnabled(true);
             btnCheckInPreJoin.setText("Check In at Hospital");
         }
+        updateJoinButtonState();
     }
 
     private void showDeferredJoinDialog(String doctorName) {
@@ -1236,13 +1254,7 @@ public class PatientHomeActivity extends AppCompatActivity {
             dialog.dismiss();
             stopPolling();
             stopHistoryPolling();
-            sessionManager.clearSession();
-            ApiClient.setAuthToken(null);
-            Intent intent = new Intent(this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
-            finish();
+            SessionFlowHelper.logoutToLogin(this, sessionManager, null);
         });
 
         dialog.show();
@@ -1285,10 +1297,11 @@ public class PatientHomeActivity extends AppCompatActivity {
             TextView tvOutcome = card.findViewById(R.id.tvHistoryOutcome);
             TextView tvAction = card.findViewById(R.id.tvHistoryAction);
             MaterialButton btnHistoryFollowUp = card.findViewById(R.id.btnHistoryFollowUp);
+            DoctorsResponse.Doctor followUpDoctor = resolveFollowUpDoctor(consultation);
 
             tvDate.setText("Visit day: " + formatHistoryDate(consultation.getDate()));
             tvDoctor.setText(consultation.getDoctorName());
-            tvType.setText(formatVisitTypeLabel(consultation.getVisitType(), consultation.getDoctorSpecialty()));
+            tvType.setText(buildFollowUpHint(consultation, followUpDoctor));
             tvSummary.setText(!isBlank(consultation.getSymptomsSummary())
                     ? consultation.getSymptomsSummary()
                     : (!isBlank(consultation.getSymptoms()) ? consultation.getSymptoms() : "No symptom summary recorded."));
@@ -1296,6 +1309,9 @@ public class PatientHomeActivity extends AppCompatActivity {
                     ? consultation.getConclusionPreview()
                     : (!isBlank(consultation.getDiagnosis()) ? consultation.getDiagnosis() : "Open for full prescription details."));
             tvAction.setText(consultation.hasPrescription() ? "Open prescription" : "Open visit details");
+            btnHistoryFollowUp.setText(buildFollowUpButtonLabel(consultation, followUpDoctor));
+            btnHistoryFollowUp.setEnabled(followUpDoctor != null || !isBlank(selectedDoctorId));
+            btnHistoryFollowUp.setAlpha(btnHistoryFollowUp.isEnabled() ? 1f : 0.6f);
 
             tvAction.setOnClickListener(v -> openPrescriptionScreen(consultation.getTokenId(), true));
             btnHistoryFollowUp.setOnClickListener(v -> requestFollowUpQueueJoin(consultation));
@@ -1363,6 +1379,95 @@ public class PatientHomeActivity extends AppCompatActivity {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private void maybeRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+    }
+
+    private void setDoctorLoadingState(boolean loading, String message) {
+        isDoctorListLoading = loading;
+        dropdownDoctorPicker.setEnabled(!loading);
+        tvDoctorListLoading.setText(message);
+        tvDoctorListLoading.setVisibility(
+                loading || !isBlank(message) ? View.VISIBLE : View.GONE
+        );
+        updateJoinButtonState();
+    }
+
+    private void applySelectedDoctor(DoctorsResponse.Doctor doctor) {
+        if (doctor == null) {
+            clearSelectedDoctor("Find a doctor or choose one manually");
+            return;
+        }
+        selectedDoctorId = doctor.getId();
+        selectedDoctorName = textOrDefault(doctor.getName(), "Doctor");
+        tvSelectedDoctor.setText(selectedDoctorName);
+        updateJoinButtonState();
+    }
+
+    private void clearSelectedDoctor(String prompt) {
+        selectedDoctorId = null;
+        selectedDoctorName = null;
+        tvSelectedDoctor.setText(prompt);
+        updateJoinButtonState();
+    }
+
+    private void updateJoinButtonState() {
+        if (btnJoinQueue == null) {
+            return;
+        }
+        boolean hasValidDoctor = !isBlank(selectedDoctorId) && isDoctorAvailable(selectedDoctorId);
+        boolean canJoin = !isDoctorListLoading && hasValidDoctor;
+        btnJoinQueue.setEnabled(canJoin);
+
+        if (isDoctorListLoading) {
+            btnJoinQueue.setText(getString(R.string.join_queue_loading_doctors));
+        } else if (!hasValidDoctor) {
+            btnJoinQueue.setText(getString(R.string.join_queue_select_doctor));
+        } else if (!hasCheckedInToday) {
+            btnJoinQueue.setText(getString(R.string.join_queue_save_request));
+        } else {
+            btnJoinQueue.setText("Request Queue Slot");
+        }
+    }
+
+    private String buildFollowUpButtonLabel(
+            ConsultationHistoryResponse.Consultation consultation,
+            DoctorsResponse.Doctor followUpDoctor
+    ) {
+        if (followUpDoctor != null
+                && !isBlank(consultation.getDoctorId())
+                && consultation.getDoctorId().equals(followUpDoctor.getId())) {
+            return getString(R.string.follow_up_same_doctor);
+        }
+        if (followUpDoctor != null) {
+            return getString(R.string.follow_up_same_specialty);
+        }
+        return getString(R.string.follow_up_choose_doctor);
+    }
+
+    private String buildFollowUpHint(
+            ConsultationHistoryResponse.Consultation consultation,
+            DoctorsResponse.Doctor followUpDoctor
+    ) {
+        String visitLabel = formatVisitTypeLabel(consultation.getVisitType(), consultation.getDoctorSpecialty());
+        if (followUpDoctor != null
+                && !isBlank(consultation.getDoctorId())
+                && consultation.getDoctorId().equals(followUpDoctor.getId())) {
+            return visitLabel + " • " + getString(R.string.follow_up_same_doctor_hint);
+        }
+        if (followUpDoctor != null) {
+            return visitLabel + " • " + getString(R.string.follow_up_same_specialty_hint);
+        }
+        return visitLabel + " • " + getString(R.string.follow_up_choose_doctor);
     }
 
     private void updateSuggestedTestsCard(

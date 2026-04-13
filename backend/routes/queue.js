@@ -9,6 +9,7 @@ const {
   buildPrescriptionView,
   hasLegacyPrescription,
 } = require('../services/prescriptionService');
+const { notifyWaitingDoctorEtaChanges } = require('../services/queueNotificationService');
 const { buildVisitSnapshot, determineTriageDecision, getAgeBaselineScore, mapPriorityClassToScore } = require('../services/triageService');
 const { routeToSupportedSpecialty } = require('../services/specialtyService');
 const {
@@ -836,6 +837,9 @@ router.post('/leave', protect, async (req, res) => {
 
     if (['waiting', 'waiting_doctor'].includes(previousStatus)) {
       await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, today, previousStatus);
+      if (previousStatus === 'waiting_doctor') {
+        await notifyWaitingDoctorEtaChanges(token.doctor, today);
+      }
     }
 
     res.json({
@@ -906,6 +910,9 @@ router.post('/noshow', noShowLimiter, protect, staffOnly, async (req, res) => {
       }
       if (['waiting', 'waiting_doctor'].includes(previousStatus)) {
         await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, queueDate, previousStatus);
+        if (previousStatus === 'waiting_doctor') {
+          await notifyWaitingDoctorEtaChanges(token.doctor, queueDate);
+        }
       }
     }
 
@@ -1137,6 +1144,7 @@ router.patch('/nurse-triage/:tokenId', nurseTriageLimiter, protect, staffOnly, a
         'waiting_doctor'
       );
     }
+    await notifyWaitingDoctorEtaChanges(token.doctor._id || token.doctor, today);
 
     const updatedToken = await Token.findById(token._id);
     res.json({

@@ -90,7 +90,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Ready to join the queue?"
+                        android:text="Ready to join today&apos;s queue?"
                         android:textSize="22sp"
                         android:textStyle="bold"
                         android:textColor="@color/text_primary"
@@ -99,7 +99,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Skip the waiting room.\nJoin the queue digitally."
+                        android:text="1. Check in at hospital\n2. Describe symptoms\n3. Review the suggestion and select a doctor\n4. Request your slot"
                         android:textSize="15sp"
                         android:textColor="@color/on_surface_variant"
                         android:gravity="center"
@@ -144,19 +144,19 @@
                             android:orientation="vertical">
 
                             <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Describe your symptoms"
-                                android:textSize="15sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/text_primary"/>
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Step 1 • Describe your symptoms"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"/>
 
                             <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Your symptoms help suggest the best doctor"
-                                android:textSize="13sp"
-                                android:textColor="@color/on_surface_variant"/>
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="This powers the live triage prediction and helps route you to the right doctor"
+                            android:textSize="13sp"
+                            android:textColor="@color/on_surface_variant"/>
                         </LinearLayout>
                     </LinearLayout>
 
@@ -198,7 +198,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Find Best Doctor"/>
+                            android:text="Get Model Suggestion"/>
                     </LinearLayout>
 
                     <!-- Prediction result (hidden until prediction runs) -->
@@ -286,7 +286,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Select Doctor"
+                            android:text="Step 2 • Select doctor"
                             android:textSize="15sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_primary"/>
@@ -295,7 +295,7 @@
                             android:id="@+id/tvSelectedDoctor"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="None selected"
+                            android:text="Find a doctor or choose one manually"
                             android:textSize="12sp"
                             android:textColor="@color/primary"/>
                     </LinearLayout>
@@ -325,7 +325,7 @@
                         android:id="@+id/tvDoctorListLoading"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Loading doctors..."
+                        android:text="Loading available doctors..."
                         android:textSize="12sp"
                         android:textColor="@color/on_surface_variant"
                         android:layout_marginTop="4dp"
@@ -377,7 +377,7 @@
                 style="@style/SmartQ.Button.Outlined"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Check In at Hospital"
+                android:text="Step 3 • Check In at Hospital"
                 android:layout_marginBottom="10dp"/>
 
             <com.google.android.material.button.MaterialButton
@@ -385,7 +385,7 @@
                 style="@style/SmartQ.Button"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Request Queue Slot"
+                android:text="Select Doctor To Continue"
                 android:layout_marginBottom="8dp"/>
 
         </LinearLayout>

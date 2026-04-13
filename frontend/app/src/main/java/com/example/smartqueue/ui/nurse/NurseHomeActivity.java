@@ -1,6 +1,5 @@
 package com.example.smartqueue.ui.nurse;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -23,9 +22,9 @@ import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.models.response.TokenResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
-import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.utils.ApiErrorParser;
 import com.example.smartqueue.utils.RoleNavigationHelper;
+import com.example.smartqueue.utils.SessionFlowHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -130,12 +129,7 @@ public class NurseHomeActivity extends AppCompatActivity {
 
     private void setupListeners() {
         btnRefresh.setOnClickListener(v -> loadNurseQueue(true));
-        btnLogout.setOnClickListener(v -> {
-            sessionManager.clearSession();
-            ApiClient.setAuthToken(null);
-            startActivity(new Intent(this, LoginActivity.class));
-            finish();
-        });
+        btnLogout.setOnClickListener(v -> SessionFlowHelper.logoutToLogin(this, sessionManager, null));
     }
 
     private void loadNurseQueue(boolean showLoading) {
@@ -364,10 +358,14 @@ public class NurseHomeActivity extends AppCompatActivity {
         layoutSafetyAlertBlock.setVisibility(hasSafetyMatches ? View.VISIBLE : View.GONE);
         if (hasSafetyMatches) {
             tvLastResultSafetyAlert.setText(buildSafetyAlertText(safetyMatches));
-            tvLastResultSafetySummary.setText("Hard safety override fired");
+            tvLastResultSafetySummary.setText(body.isImmediateReviewRequired()
+                    ? "Immediate escalation required — hard safety override fired"
+                    : "Hard safety override fired");
+            tvLastResultSafetySummary.setTextColor(ContextCompat.getColor(this, R.color.priority_high));
         } else {
             tvLastResultSafetyAlert.setText("");
             tvLastResultSafetySummary.setText("No hard safety override fired");
+            tvLastResultSafetySummary.setTextColor(ContextCompat.getColor(this, R.color.text_secondary));
         }
 
         tvLastResultQueue.setText(buildQueueAssignment(body));

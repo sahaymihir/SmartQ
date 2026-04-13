@@ -35,6 +35,9 @@ public interface ApiService {
     @POST("notifications/register-device")
     Call<MessageResponse> registerDeviceToken(@Body com.example.smartqueue.models.request.NotificationRegistrationRequest body);
 
+    @DELETE("notifications/register-device")
+    Call<MessageResponse> unregisterDeviceToken();
+
     @POST("queue/join")
     Call<TokenResponse> joinQueue(@Query("doctorId") String doctorId, @Body JoinQueueRequest body);
 

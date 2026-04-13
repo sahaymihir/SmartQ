@@ -8,6 +8,11 @@ const predictionHistory = require('../store/predictionStore');
 const { getMlOpsLogs, getMlOpsSummary } = require('../store/mlOpsLogStore');
 const { mapPriorityClassToScore } = require('../services/triageService');
 const { runPatientFlow } = require('../services/patientFlowService');
+const {
+  notifyCalledToken,
+  notifyDoctorQueuePausedState,
+  notifyWaitingDoctorEtaChanges,
+} = require('../services/queueNotificationService');
 const { resetAndSeedDemoData } = require('../services/demoSeedService');
 const { routeToSupportedSpecialty } = require('../services/specialtyService');
 const {
@@ -181,6 +186,8 @@ router.post('/next', async (req, res) => {
     queue.currentToken = nextToken.tokenNumber;
     await queue.save();
     await recomputeWaitingQueue(doctorId, queue.avgConsultationMinutes, today(), 'waiting_doctor');
+    await notifyCalledToken(nextToken);
+    await notifyWaitingDoctorEtaChanges(doctorId, today());
 
     res.json({
       success: true,
@@ -243,6 +250,7 @@ router.post('/noshow', async (req, res) => {
     }
     if (previousStatus === 'waiting_doctor') {
       await recomputeWaitingQueue(token.doctor, queue.avgConsultationMinutes, today(), 'waiting_doctor');
+      await notifyWaitingDoctorEtaChanges(token.doctor, today());
     }
 
     res.json({ success: true, message: 'Patient marked as no-show' });
@@ -266,6 +274,7 @@ router.post('/pause', async (req, res) => {
 
     queue.isPaused = paused;
     await queue.save();
+    await notifyDoctorQueuePausedState(doctorId, paused, today());
 
     res.json({
       success: true,

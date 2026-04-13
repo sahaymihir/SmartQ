@@ -3,6 +3,13 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
+def resolvedApiBaseUrl = (project.findProperty("SMARTQ_API_BASE_URL")
+        ?: System.getenv("SMARTQ_API_BASE_URL")
+        ?: "https://smartq-backend-mihir.onrender.com/api/").toString()
+if (!resolvedApiBaseUrl.endsWith("/")) {
+    resolvedApiBaseUrl += "/"
+}
+
 android {
     namespace 'com.example.smartqueue'
     compileSdk 34
@@ -14,14 +21,11 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "API_BASE_URL", "\"${resolvedApiBaseUrl}\""
     }
 
     buildFeatures {
-        compose true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.10"
+        buildConfig true
     }
 
     buildTypes {
@@ -43,26 +47,9 @@ dependencies {
     implementation libs.material
     implementation libs.constraintlayout
     implementation libs.cardview
-    
-    // Jetpack Compose — Material 3 + Animation-Heavy UI
-    implementation platform(libs.compose.bom)
-    implementation libs.compose.ui
-    implementation libs.compose.material3
-    implementation libs.compose.foundation
-    implementation libs.compose.animation
-    implementation libs.compose.runtime
-    implementation libs.compose.preview
-    debugImplementation libs.compose.tooling
-    implementation libs.lifecycle.runtime.compose
-    implementation libs.lifecycle.viewmodel.compose
 
-    // Compose Navigation
-    implementation libs.navigation.compose
-    implementation libs.navigation.runtime
-
-    // Lottie — Premium Animations (both XML + Compose)
+    // Lottie animations for the Java/XML production UI
     implementation 'com.airbnb.android:lottie:6.4.0'
-    implementation libs.lottie.compose
     
     // Core Splash Screen for smooth launch transition
     implementation 'androidx.core:core-splashscreen:1.0.1'

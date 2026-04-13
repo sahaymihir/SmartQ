@@ -18,6 +18,7 @@ import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
 import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.ui.prescription.PrescriptionActivity;
+import com.example.smartqueue.utils.SessionFlowHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 
@@ -154,13 +155,7 @@ public class DoctorVisitHistoryActivity extends AppCompatActivity {
 
     private void handleUnauthorized() {
         if (!isFinishing()) {
-            sessionManager.clearSession();
-            ApiClient.setAuthToken(null);
-            Toast.makeText(this, "Session expired. Please log in again.", Toast.LENGTH_LONG).show();
-            Intent intent = new Intent(this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
+            SessionFlowHelper.logoutToLogin(this, sessionManager, "Session expired. Please log in again.");
         }
     }
 

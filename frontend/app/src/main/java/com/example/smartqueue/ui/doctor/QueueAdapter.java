@@ -69,16 +69,16 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.ViewHolder> 
             info.append(" | Priority: ").append(textOrDefault(entry.getPriority(), "normal"));
         }
         if ("waiting".equals(status) && !entry.isNurseTriaged()) {
-            info.append(" | Vitals pending");
+            info.append(" | Nurse vitals pending");
         } else if ("waiting_doctor".equals(status) || entry.isNurseTriaged()) {
-            info.append(" | Nurse triaged");
+            info.append(" | Ready for doctor");
         }
         if (entry.isManualReviewRequired()) {
             info.append(" | Manual review");
         }
         holder.tvPatientInfo.setText(info.toString());
         if (immediateReview && "waiting_doctor".equals(status)) {
-            holder.tvStatus.setText("IMMEDIATE");
+            holder.tvStatus.setText("IMMEDIATE REVIEW");
         } else if ("waiting".equals(status) && !entry.isNurseTriaged()) {
             holder.tvStatus.setText("WAITING FOR VITALS");
         } else {
@@ -124,9 +124,21 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.ViewHolder> 
         if (status == null || status.trim().isEmpty()) {
             return "Waiting";
         }
-        if ("waiting_doctor".equals(status)) {
-            return "Waiting for doctor";
+        switch (status) {
+            case "waiting":
+                return "Waiting for nurse";
+            case "waiting_doctor":
+                return "Ready for doctor";
+            case "called":
+                return "Called to room";
+            case "arrived":
+                return "In consultation";
+            case "no_show":
+                return "No-show";
+            case "completed":
+                return "Completed";
+            default:
+                return status.substring(0, 1).toUpperCase() + status.substring(1);
         }
-        return status.substring(0, 1).toUpperCase() + status.substring(1);
     }
 }

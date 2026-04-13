@@ -161,12 +161,12 @@
 
 The outpatient department (OPD) of any hospital is the primary access point to specialized healthcare. Historically, this phase is plagued by extreme congestion, disorganization, an inability to prioritize serious conditions properly, and patient dissatisfaction due to immense waiting times with zero visibility. While modernization has brought digitized kiosks to hospitals, these mere number-dispensers do nothing to triage urgency or interactively inform waiting patients. Our project, \textbf{SmartQ}, is an end-to-end cloud-synchronized, AI-augmented queue and triage platform that solves this fundamental bottleneck.
 
-SmartQ provides a robust \textbf{triple-tier architecture}: A high-fidelity, Material Design-compliant native Android frontend utilizing biometric authentication; a Node.js/Express.js RESTful API managing state synchronization and dynamic ETA computations; and a groundbreaking FastAPI Machine Learning Service embedded with a DistilBERT NLP transformer to conduct \textbf{Semantic Clinical Triage}. 
+SmartQ provides a robust \textbf{triple-tier architecture}: a Material Design-compliant native Android frontend utilizing biometric authentication; a Node.js/Express.js RESTful API managing state synchronization and dynamic ETA computations; and a FastAPI Machine Learning Service exposing the production triage predictor together with rule-assisted specialty routing, safety checks, and test recommendation helpers.
 
-The application removes the need for physical hospital kiosks. Patients can onboard from home, describe their symptoms in natural language, and let the AI deduce the correct medical specialty, severity (Priority levels 1-5), flag safety endpoints (e.g., indicating suspected strokes or respiratory distress), and recommend baseline pathology tests. This triage output combines dynamically with an age-based risk factor to re-order the queue autonomously using an advanced insertion algorithm, pushing high-priority and elderly patients naturally to the front. To assist patient agency, SmartQ allows patients to 'snooze' their turn if caught in traffic, track a live-updating moving-average ETA, and log securely using Fingerprint/FaceID credentials. Administrators and Doctors receive specialized dashboards allowing total, analytics-backed command over hospital flow logic. This report provides a highly exhaustive, deeply documented discussion of every logical and architectural decision executed in building this platform.
+The application removes the need for physical hospital kiosks. Patients can onboard from home, describe their symptoms in natural language, and let SmartQ combine model-backed KTAS prediction with rule-assisted specialty routing, safety flag detection, and suggested baseline tests. This triage output combines dynamically with visit context to re-order the queue using a priority-aware insertion algorithm, pushing high-priority and safety-sensitive patients toward faster review. To assist patient agency, SmartQ allows patients to 'snooze' their turn if caught in traffic, track a live-updating moving-average ETA, and log securely using Fingerprint/FaceID credentials. Administrators, nurses, and doctors receive specialized dashboards allowing total command over hospital flow logic. This report documents the implemented architecture, operational logic, and the boundaries between the deployed system and future extensions.
 
 \vspace{0.5em}
-\noindent\textbf{Keywords:} Artificial Intelligence Clinical Triage, Fast Queue Management System, Native Android Application, DistilBERT, Priority Scheduling, FastAPI, REST API, MongoDB, Biometric Security, Machine Learning Inference.
+\noindent\textbf{Keywords:} Artificial Intelligence Clinical Triage, Fast Queue Management System, Native Android Application, XGBoost, Priority Scheduling, FastAPI, REST API, MongoDB, Biometric Security, Machine Learning Inference.
 
 \newpage
 
@@ -179,7 +179,7 @@ The healthcare infrastructures of densely populated environments face an inheren
 
 The second major crisis within these departments is triaging. Traditional physical token dispensers operate on a rigid First-Come-First-Serve (FCFS) basis. Under FCFS, an 80-year-old patient suffering from acute angina who arrived at 9:05 AM is slotted behind a healthy 20-year-old seeking routine dermatological consultation who arrived at 9:02 AM. Without intervention from overburdened nursing staff, the rigid numeric system directly endangers the critical patient.
 
-\textbf{SmartQ} fundamentally restructures this dynamic. By displacing the token acquisition phase from a physical kiosk into the patient's smartphone, we eliminate physical crowding immediately. However, our primary contribution is integrating \textbf{Semantic Artificial Intelligence} directly into the onboarding stream. Rather than trusting patients to navigate complex hospital routing correctly, they define their complaint natively (e.g. "My chest hurts really bad and I can't catch my breath when I lie down"). Our custom FastAPI inference layer consumes this text using a DistilBERT Natural Language Processing model. DistilBERT isolates the symptom intent, maps it to Cardiology/Pulmonology, triggers a Safety Flag for potential cardiac emergencies, and forces the patient's priority to a Tier-1 status.
+\textbf{SmartQ} fundamentally restructures this dynamic. By displacing the token acquisition phase from a physical kiosk into the patient's smartphone, we eliminate physical crowding immediately. Our primary contribution is integrating \textbf{clinical decision support} directly into the onboarding stream. Rather than trusting patients to navigate complex hospital routing correctly, they define their complaint natively (e.g. "My chest hurts really bad and I can't catch my breath when I lie down"). The FastAPI inference layer combines a saved XGBoost triage bundle, structured feature defaults, symptom normalization, and explicit safety rules. In practice, this allows SmartQ to estimate a KTAS priority band, surface confidence, suggest a route, and escalate obvious red flags such as respiratory distress or stroke-like symptoms for immediate review.
 
 The system interacts robustly across three roles:
 \begin{itemize}
@@ -199,7 +199,7 @@ The theoretical foundation of SmartQ derives from intersecting studies in health
 Haq et al. (2020) demonstrated that mobile-augmented smart queue systems dramatically reduce perceived waiting times by allowing patients to track queues off-premises. However, their system utilized generic allocation algorithms that could not differentiate patient severity. Konrad et al. (2017) utilized discrete event simulation modeling to prove mathematically that prioritizing high-acuity patients within standard queues significantly drastically reduces severe LWBS rates without mathematically punishing lower-acuity patients to an intolerable degree. SmartQ operationalizes Konrad's simulation into a live software architecture.
 
 \subsection{Deep Learning and Clinical Triage}
-Standard symptom checkers have traditionally relied on rigid decision trees, which struggle with the nuance of human linguistics. To circumvent this, the industry has transitioned to Transformer-based neural architectures, spearheaded by BERT (Bidirectional Encoder Representations from Transformers, Devlin et al. 2018). For real-time mobile API constraints, standard BERT models are too computationally expensive. Sanh et al. (2019) introduced \textbf{DistilBERT}, which retains 97\% of BERT's language understanding while being 60\% faster and 40\% lighter. SmartQ utilizes DistilBERT embedded within a FastAPI Python pipeline, generating symptom embeddings that are classified rapidly without stalling the mobile User Experience.
+Standard symptom checkers have traditionally relied on rigid decision trees, which struggle with the nuance of human linguistics. To circumvent this, the industry has transitioned to Transformer-based neural architectures, spearheaded by BERT (Bidirectional Encoder Representations from Transformers, Devlin et al. 2018). For real-time mobile API constraints, standard BERT models are too computationally expensive. Sanh et al. (2019) introduced \textbf{DistilBERT}, which retains 97\% of BERT's language understanding while being 60\% faster and 40\% lighter. In SmartQ, this literature motivated the symptom-normalization and hybrid-routing design, but the deployed production stack uses the saved XGBoost triage bundle plus explicit safety and routing rules rather than a live DistilBERT inference stage.
 
 \subsection{Authentication Security in mHealth}
 As established by Soni et al. (2022), the security of RESTful APIs in mobile health heavily relies on stateless authentication mechanisms like JSON Web Tokens (JWT). While JWT handles the transport authorization flawlessly, securing the token on the physical device remains challenging. SmartQ solves this by implementing Android's \texttt{BiometricPrompt} framework, sealing standard login routines behind hardware-backed facial recognition and fingerprint modules.
@@ -213,7 +213,7 @@ The project's execution is defined by highly specific functional and non-functio
 
 \begin{enumerate}
     \item \textbf{High-Fidelity Android Client Architecture}: Build a visually superior, native Java application utilizing complex XML abstractions (stitching methodologies), custom interpolator animations (scale, fade), and Material components.
-    \item \textbf{FastAPI Machine Learning Inference Pipeline}: Deploy a Python FastAPI microservice that processes raw JSON text payloads through a pre-trained DistilBERT pipeline. Formulate output structures encompassing Specialty assignments, Priority classifications (1 to 5), and logic-based Safety rule evaluations.
+    \item \textbf{FastAPI Machine Learning Inference Pipeline}: Deploy a Python FastAPI microservice that processes structured triage payloads through the saved XGBoost priority model, then augments the result with rule-assisted specialty routing, test suggestions, and safety-rule evaluations.
     \item \textbf{Robust Authentication via Biometrics}: Utilize bcrypt for backend password hashing, generate encrypted JWTs, and secure the Android application layer utilizing hardware-level BiometricManager prompts.
     \item \textbf{Automated Queue Priority Triage}: Construct MongoDB aggregation pipelines and atomic transaction blocks that seamlessly insert a high-priority patient (flagged by Age > 60 or by AI Severity) ahead of lower-priority users concurrently without raising race-conditions.
     \item \textbf{Dynamic Wait Time Predictions}: Abandon inaccurate static ETAs. Implement a backend mathematically-sound Simple Moving Average (SMA) calculating the last 10 exact consultation timelines to feed predictive ETAs live to the client via a 10-second polling handler.
@@ -239,7 +239,7 @@ The architectural framework for SmartQ requires a distributed, highly decoupled 
 \midrule
 \textbf{Frontend} & Android (Java) & Minimum API 24 (Nougat), Target API 34. Custom XML animations, Retrofit2, OkHttp3 Interceptors, BiometricX. \\
 \textbf{Primary Backend} & Node.js \& Express.js & Stateless REST API acting as the central traffic router. JWT Auth Middleware. Mongoose ODM. \\
-\textbf{AI Service} & Python \& FastAPI & Fast asynchronous endpoints. Loads Scikit-learn scalers, \texttt{joblib} pipelines, DistilBERT tokenizers dynamically. \\
+\textbf{AI Service} & Python \& FastAPI & Fast asynchronous endpoints. Loads the saved XGBoost triage bundle, Scikit-learn scalers, and rule-based routing / recommendation helpers. \\
 \textbf{Data Persistance} & MongoDB Atlas & Cloud-hosted NoSQL cluster utilizing document-level locking mechanisms for queue atomicity. \\
 \bottomrule
 \end{tabularx}
@@ -271,7 +271,7 @@ The system executes as a Microservice array illustrated in Figure \ref{fig:detai
     
     % ML Microservice
     \node[layer=orange!15, right=1.5cm of server] (mlservice) {FastAPI ML Triage Processor};
-    \node[layer=orange!10, below=0.2cm of mlservice] (distil) {DistilBERT \& Scikit-Learn};
+    \node[layer=orange!10, below=0.2cm of mlservice] (distil) {XGBoost Bundle \& Rule Engine};
     
     % Routers
     \node[layer=purple!15, below=0.7cm of server, xshift=-1.5cm] (authR) {Auth \& Users Router};
@@ -309,18 +309,18 @@ Every module within SmartQ utilizes extensive fault-tolerant logic parameters sp
 
 \subsection{Semantic Triage Algorithm (FastAPI Machine Learning Service)}
 
-The ML Service relies on a heavily processed NLP inference script (`main.py` interacting with `auto_ml_pipeline_v3`).
+The ML Service relies on a structured triage inference script (`main.py`) backed by the saved `triage_v3` model bundle and supported by rule-driven specialty routing.
 
 \textbf{Logic Flow:}
 \begin{enumerate}
     \item \textbf{Tokenization and Structuring:} When the Node backend hits `/predict`, the request maps to standard Pydantic models verifying structural integrity. Symptoms text is coerced using `normalize_symptoms_text()`, stripping irregular hospital-shorthand and punctuation.
-    \item \textbf{Classification Frame Construction:} The Python engine dynamically constructs a Pandas DataFrame matching exactly the expected features required by the heavily trained Scikit scaler and the PyTorch models. Missing data logically defaults to medians (e.g., standard defaults for unprovided height/weight elements).
+    \item \textbf{Classification Frame Construction:} The Python engine dynamically constructs a Pandas DataFrame matching the exact feature columns expected by the saved scaler and XGBoost classifier. Missing data logically defaults to medians or neutral categorical defaults so sparse intake submissions remain valid.
     \item \textbf{Safety Heuristic Overrides:} While the neural net excels at general categorization, direct medical logic is coded via conditional rule blocks to protect against algorithmic complacency.
     \begin{itemize}
         \item \textit{Logic snippet:} If `SpO2 $\leq$ 90`, the `forcedPriorityClass` is rigidly assigned to `1` (Critical) and the route forcefully assigned to `Pulmonology`.
         \item \textit{Logic snippet:} If the symptom text matches terms like "slurred speech" or "face droop", the rule engine identifies `possible_stroke`, overriding basic algorithms to designate a Neurology Critical priority.
     \end{itemize}
-    \item \textbf{Specialty Mapping \& Priority Output:} DistilBERT calculates dense array probabilities for specialties. The primary inference outputs the probability matrix resulting in a definitive Priority Class prediction (e.g., Class 3 - Urgent), combined with AI-powered recommended procedures (e.g., triggering a CBC, Complete Blood Count, for high fever detections).
+    \item \textbf{Specialty Mapping \& Priority Output:} The priority model outputs the KTAS class probabilities, while a separate rule-assisted specialty layer maps complaint patterns into the most suitable department. Baseline test recommendations are then generated from a live heuristic ruleset using the complaint system, age, and supplied vitals.
 \end{enumerate}
 
 \begin{algorithm}[H]
@@ -339,8 +339,9 @@ $SafetyFlags \gets \emptyset$\;
     $SafetyFlags.Add(\text{"Cardiac Red Flag"})$\;
     $Priority \gets \min(Priority, 2)$\;
 }
-$SpecialtyMatrix \gets \text{DistilBERT.Predict}(S_{norm})$\;
-$FinalRoute \gets \text{ResolveRoute}(SafetyFlags, SpecialtyMatrix)$\;
+$PriorityScores \gets \text{XGBoost.PredictProba}(Features)$\;
+$RouteHints \gets \text{RuleBasedSpecialty}(S_{norm})$\;
+$FinalRoute \gets \text{ResolveRoute}(SafetyFlags, RouteHints)$\;
 \Return $Priority, FinalRoute, SafetyFlags$\;
 \caption{ML Triage Safety Constraint Resolution}
 \end{algorithm}
@@ -424,7 +425,7 @@ To guarantee substantial healthcare engagement, SmartQ successfully transitioned
 \begin{figure}[H]
     \centering
     \framebox(350, 220){\textit{Screenshot 2: Patient Natural Language Interface and AI Triage Outcome}}
-    \caption{Dynamic result structure showing the inferred specialty queue assigned by the DistilBERT model inference pipeline server based on the user's custom string.}
+    \caption{Dynamic result structure showing the model-backed KTAS estimate together with the rule-assisted routing decision returned by the FastAPI triage service.}
     \label{fig:ss_triage}
 \end{figure}
 
@@ -454,7 +455,7 @@ The total integration resulting in the completely modernized SmartQ repository y
 
 \textbf{Authentication Execution:} Cryptographic interactions utilizing bcrypt and `BiometricPrompt` libraries operate flawlessly on all valid API-24 and above Android devices, cutting standard re-login workflow latency strictly under 2.5 seconds compared to tedious manual authentication flows.
 
-\textbf{Triage Processing Speeds:} The decision to offload standard CRUD tasks towards Express while centralizing tensor operations exclusively within FastAPI proved profoundly effective. The endpoint processes rigorous tokenizations concurrently, delivering heavily parameterized NLP route recommendations safely within 200–350 milliseconds dynamically crossing servers. The safety rule heuristic system appropriately captured edge cases explicitly, blocking algorithms from miss-assigning critical SpO2 flags strictly according to strict clinical frameworks programmed.
+\textbf{Triage Processing Speeds:} The decision to offload standard CRUD tasks towards Express while centralizing clinical inference within FastAPI proved effective. The production predictor builds a structured feature frame, evaluates the saved XGBoost bundle, and then layers safety and routing rules in the same response cycle. The safety rule system appropriately captured edge cases explicitly, blocking lower-acuity assignments when critical SpO2 or neurological red flags appeared.
 
 \textbf{Concurrency Stability:} The most critical failure state for an asynchronous hospital queue engine is race-condition corruption. Through iterative simulated load-testing, the implementation of exact Mongoose atomic operations successfully prevented data-loss across extremely high volume requests firing simultaneously as the background queues correctly shifted increment modifiers accurately.
 
@@ -467,7 +468,7 @@ The total integration resulting in the completely modernized SmartQ repository y
 
 The SmartQ system has successfully met and vastly exceeded the standard scope definitions characterizing a fundamental queue allocation architecture. 
 
-By fundamentally fusing robust software architectural design paradigms with modern deep learning NLP frameworks, SmartQ addresses extreme hospital constraints actively not just passively. Moving beyond traditional "take a ticket and wait for a number" frameworks, DistilBERT actively triages the necessity and priority of incoming bodies continuously before engagement. Patients maintain real-time agency executing explicit Snooze adjustments and trusting statistically valid ETA structures fed from robust cloud backend data analytics natively over gorgeous Android interfaces. 
+By fundamentally fusing robust software architectural design paradigms with practical machine-learning inference and safety-first rule systems, SmartQ addresses extreme hospital constraints actively rather than passively. Moving beyond traditional "take a ticket and wait for a number" frameworks, the deployed triage service estimates KTAS urgency, surfaces confidence, and assists routing before the consultation begins. Patients maintain real-time agency executing explicit Snooze adjustments and trusting statistically valid ETA structures fed from robust cloud backend data analytics over a native Android interface. 
 
 It stands as a testament regarding how modern integration frameworks—meshing Python asynchronous models directly together with robust Node.js structures and encrypted Android hardware clients—can execute profound disruptions upon historically congested, inefficient, and potentially dangerous legacy healthcare procedures.
 

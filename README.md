@@ -5,8 +5,9 @@
 **SmartQ** is a comprehensive, full-stack Hospital Queue Management application built to optimize patient flow, reduce waiting room congestion, and empower hospital staff (doctors and admins) with granular control over their daily queues.
 
 The system is composed of:
-1. **Frontend:** A native Android Application (written in Java/XML).
-2. **Backend:** A scalable Node.js + Express REST API backed by MongoDB.
+1. **Frontend:** A native Android application built on the Java/XML path that is currently used for the live demo.
+2. **Backend:** A Node.js + Express REST API backed by MongoDB.
+3. **ML Service:** A FastAPI microservice that serves the production triage predictor and rule-assisted routing helpers.
 
 ## Current Status
 
@@ -18,6 +19,17 @@ The sections below describe the original **SmartQ v1** implementation. The repos
 - ETA remains **moving-average in production**, while ETA ML is explicitly a future research phase
 - Backend analytics now track triage confidence, predicted vs actual wait times, low-confidence cases, no-shows, and snoozes
 
+## Demo Reality
+
+- The supported mobile client path is the Java/XML Android app. The Compose/Kotlin exploratory screen is kept in the repo as a prototype, not as the live demo surface.
+- `POST /predict` is the model-backed clinical predictor and currently serves the saved XGBoost triage bundle in `ml_service/models/triage_v3/model/`.
+- Specialty routing and test recommendations are live, but they are rule-assisted heuristics rather than separately deployed trained production models.
+- OCR-based prescription intake supports a real OCR microservice when `OCR_SERVICE_URL` is configured; otherwise the app falls back to a structured placeholder extraction flow for review.
+- Firebase push registration is wired and persisted, but any unverified notification story should still be presented as demo scope until you complete an end-to-end device test for the exact event you want to show.
+- Geofence-based auto check-in remains scaffolded and is not the current production check-in path.
+
+See the detailed capability breakdown in [docs/CAPABILITY_MATRIX.md](/home/mihirsahay/project_MADL/docs/CAPABILITY_MATRIX.md:1).
+
 Report notes for the v1 -> v2 rewrite are in [docs/smartq_v2_backend_report_notes.md](/home/mihirsahay/project_MADL/docs/smartq_v2_backend_report_notes.md:1).
 
 ---
@@ -28,6 +40,7 @@ Report notes for the v1 -> v2 rewrite are in [docs/smartq_v2_backend_report_note
 - **Framework:** Node.js with Express.js
 - **Database:** MongoDB (with Mongoose ORM)
 - **Authentication:** JSON Web Tokens (JWT) & bcryptjs for secure password hashing.
+- **ML Integration:** FastAPI triage microservice, XGBoost triage bundle, rule-assisted specialty routing and test recommendations
 - **Tools:** CORS, dotenv, Nodemon.
 
 ### Frontend

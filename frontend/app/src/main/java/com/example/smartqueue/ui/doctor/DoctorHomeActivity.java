@@ -22,10 +22,10 @@ import com.example.smartqueue.models.response.MessageResponse;
 import com.example.smartqueue.models.response.QueueResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
-import com.example.smartqueue.ui.auth.LoginActivity;
 import com.example.smartqueue.ui.prescription.PrescriptionActivity;
 import com.example.smartqueue.utils.ApiErrorParser;
 import com.example.smartqueue.utils.RoleNavigationHelper;
+import com.example.smartqueue.utils.SessionFlowHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
@@ -172,11 +172,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
         });
 
         btnLogout.setOnClickListener(v -> {
-            sessionManager.clearSession();
-            ApiClient.setAuthToken(null);
-            startActivity(new Intent(this, LoginActivity.class));
-            overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
-            finish();
+            SessionFlowHelper.logoutToLogin(this, sessionManager, null);
         });
     }
 
@@ -268,19 +264,25 @@ public class DoctorHomeActivity extends AppCompatActivity {
         }
 
         tvQueueSize.setText(String.valueOf(queue.size()));
-        tvQueueSummary.setText(immediateReviewCount > 0
+        String queueSummary = immediateReviewCount > 0
                 ? waitingCount + " waiting, " + immediateReviewCount + " urgent"
-                : waitingCount + " waiting");
+                : waitingCount + " waiting";
+        if (calledPatient != null) {
+            queueSummary += " • finalize the current prescription before calling next";
+        }
+        tvQueueSummary.setText(queueSummary);
         updateAvailabilitySwitch(!body.isPaused());
         switchAvailability.setText(body.isPaused() ? "Unavailable" : "Available");
 
         if (calledPatient != null) {
             tvCurrentPatientName.setText(textOrDefault(calledPatient.getPatientName(), "Patient"));
             tvCurrentPatientToken.setText("Token #" + calledPatient.getTokenNumber()
-                    + " | " + formatStatus(calledPatient.getStatus()));
+                    + " | " + formatStatus(calledPatient.getStatus())
+                    + " • Prescription required before next call");
             currentTokenId = calledPatient.getTokenId();
             currentPatientId = calledPatient.getPatientId();
             btnPrescribe.setVisibility(View.VISIBLE);
+            btnPrescribe.setText("Finish Prescription");
             tvViewHistory.setVisibility(View.VISIBLE);
         } else {
             resetCurrentPatientUI();
@@ -290,7 +292,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
         if (body.isPaused()) {
             btnCallNext.setText("Queue Paused");
         } else if (calledCount > 0) {
-            btnCallNext.setText("Complete Current & Call Next");
+            btnCallNext.setText("Finalize Rx & Call Next");
         } else {
             btnCallNext.setText("Call Next Patient");
         }
@@ -316,6 +318,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
         currentTokenId = null;
         currentPatientId = null;
         btnPrescribe.setVisibility(View.GONE);
+        btnPrescribe.setText("Prescription");
         tvViewHistory.setVisibility(View.GONE);
     }
 
@@ -508,8 +511,17 @@ public class DoctorHomeActivity extends AppCompatActivity {
 
     private String formatStatus(String status) {
         if (TextUtils.isEmpty(status)) return "Waiting";
+        if ("waiting".equals(status)) {
+            return "Waiting for nurse";
+        }
         if ("waiting_doctor".equals(status)) {
-            return "Waiting for doctor";
+            return "Ready for doctor";
+        }
+        if ("called".equals(status)) {
+            return "Called to room";
+        }
+        if ("arrived".equals(status)) {
+            return "In consultation";
         }
         return status.substring(0, 1).toUpperCase() + status.substring(1);
     }
@@ -521,13 +533,7 @@ public class DoctorHomeActivity extends AppCompatActivity {
     private void handleUnauthorized() {
         if (!isFinishing()) {
             stopQueueRefresh();
-            sessionManager.clearSession();
-            ApiClient.setAuthToken(null);
-            Toast.makeText(this, "Session expired. Please log in again.", Toast.LENGTH_LONG).show();
-            Intent intent = new Intent(this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
+            SessionFlowHelper.logoutToLogin(this, sessionManager, "Session expired. Please log in again.");
         }
     }
 }

@@ -23,6 +23,7 @@ import com.example.smartqueue.models.request.RegisterRequest;
 import com.example.smartqueue.models.response.AuthResponse;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.network.ApiService;
+import com.example.smartqueue.utils.PushRegistrationHelper;
 import com.example.smartqueue.utils.RoleNavigationHelper;
 import com.example.smartqueue.utils.SessionManager;
 import com.google.android.material.button.MaterialButton;
@@ -172,6 +173,7 @@ public class RegisterActivity extends AppCompatActivity {
                             user.getSpecialty());
 
                     ApiClient.setAuthToken(body.getToken());
+                    PushRegistrationHelper.syncDeviceToken(RegisterActivity.this, sessionManager);
                     navigateToHome(user.getRole());
                 } else {
                     showError(extractErrorMessage(response));

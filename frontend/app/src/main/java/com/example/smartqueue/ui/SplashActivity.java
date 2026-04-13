@@ -18,6 +18,7 @@ import com.example.smartqueue.R;
 import com.example.smartqueue.network.ApiClient;
 import com.example.smartqueue.ui.admin.AdminDashboardActivity;
 import com.example.smartqueue.ui.auth.LoginActivity;
+import com.example.smartqueue.utils.PushRegistrationHelper;
 import com.example.smartqueue.utils.RoleNavigationHelper;
 import com.example.smartqueue.utils.SessionManager;
 
@@ -45,6 +46,7 @@ public class SplashActivity extends AppCompatActivity {
             if (session.isLoggedIn()) {
                 if (session.hasRestorableSession()) {
                     ApiClient.setAuthToken(session.getToken());
+                    PushRegistrationHelper.syncDeviceToken(this, session);
                     intent = RoleNavigationHelper.createClearedHomeIntent(this, session.getRole());
                 } else {
                     session.clearSession();
