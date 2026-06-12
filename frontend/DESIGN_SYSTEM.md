@@ -1,7 +1,12 @@
 # SmartQ Material 3 Healthcare Design System
 
+> **Scope note:** This Jetpack Compose / Kotlin UI is an **exploratory prototype**, not
+> the supported live demo surface. The production Android client is the Java/XML app.
+> See `docs/CAPABILITY_MATRIX.md` and the root `README.md` for what is live vs.
+> prototype.
+
 ## Overview
-Complete Jetpack Compose Material 3 design system with heavy animations, minimal modern aesthetic, and healthcare-specific design patterns.
+Jetpack Compose Material 3 design system with heavy animations, minimal modern aesthetic, and healthcare-specific design patterns.
 
 **Tech Stack:**
 - Jetpack Compose (UI Framework)
@@ -264,25 +269,22 @@ fun LoadingScreen() {
 
 ---
 
-## Next Steps: Full App Redesign
+## Prototype Status
 
-### Phase 1: Core Screens (Priority)
-1. ✅ Admin Dashboard (DONE)
-2. Patient Queue (Next)
-3. Doctor Dashboard
-4. Authentication Screens
+### Built (Compose prototype)
+- ✅ Admin Dashboard (`AdminDashboardScreen.kt`)
+- ✅ Doctor Dashboard (`DoctorDashboardScreen.kt`)
+- ✅ Patient Queue (`PatientQueueScreen.kt`)
+- ✅ Symptom Input (`SymptomInputScreen.kt`)
+- ✅ Authentication screens (`AuthScreens.kt`)
+- ✅ Bottom Navigation (`BottomNavigation.kt`, `navigation/Screen.kt`)
+- ✅ Compose host activity (`ComposeMainActivity.kt`)
 
-### Phase 2: Patient Screens
-5. Patient Registration
-6. Symptom Input (with animations)
-7. Triage Results
-8. Queue Position Tracker
-
-### Phase 3: Navigation & Polish
-9. Bottom Navigation with animated transitions
-10. Shared Element Animations between screens
-11. Gesture support (swipe, long-press)
-12. Accessibility compliance (a11y)
+### Not yet done
+- Shared-element animations between screens
+- Gesture support (swipe, long-press)
+- Full accessibility (a11y) compliance pass
+- Parity with every Java/XML production screen (the Java/XML app remains the live surface)
 
 ---
 
@@ -317,13 +319,20 @@ val areAnimationsEnabled = Settings.Global.getFloat(
 
 | File | Purpose |
 |------|---------|
-| `Color.kt` | Healthcare color palette |
-| `Type.kt` | Material 3 typography system |
-| `Shape.kt` | Minimal rounded shapes |
-| `Theme.kt` | Complete M3 theme with dark/light modes |
-| `AnimatedComponents.kt` | Reusable animated components |
-| `AdminDashboardScreen.kt` | Compose admin dashboard UI |
-| `ComposeAdminDashboardActivity.kt` | Activity wrapper |
+| `theme/Color.kt` | Healthcare color palette |
+| `theme/Type.kt` | Material 3 typography system |
+| `theme/Shape.kt` | Minimal rounded shapes |
+| `theme/Theme.kt` | Complete M3 theme with dark/light modes |
+| `components/AnimatedComponents.kt` | Reusable animated components |
+| `components/BottomNavigation.kt` | Animated bottom navigation bar |
+| `navigation/Screen.kt` | Compose navigation routes |
+| `admin/compose/AdminDashboardScreen.kt` | Compose admin dashboard UI |
+| `admin/compose/ComposeAdminDashboardActivity.kt` | Admin activity wrapper |
+| `doctor/compose/DoctorDashboardScreen.kt` | Compose doctor dashboard UI |
+| `patient/compose/PatientQueueScreen.kt` | Compose patient queue UI |
+| `patient/compose/SymptomInputScreen.kt` | Compose symptom-input UI |
+| `auth/compose/AuthScreens.kt` | Compose login/register screens |
+| `main/compose/ComposeMainActivity.kt` | Compose host activity |
 | `loading_spinner.json` | Lottie loading animation |
 | `success_checkmark.json` | Lottie success animation |
 
@@ -347,4 +356,5 @@ This design system provides a foundation for a modern, healthcare-focused Androi
 - ✅ Dark mode first
 - ✅ Accessibility considerations
 
-**Next action:** Migrate remaining screens to Compose using these components!
+**Next action:** Reach feature parity with the Java/XML production screens before
+promoting the Compose prototype to the live demo surface.

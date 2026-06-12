@@ -106,10 +106,10 @@ The saved v3 triage model already gives a credible backend story:
 - Model family: **XGBoost**
 - Accuracy: **0.8501**
 - Weighted ROC-AUC: **0.9697**
-- Low-confidence cases at threshold `< 0.60`: **13.44%**
-- Test errors: **2,784 / 16,000**
-- Adjacent errors: **2,699**
-- Dangerous errors (`>= 2` levels away): **85**
+- Low-confidence cases at threshold `< 0.60`: **11.93%**
+- Test errors: **2,399 / 16,000**
+- Adjacent errors: **2,359**
+- Dangerous errors (`>= 2` levels away): **40**
 
 ### Interpretation
 - Most mistakes are **adjacent-class errors**, which is much safer than large misclassification jumps

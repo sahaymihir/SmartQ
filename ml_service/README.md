@@ -13,6 +13,11 @@ Uses `specialty_hybrid.py`, a rule-based specialty router with symptom normaliza
 3. `POST /test-recommendations`
 Uses the rule-based recommendation engine inside `main.py`.
 
+4. `POST /patient-flow`
+Orchestrates triage (`/predict`), specialty routing, and test recommendations in a
+single call and returns a combined patient-flow response. This is the endpoint the
+Node backend's `patientFlowService.js` calls.
+
 Only the triage bundle is a tracked trained model right now.
 
 ## Folder Guide
@@ -46,7 +51,9 @@ ml_service/
 - `POST /predict`: KTAS priority prediction from structured intake fields.
 - `POST /specialty`: specialty routing for doctor matching.
 - `POST /test-recommendations`: rule-based diagnostic test suggestions.
+- `POST /patient-flow`: combined triage + specialty + test-recommendation orchestration.
 - `GET /health`: health check.
+- `GET /`: service root / metadata.
 
 ## Local Run
 
@@ -92,6 +99,8 @@ docker run --rm -p 8000:8000 smartq-ml-service
 
 ## Backend Notes
 
-- The backend actively calls `/predict` and `/specialty`.
+- The backend actively calls `/patient-flow` (which fans out to triage, specialty,
+  and test recommendations), and also calls `/predict` and `/specialty` directly via
+  `triageService.js` and `specialtyService.js`.
 - The frontend also has a response model for `/test-recommendations`.
 - Engineered triage features are recomputed inside the service so runtime inference stays aligned with the saved v3 bundle.

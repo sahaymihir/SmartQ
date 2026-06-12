@@ -23,6 +23,9 @@ This section is deliberately honest so the capabilities are not overstated.
 | --- | --- |
 | Triage acuity prediction (`POST /predict`) | **Live, model-backed** — saved XGBoost bundle in `ml_service/models/triage_v3/model/` |
 | Queue / token / ETA / snooze / no-show logic | **Live** in the Node backend |
+| Nurse vitals re-triage + safety-rule escalation | **Live** — `PATCH /api/queue/nurse-triage/:tokenId` re-runs triage on nurse-measured vitals and can escalate to an immediate-review lane |
+| Role-based access (patient / nurse / doctor / admin / superuser) | **Live** — enforced in `authMiddleware.js` and the `User` model |
+| Biometric sign-in (Android) | **Live** — `BiometricPrompt` in `LoginActivity` |
 | Specialty routing & test recommendations | **Live but rule-assisted heuristics**, not separately trained production models |
 | OCR prescription intake | Uses a real OCR service when `OCR_SERVICE_URL` is set; otherwise falls back to a structured placeholder flow |
 | Firebase push notifications | Registration wired and persisted; treat end-to-end delivery as demo scope until device-tested |
@@ -157,12 +160,12 @@ docs/           capability matrix, report sources, demo credentials
 ## API endpoints
 
 ### Backend (`/api`)
-- `auth` — registration, JWT login (email/phone validation + normalisation)
-- `queue` — join, status, snooze (capped at 2), check-in, leave
-- `admin` — call next, no-show, pause/break, full queue list
+- `auth` — registration, JWT login (email/phone validation + normalisation), current user
+- `queue` — join, status, snooze (capped at 2), check-in, leave, no-show, emergency, history, nurse board, nurse re-triage (`PATCH /nurse-triage/:tokenId`)
+- `admin` — call next, no-show, pause/resume, full queue list, model-eval scenarios/run/history, ML-ops logs, seed
 - `doctors` — doctor directory, symptom-based specialty prediction
-- `prescriptions` — create/finalise prescriptions, OCR intake
-- `notifications` — push registration, queue-event notifications
+- `prescriptions` — upload, OCR extract, confirm/finalise, fetch/update
+- `notifications` — device registration / deregistration for push
 - `users` — user management (admin / superuser)
 
 ### ML service
