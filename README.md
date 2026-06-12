@@ -1,128 +1,234 @@
-# SmartQ Hospital Queue Management
+# SmartQ — Hospital Queue Management with ML-Assisted Triage
 
-## Project Overview
+SmartQ is a full-stack hospital queue-management system that reduces waiting-room
+congestion and assists staff with patient prioritisation. It pairs a conventional
+queue/token backend with a machine-learning microservice that predicts triage
+acuity from arrival vitals and routes low-confidence cases to human review.
 
-**SmartQ** is a comprehensive, full-stack Hospital Queue Management application built to optimize patient flow, reduce waiting room congestion, and empower hospital staff (doctors and admins) with granular control over their daily queues.
+The system has three tiers:
 
-The system is composed of:
-1. **Frontend:** A native Android application built on the Java/XML path that is currently used for the live demo.
-2. **Backend:** A Node.js + Express REST API backed by MongoDB.
-3. **ML Service:** A FastAPI microservice that serves the production triage predictor and rule-assisted routing helpers.
-
-## Current Status
-
-The sections below describe the original **SmartQ v1** implementation. The repository now also contains a **SmartQ v2 backend reframe**:
-
-- Node/Express + MongoDB remain the source of truth for queues, tokens, timings, and business rules
-- FastAPI is used as a separate **ML triage microservice**
-- Queue priority is now intended to be **visit-level**, not just age/user-level
-- ETA remains **moving-average in production**, while ETA ML is explicitly a future research phase
-- Backend analytics now track triage confidence, predicted vs actual wait times, low-confidence cases, no-shows, and snoozes
-
-## Demo Reality
-
-- The supported mobile client path is the Java/XML Android app. The Compose/Kotlin exploratory screen is kept in the repo as a prototype, not as the live demo surface.
-- `POST /predict` is the model-backed clinical predictor and currently serves the saved XGBoost triage bundle in `ml_service/models/triage_v3/model/`.
-- Specialty routing and test recommendations are live, but they are rule-assisted heuristics rather than separately deployed trained production models.
-- OCR-based prescription intake supports a real OCR microservice when `OCR_SERVICE_URL` is configured; otherwise the app falls back to a structured placeholder extraction flow for review.
-- Firebase push registration is wired and persisted, but any unverified notification story should still be presented as demo scope until you complete an end-to-end device test for the exact event you want to show.
-- Geofence-based auto check-in remains scaffolded and is not the current production check-in path.
-
-See the detailed capability breakdown in [docs/CAPABILITY_MATRIX.md](/home/mihirsahay/project_MADL/docs/CAPABILITY_MATRIX.md:1).
-
-Report notes for the v1 -> v2 rewrite are in [docs/smartq_v2_backend_report_notes.md](/home/mihirsahay/project_MADL/docs/smartq_v2_backend_report_notes.md:1).
+1. **Android client** — native Java/XML app (Retrofit + OkHttp) used for the live demo.
+2. **Backend API** — Node.js + Express + MongoDB, the source of truth for queues,
+   tokens, ETA, prescriptions, and role-based access control.
+3. **ML service** — a FastAPI microservice serving an XGBoost triage model plus
+   rule-assisted specialty routing and test-recommendation helpers.
 
 ---
 
-## 🛠️ Technology Stack
+## What is real vs. demo scope
+
+This section is deliberately honest so the capabilities are not overstated.
+
+| Capability | Status |
+| --- | --- |
+| Triage acuity prediction (`POST /predict`) | **Live, model-backed** — saved XGBoost bundle in `ml_service/models/triage_v3/model/` |
+| Queue / token / ETA / snooze / no-show logic | **Live** in the Node backend |
+| Specialty routing & test recommendations | **Live but rule-assisted heuristics**, not separately trained production models |
+| OCR prescription intake | Uses a real OCR service when `OCR_SERVICE_URL` is set; otherwise falls back to a structured placeholder flow |
+| Firebase push notifications | Registration wired and persisted; treat end-to-end delivery as demo scope until device-tested |
+| Geofence auto check-in | Scaffolded only — explicit "Check-In" is the production path |
+| Compose/Kotlin screens | Exploratory prototype, **not** the live demo surface (Java/XML is) |
+
+The dataset is a public/synthetic emergency-department–style dataset, not real
+clinical data.
+
+---
+
+## Triage model — actual numbers
+
+Trained by `ml_service/auto_ml_pipeline_v3.py`. Metrics below are from
+`ml_service/reports/latest_model_metrics.json` (held-out test set, 16,000 rows).
+
+**Model:** XGBoost (selected over LightGBM and a soft-voting ensemble), 40 selected
+features, SMOTE applied for class imbalance.
+
+### Overall
+
+| Metric | Value |
+| --- | --- |
+| Accuracy | 0.8501 |
+| Weighted ROC-AUC | 0.9697 |
+| Macro F1 | 0.8681 |
+| Weighted F1 | 0.8509 |
+| Test rows | 16,000 |
+| Prior baseline accuracy | 0.8499 |
+| Accuracy delta vs. baseline | **+0.0002** |
+
+> Flat accuracy barely moves the baseline. The value of this model is **not** the
+> headline accuracy — it is the **safety-aware error profile and confidence
+> calibration** described below.
+
+### Error profile (why off-by-one matters in triage)
+
+| Error type | Count | Share of test set |
+| --- | --- | --- |
+| Total errors | 2,399 | 15.0% |
+| Adjacent errors (predicted ±1 acuity level) | 2,359 | — |
+| **Dangerous errors (≥2 levels off)** | **40** | **0.25%** |
+
+98.3% of all misclassifications are off by a single acuity level; only 40 of 16,000
+predictions are off by two or more.
+
+### Confidence calibration
+
+The model exposes per-prediction confidence; cases below 0.60 are flagged for human
+review (~11.9% of cases).
+
+| Confidence bucket | Count | Accuracy in bucket |
+| --- | --- | --- |
+| < 0.60 (flagged for review) | 1,909 | 0.541 |
+| 0.60–0.69 | 1,623 | 0.645 |
+| 0.70–0.79 | 1,812 | 0.745 |
+| 0.80–0.89 | 2,323 | 0.862 |
+| 0.90–1.00 | 8,333 | 0.981 |
+
+Accuracy rises monotonically with confidence — the model "knows when it is unsure,"
+which is what makes confidence-gated human handoff meaningful.
+
+### Per-class metrics
+
+| Acuity (1 = most urgent) | Precision | Recall | F1 | Support |
+| --- | --- | --- | --- | --- |
+| 1 | 0.939 | 0.947 | 0.943 | 644 |
+| 2 | 0.977 | 0.964 | 0.970 | 2,688 |
+| 3 | 0.899 | 0.869 | 0.884 | 5,784 |
+| 4 | 0.762 | 0.759 | 0.761 | 4,604 |
+| 5 | 0.746 | 0.825 | 0.783 | 2,280 |
+
+The most urgent classes (1 and 2) are predicted most reliably; confusion
+concentrates between the lower-urgency classes 4 and 5.
+
+---
+
+## Architecture
+
+```
+Android (Java/XML, Retrofit)
+        │  HTTPS / JWT
+        ▼
+Node.js + Express  ──── MongoDB (Mongoose)
+        │  HTTP (with retry/timeout config)
+        ▼
+FastAPI ML service  ──── XGBoost triage bundle (joblib)
+```
+
+The backend calls the ML service over HTTP with configurable timeout/retry
+(`TRIAGE_*`, `SPECIALTY_*`, `PATIENT_FLOW_*` env vars) and falls back gracefully so
+queue operation never hard-depends on the model being up.
+
+---
+
+## Technology stack
+
+**Backend** — Node.js, Express 4, MongoDB + Mongoose 8, JWT (`jsonwebtoken`),
+`bcryptjs`, `express-rate-limit`, `multer`, `axios`, `dotenv`.
+
+**ML service** — Python, FastAPI 0.115, Uvicorn, XGBoost 2.1, scikit-learn 1.5,
+pandas 2.2, NumPy 1.26, imbalanced-learn (SMOTE), joblib. Containerised (`Dockerfile`,
+exposes port 8000).
+
+**Frontend** — Android (Java + XML), Retrofit2, OkHttp, Gson, Material Components,
+Firebase Cloud Messaging.
+
+---
+
+## Repository layout
+
+```
+backend/        Node/Express API
+  routes/       auth, queue, admin, doctors, notifications, prescriptions, users
+  services/     triage, specialty, patientFlow, prescription, notification, demoSeed
+  models/       User, Queue (+ Token), Prescription
+  tests/        clinicalScoring.test.js
+ml_service/     FastAPI app + training pipeline
+  main.py                  serving app (/predict, /specialty, /patient-flow,
+                           /test-recommendations, /health)
+  auto_ml_pipeline_v3.py   training pipeline (clean → engineer → select → SMOTE →
+                           train 3 models → tune → evaluate → save bundle)
+  specialty_hybrid.py      rule-assisted specialty routing
+  evaluate_saved_model.py  re-evaluate the saved bundle
+  models/ data/ reports/   saved model, dataset, metrics + figures
+frontend/       Android app (Java/XML primary; Compose/Kotlin prototype)
+docs/           capability matrix, report sources, demo credentials
+```
+
+---
+
+## API endpoints
+
+### Backend (`/api`)
+- `auth` — registration, JWT login (email/phone validation + normalisation)
+- `queue` — join, status, snooze (capped at 2), check-in, leave
+- `admin` — call next, no-show, pause/break, full queue list
+- `doctors` — doctor directory, symptom-based specialty prediction
+- `prescriptions` — create/finalise prescriptions, OCR intake
+- `notifications` — push registration, queue-event notifications
+- `users` — user management (admin / superuser)
+
+### ML service
+- `POST /predict` — triage acuity + confidence
+- `POST /specialty` — rule-assisted specialty routing
+- `POST /patient-flow` — combined flow helper
+- `POST /test-recommendations` — suggested tests
+- `GET /health`, `GET /` — health/root
+
+---
+
+## Running locally
 
 ### Backend
-- **Framework:** Node.js with Express.js
-- **Database:** MongoDB (with Mongoose ORM)
-- **Authentication:** JSON Web Tokens (JWT) & bcryptjs for secure password hashing.
-- **ML Integration:** FastAPI triage microservice, XGBoost triage bundle, rule-assisted specialty routing and test recommendations
-- **Tools:** CORS, dotenv, Nodemon.
+```bash
+cd backend
+npm install
+# create backend/.env with at least: MONGO_URI, JWT_SECRET
+# optional: PORT, TRIAGE_API_URL, SPECIALTY_API_URL, OCR_SERVICE_URL, FCM_SERVER_KEY
+npm run dev          # nodemon
+npm run seed:demo    # seed demo users (optional)
+npm test             # clinical-scoring unit test
+```
+The server exits on startup if `MONGO_URI` or `JWT_SECRET` is missing.
 
-### Frontend
-- **Platform:** Android (Java / XML)
-- **Architecture:** Activities & XML Layouts using Material Components.
-- **Networking:** Retrofit2 for REST API communication.
-- **Design:** Custom Drawables, Color-coded Priority Badges, CardViews.
+### ML service
+```bash
+cd ml_service
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8000
+# or: docker build -t smartq-ml . && docker run -p 8000:8000 smartq-ml
+```
 
----
+### Retrain the triage model
+```bash
+cd ml_service
+python auto_ml_pipeline_v3.py      # writes models/triage_v3/model/ + reports/
+python evaluate_saved_model.py     # re-evaluate the saved bundle
+```
 
-## 🚀 Detailed Features List
-
-### 1. Advanced Queue Management Algorithm (Backend Core)
-- **Daily Doctor Queues:** Initializes separate daily queues for each doctor.
-- **Dynamic ETA Calculation:** Employs a moving average algorithm. It calculates the live Estimated Time of Arrival (ETA) based on the exact duration of the last 10 completed consultations.
-- **Smart Triage & Priority System:** 
-  - Token priorities are assigned at generation (Normal, Medium, High).
-  - Calculated dynamically upon user registration (e.g., Seniors age 60+ receive a base priority bump).
-  - **Auto Queue Preemption:** High-priority patients are algorithmically inserted *ahead* of normal-priority patients in real-time, completely bypassing standard FIFO conventions.
-
-### 2. Patient Experience (Android - `PatientHomeActivity`)
-- **Real-Time Polling Dashboard:** Actively polls the server every 10 seconds so the patient always sees their *live* ETA, exact queue position, and token number without refreshing.
-- **Doctor Selection:** Allows the patient to seamlessly choose which doctor's active queue they want to join.
-- **"Snooze" Functionality:** 
-  - If a patient is running late, they can hit "Snooze" to gracefully push themselves back by a set number of spots (e.g., 2 spots) instead of losing their ticket completely.
-  - Capped at maximum 2 snoozes to prevent queue abuse.
-- **Location Check-In:** Features an explicit "Check-In" mechanic (adaptable for implicit Geofencing) so patients can alert the hospital the moment they have physically arrived on the premises.
-- **"Called" State:** Instantly updates the UI with a full-screen alert when the doctor officially calls their token.
-
-### 3. Admin & Reception Control (Android - `AdminDashboardActivity`)
-- **Bird's Eye Analytics:** Live stats showing the total number of waiting patients, total patients seen today, and the rolling average time per consultation.
-- **Color-Coded Queue List:** Displays an intuitive, scrollable list of the entire waiting room. Tokens are color-coded by priority (Red = High, Yellow = Medium, Blue = Normal).
-- **One-Tap "Next Patient":** Completes the current consultation and automatically marks the next person in line as "Called", smoothly shifting the entire waiting list forward by one.
-- **"No-Show" Management:** Dedicated button to instantly drop unresponsive patients from the queue and instantly notify the back-end to recalculate ETAs for everyone else.
-- **Queue Pausing (Break Time):** Allows admins to formally pause the queue (toggled with a badge) if a doctor takes a break or an emergency occurs.
-
-### 4. Doctor View & Prescriptions (Android - `DoctorHomeActivity`)
-- **Current Consultation Focus:** A minimalist dashboard strictly showing who is currently in their office (Token number & Name).
-- **In-App Prescriptions:** Dedicated UI dialog for doctors to quickly write digital prescriptions comprising:
-  - Diagnosis
-  - Array of Medicines
-  - Additional Notes
-  - Automatically ties the prescription to the patient's Consultation History.
-- **Availability Toggle:** A simple switch allowing the doctor to mark themselves as "Unavailable" / "Available", syncing directly with the queue's Paused state.
-
-### 5. Security & Authentication
-- **Role-Based Access Control:** Distinct roles (`patient`, `admin`, `doctor`) enforced at the MongoDB schema level. 
-- **Protected API Routes:** All sensitive endpoints (Queue fetching, Admin actions, Prescriptions) are guarded by a custom JWT Authorization middleware (`protect` / `adminOnly`).
+### Android
+Open `frontend/` in Android Studio, set the backend base URL in the Retrofit
+`ApiClient`, and run the Java/XML app.
 
 ---
 
-## 📂 Project Structure
+## How priority and snooze work
 
-### Backend (`/backend`)
-*   `server.js`: The main entry point mounting express middleware, establishing DB connection, and defining root routes.
-*   `models/`: Mongoose schemas.
-    *   `User.js`: Base schema for Patients, Admins, Doctors.
-    *   `Queue.js`: Contains both `QueueSchema` (daily session state) and `TokenSchema` (individual patient spots/states). Includes moving average logic.
-*   `routes/`:
-    *   `auth.js`: Registration & JWT Login.
-    *   `queue.js`: Patient-facing endpoints (Join, Status, Snooze, Check-in).
-    *   `admin.js`: Administrative endpoints (Call Next, No Show, Pause queue, Get full list).
+**Priority preemption** — on join, the backend checks the token's priority score
+(e.g. seniors get a bump). High-priority tokens are inserted ahead of the first
+normal-priority token rather than appended FIFO.
 
-### Frontend (`/frontend`)
-*   `app/src/main/java/com/example/smartqueue/`
-    *   `models/`: Plain Old Java Objects (POJOs) for API Requests/Responses.
-    *   `network/`: Retrofit `ApiClient` instance and the `ApiService` interface containing all endpoint definitions.
-    *   `ui/`: Organized by actor role (`patient/`, `admin/`, `doctor/`, `auth/`). Houses Activities & Adapters.
-    *   `utils/`: Contains `SessionManager` (SharedPreferences wrapper for JWT & User data cache).
-*   `app/src/main/res/`
-    *   `layout/`: XML layouts for dashboards, list items, and prescription dialogs.
-    *   `drawable/`: XML vector shapes mimicking color-coordinated badges for the priority system.
+**Snooze** — a late patient can push back a fixed number of positions (capped at 2
+snoozes). Tokens between the old and new position shift forward by one and the
+snoozing token is reinserted at the new index.
+
+**ETA** — a moving average over the duration of the last 10 completed consultations.
+ML-based ETA is explicitly a future research phase, not in production.
 
 ---
 
-## ⚙️ How Priorities & Snoozes Work (Deep Dive)
+## Status & contributors
 
-**1. The Triage Offset:**
-When a patient hits the `/join` endpoint, the server checks their `priorityScore`. If the score is $\ge 10$ (e.g. they are a senior citizen), a background helper function `reorderQueueForPriority()` is invoked. This function iterates through the queue, finds the first element whose priority is "normal", and aggressively slices the High Priority token immediately directly in front of them, effectively cutting the line.
+Primary developer: Mihir Sahay (~70 commits, all three tiers). Additional
+contributions: Utkarsh Jha (2 commits) and automated code-review assistance
+(~25 commits). Backend + ML service deployed on Render.
 
-**2. The Snooze Swap:**
-When a user hits the `/snooze?positions=2` endpoint, the system modifies their designated queue position (e.g., $P \rightarrow P+2$). It then queries all active waiting tokens that are situated exactly between $P+1$ and $P+2$ and decrements their position by $1$. Finally, the snoozing user is slotted into the $P+2$ index.
-
----
-*Created for personal documentation and system architecture mapping.*
+See [docs/CAPABILITY_MATRIX.md](docs/CAPABILITY_MATRIX.md) for the detailed
+capability breakdown.
