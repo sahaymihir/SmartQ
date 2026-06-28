@@ -11,6 +11,8 @@ import joblib
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
 try:
@@ -1124,3 +1126,17 @@ async def test_recommendations(payload: TestRecommendationRequest) -> TestRecomm
     except Exception as exc:
         logger.exception("Test recommendation failed")
         raise HTTPException(status_code=500, detail="Recommendation engine error") from exc
+
+
+@app.get("/playground", response_class=HTMLResponse)
+async def playground():
+    """
+    Serves the clinical testing playground UI.
+    """
+    html_path = SERVICE_DIR / "static" / "index.html"
+    if not html_path.exists():
+        raise HTTPException(status_code=404, detail="Playground UI file not found")
+    return HTMLResponse(content=html_path.read_text(encoding="utf-8"))
+
+# Mount the static directory for serving playground CSS/JS
+app.mount("/static", StaticFiles(directory=SERVICE_DIR / "static"), name="static")
